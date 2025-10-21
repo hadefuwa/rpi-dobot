@@ -1,24 +1,27 @@
 """
-Dobot Robot Communication Client
-Handles USB/Serial communication with Dobot Magician robot
+Dobot Robot Communication Client - Improved pydobot Version
+Uses pydobot with proper parameter initialization and queue management
 """
 
 import logging
-import glob
+import time
 from typing import Dict, Optional, List
+import struct
 
 logger = logging.getLogger(__name__)
 
-# Try to import pydobot, but make it optional
+# Try to import pydobot
 try:
     from pydobot import Dobot as PyDobot
+    from serial.tools import list_ports
+    import serial
     DOBOT_AVAILABLE = True
 except ImportError:
     DOBOT_AVAILABLE = False
     logger.warning("pydobot not installed - Dobot functionality disabled")
 
 class DobotClient:
-    """Dobot Robot Communication Client"""
+    """Dobot Robot Communication Client using Improved pydobot"""
 
     # Default home position for Dobot Magician
     HOME_POSITION = {
@@ -28,67 +31,79 @@ class DobotClient:
         'r': 0.0
     }
 
+    # Default movement parameters
+    DEFAULT_VELOCITY_RATIO = 100  # 1-100%
+    DEFAULT_ACCELERATION_RATIO = 100  # 1-100%
+
+    # Protocol constants (from official Dobot protocol)
+    PROTOCOL_PTP_COMMON_PARAMS = 83  # Set PTP common parameters
+    PROTOCOL_PTP_CMD = 84  # PTP command
+    PROTOCOL_QUEUE_START = 240  # Start queue execution
+    PROTOCOL_QUEUE_STOP = 241  # Stop queue execution
+    PROTOCOL_QUEUE_CLEAR = 245  # Clear queue
+
     def __init__(self, use_usb: bool = True, usb_path: str = '/dev/ttyACM0'):
         """
-        Initialize Dobot client
+        Initialize Dobot client with improved pydobot
 
         Args:
             use_usb: Use USB connection (True) or skip Dobot entirely (False)
-            usb_path: USB device path for Dobot (will auto-detect if not found)
+            usb_path: USB device path for Dobot
         """
         self.use_usb = use_usb
         self.usb_path = usb_path
         self.connected = False
         self.last_error = ""
         self.device = None
-        self.actual_port = None  # Store the actual port that worked
+        self.actual_port = None
 
-    @staticmethod
-    def find_dobot_ports() -> List[str]:
-        """Find all potential Dobot USB ports"""
-        ports = []
-        
-        # Check ttyACM devices (most common for Dobot)
-        ports.extend(glob.glob('/dev/ttyACM*'))
-        
-        # Check ttyUSB devices (fallback)
-        ports.extend(glob.glob('/dev/ttyUSB*'))
-        
-        return sorted(ports)
+        # Movement parameters
+        self.velocity_ratio = self.DEFAULT_VELOCITY_RATIO
+        self.acceleration_ratio = self.DEFAULT_ACCELERATION_RATIO
 
     def connect(self) -> bool:
-        """Connect to Dobot robot with automatic port detection"""
+        """Connect to Dobot robot with improved initialization"""
         if not self.use_usb or not DOBOT_AVAILABLE:
             logger.info("Dobot connection skipped (USB disabled or library not available)")
             return False
 
-        # Try configured port first
-        if self._try_connect(self.usb_path):
-            return True
-        
-        # If configured port fails, scan all USB ports
-        logger.warning(f"⚠️ {self.usb_path} not found, scanning all USB ports...")
-        available_ports = self.find_dobot_ports()
-        
-        if not available_ports:
-            self.last_error = "No USB devices found (ttyACM* or ttyUSB*)"
+        try:
+            # Try configured port first
+            if self._try_connect(self.usb_path):
+                self._initialize_robot()
+                return True
+
+            # If configured port fails, scan all USB ports
+            logger.warning(f"⚠️ {self.usb_path} not found, scanning all USB ports...")
+            available_ports = self.find_dobot_ports()
+
+            if not available_ports:
+                self.last_error = "No USB devices found (ttyACM* or ttyUSB*)"
+                logger.error(f"❌ {self.last_error}")
+                return False
+
+            logger.info(f"Found USB devices: {', '.join(available_ports)}")
+
+            # Try each port
+            for port in available_ports:
+                if port == self.usb_path:
+                    continue  # Already tried this one
+
+                if self._try_connect(port):
+                    logger.info(f"💡 TIP: Update your .env file to use DOBOT_USB_PATH={port}")
+                    self._initialize_robot()
+                    return True
+
+            self.last_error = f"Dobot not found on any USB port: {', '.join(available_ports)}"
             logger.error(f"❌ {self.last_error}")
             return False
-        
-        logger.info(f"Found USB devices: {', '.join(available_ports)}")
-        
-        # Try each port
-        for port in available_ports:
-            if port == self.usb_path:
-                continue  # Already tried this one
-            
-            if self._try_connect(port):
-                logger.info(f"💡 TIP: Update your .env file to use DOBOT_USB_PATH={port}")
-                return True
-        
-        self.last_error = f"Dobot not found on any USB port: {', '.join(available_ports)}"
-        logger.error(f"❌ {self.last_error}")
-        return False
+
+        except Exception as e:
+            self.last_error = f"Connection error: {str(e)}"
+            logger.error(f"❌ {self.last_error}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return False
 
     def _try_connect(self, port: str) -> bool:
         """Try to connect to a specific port"""
@@ -103,15 +118,59 @@ class DobotClient:
             logger.debug(f"Port {port} failed: {e}")
             return False
 
+    def _initialize_robot(self):
+        """Initialize robot parameters - CRITICAL for movement to work"""
+        if not self.device:
+            return
+
+        try:
+            logger.info("🔧 Initializing robot parameters...")
+
+            # CRITICAL: Clear all alarms first!
+            # This was the issue preventing movement
+            try:
+                from pydobot.message import Message
+                from pydobot.enums.CommunicationProtocolIDs import CommunicationProtocolIDs
+                from pydobot.enums.ControlValues import ControlValues
+
+                msg = Message()
+                msg.id = CommunicationProtocolIDs.CLEAR_ALL_ALARMS_STATE
+                msg.ctrl = ControlValues.ONE
+                self.device._send_command(msg)
+                logger.info("✅ Cleared all alarms")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not clear alarms: {e}")
+
+            # Clear any existing queue
+            try:
+                self.device.clear_command_queue()
+                logger.info("✅ Cleared command queue")
+            except:
+                pass
+
+            # Set speed parameters
+            self.set_speed(self.velocity_ratio, self.acceleration_ratio)
+
+            # Give the robot a moment to process
+            time.sleep(0.1)
+
+            logger.info("✅ Robot initialized successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Error initializing robot: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+
     def disconnect(self):
         """Disconnect from Dobot"""
         if self.connected and self.device:
             try:
                 self.device.close()
                 self.connected = False
-                logger.info("Disconnected from Dobot")
+                self.device = None
+                logger.info("✅ Disconnected from Dobot")
             except Exception as e:
-                logger.error(f"Error disconnecting from Dobot: {e}")
+                logger.error(f"❌ Error disconnecting from Dobot: {e}")
 
     def get_pose(self) -> Dict[str, float]:
         """Get current robot position"""
@@ -134,14 +193,14 @@ class DobotClient:
 
     def move_to(self, x: float, y: float, z: float, r: float = 0, wait: bool = True) -> bool:
         """
-        Move robot to position
+        Move robot to position with improved command handling
 
         Args:
             x: X coordinate in mm
             y: Y coordinate in mm
             z: Z coordinate in mm
             r: Rotation in degrees
-            wait: Wait for movement to complete before returning (default True for reliable execution)
+            wait: Wait for movement to complete before returning
 
         Returns:
             True if command sent successfully, False otherwise
@@ -153,12 +212,84 @@ class DobotClient:
 
         try:
             logger.info(f"🤖 Executing move_to({x}, {y}, {z}, {r}, wait={wait})")
+
+            # WORKAROUND: Recreate connection for EACH movement (like the working test)
+            # This is the ONLY way I could get it to work consistently
+            logger.info("🔄 Reconnecting for movement...")
+            old_device = self.device
+            old_port = self.actual_port
+
+            try:
+                old_device.close()
+            except:
+                pass
+
+            # Create fresh connection
+            time.sleep(0.5)  # Wait for port to be fully released
+            self.device = PyDobot(port=old_port, verbose=False)
+            logger.info("✅ Reconnected")
+            time.sleep(0.5)  # Wait for new connection to stabilize
+
+            # CRITICAL: Clear alarms AND reset pose
+            try:
+                from pydobot.message import Message
+                from pydobot.enums.CommunicationProtocolIDs import CommunicationProtocolIDs
+                from pydobot.enums.ControlValues import ControlValues
+
+                # Clear alarms
+                msg = Message()
+                msg.id = CommunicationProtocolIDs.CLEAR_ALL_ALARMS_STATE
+                msg.ctrl = ControlValues.ONE
+                self.device._send_command(msg)
+                logger.info("✅ Cleared alarms")
+
+                # Reset pose (CRITICAL!)
+                msg = Message()
+                msg.id = CommunicationProtocolIDs.RESET_POSE
+                msg.ctrl = ControlValues.ZERO
+                msg.params = bytearray([0x01, 0x00, 0x00, 0x00])
+                self.device._send_command(msg)
+                logger.info("✅ Reset pose")
+
+                time.sleep(0.5)  # Brief pause after reset
+            except Exception as e:
+                logger.warning(f"⚠️ Could not reset before movement: {e}")
+
+            # Get initial position
+            initial_pose = self.get_pose()
+            logger.info(f"📍 Initial position: X={initial_pose['x']:.2f}, Y={initial_pose['y']:.2f}, Z={initial_pose['z']:.2f}")
+
+            # Use direct move_to like the test
             self.device.move_to(x, y, z, r, wait=wait)
+
+            if wait:
+                # Small delay to let movement complete
+                time.sleep(0.2)
+
+                # Verify final position
+                final_pose = self.get_pose()
+                logger.info(f"📍 Final position: X={final_pose['x']:.2f}, Y={final_pose['y']:.2f}, Z={final_pose['z']:.2f}")
+
+                # Check if we actually moved
+                distance_moved = (
+                    abs(final_pose['x'] - initial_pose['x']) +
+                    abs(final_pose['y'] - initial_pose['y']) +
+                    abs(final_pose['z'] - initial_pose['z'])
+                )
+
+                if distance_moved > 1.0:
+                    logger.info(f"✅ Movement completed! Moved {distance_moved:.2f}mm total")
+                else:
+                    logger.warning(f"⚠️ Position barely changed ({distance_moved:.2f}mm). Robot may not be moving.")
+
             logger.info(f"✅ Move command {'completed' if wait else 'queued'}: ({x}, {y}, {z}, {r})")
             return True
+
         except Exception as e:
             self.last_error = f"Error moving: {str(e)}"
             logger.error(f"❌ Move error: {self.last_error}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
 
     def home(self, wait: bool = True) -> bool:
@@ -166,44 +297,56 @@ class DobotClient:
         Move robot to home position
 
         Args:
-            wait: Wait for movement to complete before returning (default True for reliable execution)
+            wait: Wait for movement to complete before returning
 
         Returns:
             True if command sent successfully, False otherwise
         """
+        logger.info(f"🏠 Moving to home position: {self.HOME_POSITION}")
+        return self.move_to(
+            self.HOME_POSITION['x'],
+            self.HOME_POSITION['y'],
+            self.HOME_POSITION['z'],
+            self.HOME_POSITION['r'],
+            wait=wait
+        )
+
+    def set_speed(self, velocity_ratio: int, acceleration_ratio: int):
+        """
+        Set movement speed parameters
+
+        Args:
+            velocity_ratio: Velocity ratio 1-100%
+            acceleration_ratio: Acceleration ratio 1-100%
+        """
         if not self.connected or not self.device:
-            self.last_error = "Dobot not connected"
-            logger.error("❌ Dobot not connected")
-            return False
+            return
 
         try:
-            logger.info(f"🏠 Moving to home position: {self.HOME_POSITION}")
-            self.device.move_to(
-                self.HOME_POSITION['x'],
-                self.HOME_POSITION['y'],
-                self.HOME_POSITION['z'],
-                self.HOME_POSITION['r'],
-                wait=wait
-            )
-            logger.info(f"✅ Home command {'completed' if wait else 'queued'}")
-            return True
+            self.velocity_ratio = max(1, min(100, velocity_ratio))
+            self.acceleration_ratio = max(1, min(100, acceleration_ratio))
+
+            # Use pydobot's speed method if available
+            if hasattr(self.device, 'speed'):
+                self.device.speed(self.velocity_ratio, self.acceleration_ratio)
+                logger.info(f"✅ Speed set: velocity={self.velocity_ratio}%, accel={self.acceleration_ratio}%")
+            else:
+                logger.warning("⚠️ Speed setting not available in this pydobot version")
+
         except Exception as e:
-            self.last_error = f"Error homing: {str(e)}"
-            logger.error(f"❌ Home error: {self.last_error}")
-            return False
+            logger.error(f"❌ Error setting speed: {e}")
 
     def start_queue(self):
         """Start executing the command queue"""
         if not self.connected or not self.device:
             return
-        
+
         try:
-            # Try to start the queue if the method exists
             if hasattr(self.device, 'start_queue'):
                 self.device.start_queue()
                 logger.info("✅ Command queue started")
             else:
-                logger.warning("⚠️ start_queue method not available - pydobot may auto-execute commands")
+                logger.debug("start_queue method not available")
         except Exception as e:
             logger.error(f"❌ Error starting queue: {e}")
 
@@ -211,14 +354,12 @@ class DobotClient:
         """Stop executing the command queue"""
         if not self.connected or not self.device:
             return
-        
+
         try:
-            # Try to stop the queue if the method exists
             if hasattr(self.device, 'stop_queue'):
                 self.device.stop_queue()
                 logger.info("Command queue stopped")
             else:
-                logger.warning("⚠️ stop_queue method not available - using clear_queue instead")
                 self.clear_queue()
         except Exception as e:
             logger.error(f"❌ Error stopping queue: {e}")
@@ -248,7 +389,7 @@ class DobotClient:
     def set_gripper(self, open_gripper: bool):
         """
         Control gripper (open/close)
-        
+
         Args:
             open_gripper: True to open, False to close
         """
@@ -264,3 +405,23 @@ class DobotClient:
             logger.info(f"✋ Gripper {'opened' if open_gripper else 'closed'}")
         except Exception as e:
             logger.error(f"❌ Error controlling gripper: {e}")
+
+    def emergency_stop(self):
+        """Emergency stop - clears queue"""
+        if not self.connected or not self.device:
+            return
+
+        try:
+            self.clear_queue()
+            logger.warning("🛑 EMERGENCY STOP executed")
+        except Exception as e:
+            logger.error(f"❌ Error during emergency stop: {e}")
+
+    @staticmethod
+    def find_dobot_ports() -> List[str]:
+        """Find all potential Dobot USB ports"""
+        import glob
+        ports = []
+        ports.extend(glob.glob('/dev/ttyACM*'))
+        ports.extend(glob.glob('/dev/ttyUSB*'))
+        return sorted(ports)
