@@ -5,18 +5,28 @@ Uses the official Dobot DLL API instead of pydobot
 
 import logging
 import time
+import sys
+import os
 from typing import Dict, Optional, List
 
 logger = logging.getLogger(__name__)
+
+# Add DobotAPI to Python path
+dobot_api_path = os.path.join(os.path.dirname(__file__), '..', '..', 'lib', 'DobotAPI')
+dobot_api_path = os.path.abspath(dobot_api_path)
+if os.path.exists(dobot_api_path) and dobot_api_path not in sys.path:
+    sys.path.insert(0, dobot_api_path)
+    logger.info(f"Added DobotAPI to path: {dobot_api_path}")
 
 # Try to import official Dobot API
 try:
     import DobotDLLType as dType
     DOBOT_AVAILABLE = True
-except ImportError:
+    logger.info("✅ Official Dobot API loaded successfully")
+except ImportError as e:
     DOBOT_AVAILABLE = False
-    logger.warning("DobotDLLType not found - Dobot functionality disabled")
-    logger.warning("Please run setup_official_dobot_api.sh to install the official API")
+    logger.warning(f"DobotDLLType not found - Dobot functionality disabled: {e}")
+    logger.warning(f"Searched in: {dobot_api_path}")
 
 class DobotClient:
     """Dobot Robot Communication Client using Official API"""
