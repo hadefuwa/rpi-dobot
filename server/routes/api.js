@@ -212,7 +212,7 @@ router.get('/plc/pose', async (req, res) => {
     }
     
     // Let the PLC service handle connection with ensureConnected()
-    const pose = await plcClient.readPoseFromDB(1, 0);
+    const pose = await plcClient.readPoseFromDB(1);
     res.json(pose);
   } catch (error) {
     logger.error('Get PLC pose failed:', error);
@@ -234,7 +234,7 @@ router.post('/plc/pose', async (req, res) => {
     }
     
     // Let the PLC service handle connection with ensureConnected()
-    await plcClient.writePoseToDB({ x, y, z }, 1, 0);
+    await plcClient.writePoseToDB({ x, y, z }, 1, 12);
     logger.plc('PLC pose written', { x, y, z });
     
     res.json({ success: true });
