@@ -331,6 +331,31 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Suction & Gripper Control Card -->
+            <div class="card">
+                <h2>🤏 End Effector Control</h2>
+                <div class="control-grid">
+                    <button class="btn btn-success" onclick="suctionOn()">💨 Suction ON</button>
+                    <button class="btn btn-danger" onclick="suctionOff()">🚫 Suction OFF</button>
+                    <button class="btn btn-primary" onclick="gripperOpen()">✋ Gripper OPEN</button>
+                    <button class="btn btn-primary" onclick="gripperClose()">👊 Gripper CLOSE</button>
+                </div>
+            </div>
+
+            <!-- Position Presets Card -->
+            <div class="card">
+                <h2>📍 Position Presets</h2>
+                <div class="control-grid">
+                    <button class="btn btn-primary" onclick="moveToPreset('safe')">🛡️ Safe Position</button>
+                    <button class="btn btn-primary" onclick="moveToPreset('pickup')">📦 Pickup Position</button>
+                    <button class="btn btn-primary" onclick="moveToPreset('dropoff')">📍 Dropoff Position</button>
+                    <button class="btn btn-primary" onclick="moveToPreset('inspect')">🔍 Inspect Position</button>
+                </div>
+                <small style="color: #6b7280; display: block; margin-top: 10px;">
+                    Configure preset positions in Settings
+                </small>
+            </div>
         </div>
 
         <!-- Debug Log Card -->
@@ -634,6 +659,114 @@
             } catch (error) {
                 addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Suction control
+        async function suctionOn() {
+            try {
+                addLog('💨 Turning suction ON...', 'info');
+                const response = await fetch('/api/dobot/suction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enable: true })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('✅ Suction activated', 'success');
+                } else {
+                    addLog('❌ Failed to activate suction', 'error');
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function suctionOff() {
+            try {
+                addLog('🚫 Turning suction OFF...', 'info');
+                const response = await fetch('/api/dobot/suction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enable: false })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('✅ Suction deactivated', 'success');
+                } else {
+                    addLog('❌ Failed to deactivate suction', 'error');
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Gripper control
+        async function gripperOpen() {
+            try {
+                addLog('✋ Opening gripper...', 'info');
+                const response = await fetch('/api/dobot/gripper', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ open: true })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('✅ Gripper opened', 'success');
+                } else {
+                    addLog('⚠️ ' + (data.message || 'Gripper not available'), 'warning');
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function gripperClose() {
+            try {
+                addLog('👊 Closing gripper...', 'info');
+                const response = await fetch('/api/dobot/gripper', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ open: false })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('✅ Gripper closed', 'success');
+                } else {
+                    addLog('⚠️ ' + (data.message || 'Gripper not available'), 'warning');
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Position presets
+        async function moveToPreset(preset) {
+            const presets = {
+                safe: { x: 200, y: 0, z: 200, r: 0, name: 'Safe Position' },
+                pickup: { x: 250, y: 50, z: 50, r: 0, name: 'Pickup Position' },
+                dropoff: { x: 250, y: -50, z: 50, r: 0, name: 'Dropoff Position' },
+                inspect: { x: 200, y: 0, z: 100, r: 0, name: 'Inspect Position' }
+            };
+
+            const pos = presets[preset];
+            if (!pos) return;
+
+            try {
+                addLog(`📍 Moving to ${pos.name}...`, 'info');
+                const response = await fetch('/api/dobot/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ x: pos.x, y: pos.y, z: pos.z, r: pos.r })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog(`✅ Moved to ${pos.name}`, 'success');
+                } else {
+                    addLog('❌ Move failed', 'error');
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
             }
         }
 

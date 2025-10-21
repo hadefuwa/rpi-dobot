@@ -266,6 +266,48 @@ def get_dobot_pose():
     pose = dobot_client.get_pose()
     return jsonify(pose)
 
+@app.route('/api/dobot/suction', methods=['POST'])
+def dobot_suction():
+    """Control suction cup"""
+    if not dobot_client.connected:
+        return jsonify({'error': 'Dobot not connected'}), 503
+
+    data = request.json
+    enable = data.get('enable', False)
+    
+    try:
+        logger.info(f"💨 Suction cup: {'ON' if enable else 'OFF'}")
+        dobot_client.set_suction(enable)
+        return jsonify({'success': True, 'enabled': enable})
+    except Exception as e:
+        logger.error(f"❌ Suction control failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dobot/gripper', methods=['POST'])
+def dobot_gripper():
+    """Control gripper (if available)"""
+    if not dobot_client.connected:
+        return jsonify({'error': 'Dobot not connected'}), 503
+
+    data = request.json
+    open_gripper = data.get('open', True)
+    
+    try:
+        # Check if gripper control method exists
+        if hasattr(dobot_client, 'set_gripper'):
+            logger.info(f"✋ Gripper: {'OPEN' if open_gripper else 'CLOSE'}")
+            dobot_client.set_gripper(open_gripper)
+            return jsonify({'success': True, 'open': open_gripper})
+        else:
+            logger.warning("⚠️ Gripper not available on this Dobot model")
+            return jsonify({
+                'success': False,
+                'message': 'Gripper not available. This Dobot model only has suction cup.'
+            })
+    except Exception as e:
+        logger.error(f"❌ Gripper control failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/emergency-stop', methods=['POST'])
 def emergency_stop():
     """Emergency stop - stop both Dobot and signal PLC"""
