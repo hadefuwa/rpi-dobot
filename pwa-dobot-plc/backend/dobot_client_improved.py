@@ -213,6 +213,32 @@ class DobotClient:
         try:
             logger.info(f"🤖 Executing move_to({x}, {y}, {z}, {r}, wait={wait})")
 
+            # CRITICAL: Clear alarms AND reset pose before EVERY movement
+            # This was the key difference in the working test!
+            try:
+                from pydobot.message import Message
+                from pydobot.enums.CommunicationProtocolIDs import CommunicationProtocolIDs
+                from pydobot.enums.ControlValues import ControlValues
+
+                # Clear alarms
+                msg = Message()
+                msg.id = CommunicationProtocolIDs.CLEAR_ALL_ALARMS_STATE
+                msg.ctrl = ControlValues.ONE
+                self.device._send_command(msg)
+                logger.info("✅ Cleared alarms before movement")
+
+                # Reset pose (CRITICAL!)
+                msg = Message()
+                msg.id = CommunicationProtocolIDs.RESET_POSE
+                msg.ctrl = ControlValues.ZERO
+                msg.params = bytearray([0x01, 0x00, 0x00, 0x00])
+                self.device._send_command(msg)
+                logger.info("✅ Reset pose before movement")
+
+                time.sleep(0.1)  # Brief pause after reset
+            except Exception as e:
+                logger.warning(f"⚠️ Could not reset before movement: {e}")
+
             # Get initial position for verification
             initial_pose = self.get_pose()
             logger.info(f"📍 Initial position: X={initial_pose['x']:.2f}, Y={initial_pose['y']:.2f}, Z={initial_pose['z']:.2f}")
