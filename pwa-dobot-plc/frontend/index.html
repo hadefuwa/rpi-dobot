@@ -20,10 +20,11 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             padding: 20px;
-            color: #333;
+            color: #e2e8f0;
         }
 
         .container {
@@ -335,17 +336,27 @@
             <!-- Manual Position Input Card -->
             <div class="card">
                 <h2>🎯 Manual Position</h2>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Enter Target Coordinates (mm):</label>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px;">
-                        <input type="number" id="manualX" placeholder="X" step="0.1" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
-                        <input type="number" id="manualY" placeholder="Y" step="0.1" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
-                        <input type="number" id="manualZ" placeholder="Z" step="0.1" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
-                        <input type="number" id="manualR" placeholder="R (deg)" step="0.1" value="0" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 10px;">Enter Target Coordinates (mm):</label>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">X (mm)</label>
+                        <input type="number" id="manualX" placeholder="200" step="0.1" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px;">
                     </div>
-                    <button class="btn btn-primary" onclick="moveToManual()" style="width: 100%;">▶️ Move to Position</button>
-                    <button class="btn btn-success" onclick="useCurrentPosition()" style="width: 100%; margin-top: 8px;">📍 Use Current Position</button>
+                    <div>
+                        <label style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Y (mm)</label>
+                        <input type="number" id="manualY" placeholder="0" step="0.1" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Z (mm)</label>
+                        <input type="number" id="manualZ" placeholder="150" step="0.1" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">R (degrees)</label>
+                        <input type="number" id="manualR" placeholder="0" step="0.1" value="0" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 16px;">
+                    </div>
                 </div>
+                <button class="btn btn-primary" onclick="moveToManual()" style="width: 100%; margin-bottom: 8px;">▶️ Move to Position</button>
+                <button class="btn btn-success" onclick="useCurrentPosition()" style="width: 100%;">📍 Use Current Position</button>
                 <small style="color: #6b7280; display: block; margin-top: 10px;">
                     Enter X, Y, Z coordinates in millimeters and R (rotation) in degrees
                 </small>
