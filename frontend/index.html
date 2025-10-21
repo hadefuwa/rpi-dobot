@@ -346,8 +346,9 @@
             document.getElementById('offlineBanner').classList.add('show');
         });
 
-        // Polling interval (200ms for smooth updates)
+        // Polling interval (1000ms to avoid flooding PLC)
         let pollInterval = null;
+        let isPolling = false;
 
         // Update PLC status indicator
         function updatePLCStatus(connected) {
@@ -452,10 +453,17 @@
 
         // Main polling function
         async function pollData() {
-            await Promise.all([
-                fetchPLCData(),
-                fetchDobotData()
-            ]);
+            // Skip if already polling to prevent overlap
+            if (isPolling) return;
+
+            isPolling = true;
+            try {
+                // Fetch sequentially to avoid flooding PLC
+                await fetchPLCData();
+                await fetchDobotData();
+            } finally {
+                isPolling = false;
+            }
         }
 
         // Start polling
@@ -465,8 +473,8 @@
             // Initial fetch
             pollData();
 
-            // Poll every 200ms
-            pollInterval = setInterval(pollData, 200);
+            // Poll every 1000ms (1 second) to avoid flooding PLC
+            pollInterval = setInterval(pollData, 1000);
         }
 
         // Stop polling

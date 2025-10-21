@@ -198,17 +198,36 @@ class PLCClient:
         self.write_db_real(db_number, 20, pose.get('z', 0.0))
 
     def read_control_bits(self) -> Dict[str, bool]:
-        """Read all control bits from M0.0 - M0.7"""
-        return {
-            'start': self.read_m_bit(0, 0) or False,
-            'stop': self.read_m_bit(0, 1) or False,
-            'home': self.read_m_bit(0, 2) or False,
-            'estop': self.read_m_bit(0, 3) or False,
-            'suction': self.read_m_bit(0, 4) or False,
-            'ready': self.read_m_bit(0, 5) or False,
-            'busy': self.read_m_bit(0, 6) or False,
-            'error': self.read_m_bit(0, 7) or False
-        }
+        """Read all control bits from M0.0 - M0.7 in one operation"""
+        try:
+            if not self.is_connected():
+                return {
+                    'start': False, 'stop': False, 'home': False, 'estop': False,
+                    'suction': False, 'ready': False, 'busy': False, 'error': False
+                }
+
+            # Read entire byte M0 at once (contains all 8 bits)
+            data = self.client.mb_read(0, 1)
+            byte_value = data[0]
+
+            # Extract individual bits from the byte
+            return {
+                'start': bool((byte_value >> 0) & 1),
+                'stop': bool((byte_value >> 1) & 1),
+                'home': bool((byte_value >> 2) & 1),
+                'estop': bool((byte_value >> 3) & 1),
+                'suction': bool((byte_value >> 4) & 1),
+                'ready': bool((byte_value >> 5) & 1),
+                'busy': bool((byte_value >> 6) & 1),
+                'error': bool((byte_value >> 7) & 1)
+            }
+        except Exception as e:
+            self.last_error = f"Error reading control bits: {str(e)}"
+            logger.error(self.last_error)
+            return {
+                'start': False, 'stop': False, 'home': False, 'estop': False,
+                'suction': False, 'ready': False, 'busy': False, 'error': False
+            }
 
     def write_control_bit(self, bit_name: str, value: bool) -> bool:
         """Write a single control bit"""
