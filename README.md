@@ -79,6 +79,37 @@ JWT_EXPIRES_IN=8h
 SALT_ROUNDS=12
 ```
 
+### 🔐 Security Checklist
+
+**Critical Security Requirements:**
+- [ ] **Change JWT_SECRET** to a random 32+ character string
+- [ ] **Set appropriate expiration** (8h is good for industrial use)
+- [ ] **Keep SALT_ROUNDS at 12** (good balance of security/performance)
+- [ ] **Never commit secrets** to Git (use .env files)
+- [ ] **Use environment variables** for all secrets
+- [ ] **Rotate JWT_SECRET** periodically in production
+
+**Generate Secure JWT_SECRET:**
+```bash
+# Option 1: Online generator
+# Visit: https://generate-secret.vercel.app/32
+
+# Option 2: Command line
+openssl rand -hex 32
+
+# Option 3: Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+**Production Security Configuration:**
+```bash
+# Example secure configuration
+JWT_SECRET=a8f5f167f44f4964e6c998dee827110c  # 32-character random
+JWT_EXPIRES_IN=8h                              # 8 hours for industrial
+SALT_ROUNDS=12                                 # Secure password hashing
+NODE_ENV=production                            # Production mode
+```
+
 **Network Settings:**
 ```bash
 # Network Configuration
@@ -293,6 +324,64 @@ Checksum (1 byte): 2's complement of sum(bytes[2:])
 | **SetQueuedCmdClear** | 0xF5 | Clear command queue | No |
 | **SetEndEffectorSuctionCup** | 0x3E | Control suction cup | No |
 
+### Node.js Implementation Example
+
+**Packet Building:**
+```javascript
+function buildPacket(cmdId, ctrl = 0x00, params = Buffer.alloc(0)) {
+  const length = params.length + 2;
+  const buffer = Buffer.allocUnsafe(5 + params.length);
+  
+  buffer.writeUInt8(0xAA, 0);  // Header byte 1
+  buffer.writeUInt8(0xAA, 1);  // Header byte 2
+  buffer.writeUInt8(length, 2); // Length
+  buffer.writeUInt8(cmdId, 3);  // Command ID
+  buffer.writeUInt8(ctrl, 4);   // Control byte
+  
+  if (params.length > 0) {
+    params.copy(buffer, 5);
+  }
+  
+  // Calculate checksum (2's complement)
+  let sum = 0;
+  for (let i = 2; i < buffer.length; i++) {
+    sum += buffer[i];
+  }
+  const checksum = (~sum + 1) & 0xFF;
+  buffer.writeUInt8(checksum, buffer.length - 1);
+  
+  return buffer;
+}
+```
+
+**Command Execution:**
+```javascript
+// Get robot pose
+async function getPose() {
+  const packet = buildPacket(0x0A, 0x00);
+  const response = await sendCommand(packet);
+  return {
+    x: response.readFloatLE(0),
+    y: response.readFloatLE(4),
+    z: response.readFloatLE(8),
+    r: response.readFloatLE(12)
+  };
+}
+
+// Move to position
+async function movePTP(x, y, z, r) {
+  const params = Buffer.allocUnsafe(17);
+  params.writeUInt8(0x01, 0);  // Mode: MOVJ_XYZ
+  params.writeFloatLE(x, 1);
+  params.writeFloatLE(y, 5);
+  params.writeFloatLE(z, 9);
+  params.writeFloatLE(r, 13);
+  
+  const packet = buildPacket(0x54, 0x02, params);
+  return await sendCommand(packet);
+}
+```
+
 ### Connection Methods
 
 **TCP Connection (Recommended):**
@@ -333,6 +422,215 @@ The system uses specific memory addresses in the S7-1200 PLC for communication:
 - **Rack/Slot**: Usually 0/1 for S7-1200
 - **Data Types**: REAL (32-bit float), BOOL (1-bit), INT (16-bit)
 - **Endianness**: Big-endian for S7 data
+
+### Node.js Snap7 Implementation
+
+**PLC Client Setup:**
+```javascript
+const snap7 = require('node-snap7');
+
+class S7Client {
+  constructor(ip = '192.168.0.10', rack = 0, slot = 1) {
+    this.ip = ip;
+    this.rack = rack;
+    this.slot = slot;
+    this.client = new snap7.S7Client();
+    this.connected = false;
+  }
+
+  async connect() {
+    return new Promise((resolve, reject) => {
+      this.client.ConnectTo(this.ip, this.rack, this.slot, (err) => {
+        if (err) {
+          reject(new Error(`PLC connection failed: ${err}`));
+        } else {
+          this.connected = this.client.Connected();
+          resolve();
+        }
+      });
+    });
+  }
+
+  async readDB(dbNumber, start, size) {
+    return new Promise((resolve, reject) => {
+      const buffer = Buffer.alloc(size);
+      this.client.DBRead(dbNumber, start, size, buffer, (err) => {
+        if (err) reject(err);
+        else resolve(buffer);
+      });
+    });
+  }
+
+  async writeDB(dbNumber, start, buffer) {
+    return new Promise((resolve, reject) => {
+      this.client.DBWrite(dbNumber, start, buffer.length, buffer, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  // Read Merker bit (e.g., M0.0)
+  async readMBit(address) {
+    const [byte, bit] = address.split('.');
+    const byteNum = parseInt(byte.substring(1));
+    
+    return new Promise((resolve, reject) => {
+      const buffer = Buffer.alloc(1);
+      this.client.MBRead(byteNum, 1, buffer, (err) => {
+        if (err) reject(err);
+        else resolve((buffer[0] >> parseInt(bit)) & 1);
+      });
+    });
+  }
+
+  // Write Merker bit
+  async writeMBit(address, value) {
+    const [byte, bit] = address.split('.');
+    const byteNum = parseInt(byte.substring(1));
+    
+    // Read-modify-write
+    const buffer = Buffer.alloc(1);
+    await new Promise((resolve, reject) => {
+      this.client.MBRead(byteNum, 1, buffer, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    
+    if (value) {
+      buffer[0] |= (1 << parseInt(bit));
+    } else {
+      buffer[0] &= ~(1 << parseInt(bit));
+    }
+    
+    return new Promise((resolve, reject) => {
+      this.client.MBWrite(byteNum, 1, buffer, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  // Parse REAL values (S7 uses big-endian)
+  parseReal(buffer, offset) {
+    return buffer.readFloatBE(offset);
+  }
+
+  encodeReal(value) {
+    const buffer = Buffer.allocUnsafe(4);
+    buffer.writeFloatBE(value, 0);
+    return buffer;
+  }
+}
+```
+
+## 🌉 Bridge Logic Implementation
+
+### PLC ↔ Dobot Coordination
+
+**Bridge Service:**
+```javascript
+class Bridge {
+  constructor(dobot, plc) {
+    this.dobot = dobot;
+    this.plc = plc;
+    this.state = {
+      running: false,
+      lastStartBit: false,
+      lastStopBit: false,
+      lastHomeBit: false
+    };
+    this.pollInterval = 100; // ms
+  }
+
+  async start() {
+    this.running = true;
+    this.poll();
+  }
+
+  async poll() {
+    if (!this.running) return;
+
+    try {
+      // Read PLC commands
+      const startBit = await this.plc.readMBit('M0.0');
+      const stopBit = await this.plc.readMBit('M0.1');
+      const homeBit = await this.plc.readMBit('M0.2');
+      const eStopBit = await this.plc.readMBit('M0.3');
+
+      // Emergency stop handling
+      if (eStopBit) {
+        await this.emergencyStop();
+        return;
+      }
+
+      // Edge detection for start command
+      if (startBit && !this.state.lastStartBit && !this.state.running) {
+        const targetBuffer = await this.plc.readDB(1, 0, 12);
+        const x = this.plc.parseReal(targetBuffer, 0);
+        const y = this.plc.parseReal(targetBuffer, 4);
+        const z = this.plc.parseReal(targetBuffer, 8);
+        
+        await this.dobot.movePTP(x, y, z, 0);
+        this.state.running = true;
+        await this.plc.writeMBit('M0.0', false); // Reset trigger
+      }
+
+      // Stop command
+      if (stopBit && !this.state.lastStopBit && this.state.running) {
+        await this.dobot.stop();
+        this.state.running = false;
+        await this.plc.writeMBit('M0.1', false);
+      }
+
+      // Home command
+      if (homeBit && !this.state.lastHomeBit) {
+        await this.dobot.home();
+        await this.plc.writeMBit('M0.2', false);
+      }
+
+      // Update state tracking
+      this.state.lastStartBit = startBit;
+      this.state.lastStopBit = stopBit;
+      this.state.lastHomeBit = homeBit;
+
+      // Read Dobot pose and write to PLC
+      const pose = await this.dobot.getPose();
+      const poseBuffer = Buffer.concat([
+        this.plc.encodeReal(pose.x),
+        this.plc.encodeReal(pose.y),
+        this.plc.encodeReal(pose.z)
+      ]);
+      await this.plc.writeDB(1, 12, poseBuffer);
+
+      // Write status code
+      const statusBuffer = Buffer.allocUnsafe(2);
+      statusBuffer.writeInt16BE(this.state.running ? 1 : 0, 0);
+      await this.plc.writeDB(1, 24, statusBuffer);
+
+    } catch (error) {
+      console.error('Bridge error:', error);
+    }
+
+    setTimeout(() => this.poll(), this.pollInterval);
+  }
+
+  async emergencyStop() {
+    console.log('EMERGENCY STOP TRIGGERED');
+    await this.dobot.clearQueue();
+    this.state.running = false;
+    // E-stop bit is already set by PLC
+  }
+}
+```
+
+### Command Flow
+
+1. **PLC → Dobot**: Read M0.0-M0.3 for commands, DB1.DBD0-8 for target position
+2. **Dobot → PLC**: Write current pose to DB1.DBD12-20, status to DB1.DBW24
+3. **Edge Detection**: Only trigger on rising edge of command bits
+4. **State Management**: Track running state and prevent duplicate commands
 
 ## 🔌 API Endpoints
 
