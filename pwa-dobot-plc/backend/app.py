@@ -79,7 +79,7 @@ def get_all_data():
 
     if plc_status['connected']:
         target_pose = plc_client.read_target_pose()
-        time.sleep(0.05)  # 50ms delay to avoid job pending
+        time.sleep(0.15)  # 150ms delay to avoid job pending with S7-1200
         control_bits = plc_client.read_control_bits()
     else:
         target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
