@@ -488,26 +488,24 @@ router.post('/emergency-stop', async (req, res) => {
 // Settings management endpoints
 router.get('/settings', async (req, res) => {
   try {
-    const { plcClient } = req.app.locals;
-    
-    // Get current PLC configuration
-    const plcConfig = {
-      ip: plcClient?.ip || process.env.PLC_IP || '192.168.0.10',
-      rack: plcClient?.rack || parseInt(process.env.PLC_RACK) || 0,
-      slot: plcClient?.slot || parseInt(process.env.PLC_SLOT) || 1
-    };
+    // Read current configuration from config.js
+    const config = require('../config');
     
     res.json({
-      plc: plcConfig,
+      plc: {
+        ip: config.plc.ip,
+        rack: config.plc.rack,
+        slot: config.plc.slot
+      },
       dobot: {
-        host: process.env.DOBOT_HOST || '192.168.1.100',
-        port: parseInt(process.env.DOBOT_PORT) || 29999,
-        useUSB: process.env.DOBOT_USE_USB === 'true',
-        usbPath: process.env.DOBOT_USB_PATH || '/dev/ttyUSB0'
+        host: config.dobot.host,
+        port: config.dobot.port,
+        useUSB: config.dobot.useUSB,
+        usbPath: config.dobot.usbPath
       },
       system: {
-        pollInterval: parseInt(process.env.POLL_INTERVAL) || 100,
-        logLevel: process.env.LOG_LEVEL || 'info'
+        pollInterval: config.bridge.pollInterval,
+        logLevel: config.logging.level
       }
     });
   } catch (error) {
@@ -519,28 +517,53 @@ router.get('/settings', async (req, res) => {
 router.post('/settings', async (req, res) => {
   try {
     const { plc, dobot, system } = req.body;
+    const fs = require('fs');
+    const path = require('path');
+    const configPath = path.join(__dirname, '../../config.js');
     
-    // Update environment variables (this would typically be saved to a config file)
+    // Read current config
+    const currentConfig = require('../config');
+    
+    // Update config object
     if (plc) {
-      process.env.PLC_IP = plc.ip;
-      process.env.PLC_RACK = plc.rack.toString();
-      process.env.PLC_SLOT = plc.slot.toString();
+      currentConfig.plc.ip = plc.ip;
+      currentConfig.plc.rack = plc.rack;
+      currentConfig.plc.slot = plc.slot;
     }
     
     if (dobot) {
-      process.env.DOBOT_HOST = dobot.host;
-      process.env.DOBOT_PORT = dobot.port.toString();
-      process.env.DOBOT_USE_USB = dobot.useUSB.toString();
-      process.env.DOBOT_USB_PATH = dobot.usbPath;
+      currentConfig.dobot.host = dobot.host;
+      currentConfig.dobot.port = dobot.port;
+      currentConfig.dobot.useUSB = dobot.useUSB;
+      currentConfig.dobot.usbPath = dobot.usbPath;
     }
     
     if (system) {
-      process.env.POLL_INTERVAL = system.pollInterval.toString();
-      process.env.LOG_LEVEL = system.logLevel;
+      currentConfig.bridge.pollInterval = system.pollInterval;
+      currentConfig.logging.level = system.logLevel;
     }
     
+    // Write config back to file
+    const configContent = `/**
+ * Dobot Gateway Configuration
+ * 
+ * Edit these values directly to configure your system.
+ * No need for .env files - just change the values here!
+ */
+
+module.exports = ${JSON.stringify(currentConfig, null, 2)};
+`;
+    
+    fs.writeFileSync(configPath, configContent, 'utf8');
+    
+    // Clear require cache so changes take effect
+    delete require.cache[require.resolve('../config')];
+    
     logger.info('Settings updated', { plc, dobot, system });
-    res.json({ success: true, message: 'Settings saved successfully' });
+    res.json({ 
+      success: true, 
+      message: 'Settings saved successfully. Restart server for changes to take effect.' 
+    });
   } catch (error) {
     logger.error('Save settings failed:', error);
     res.status(500).json({ error: 'Failed to save settings', details: error.message });
