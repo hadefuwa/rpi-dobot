@@ -336,8 +336,8 @@
             <div class="card">
                 <h2>🤏 End Effector Control</h2>
                 <div class="control-grid">
-                    <button class="btn btn-success" onclick="suctionOn()">💨 Suction ON</button>
-                    <button class="btn btn-danger" onclick="suctionOff()">🚫 Suction OFF</button>
+                    <button class="btn btn-success" onclick="suctionOn()">💨 Pump ON</button>
+                    <button class="btn btn-danger" onclick="suctionOff()">🚫 Pump OFF</button>
                     <button class="btn btn-primary" onclick="gripperOpen()">✋ Gripper OPEN</button>
                     <button class="btn btn-primary" onclick="gripperClose()">👊 Gripper CLOSE</button>
                 </div>
@@ -662,10 +662,10 @@
             }
         }
 
-        // Suction control
+        // Pump control
         async function suctionOn() {
             try {
-                addLog('💨 Turning suction ON...', 'info');
+                addLog('💨 Turning pump ON...', 'info');
                 const response = await fetch('/api/dobot/suction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -673,9 +673,9 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    addLog('✅ Suction activated', 'success');
+                    addLog('✅ Pump activated', 'success');
                 } else {
-                    addLog('❌ Failed to activate suction', 'error');
+                    addLog('❌ Failed to activate pump', 'error');
                 }
             } catch (error) {
                 addLog('❌ Error: ' + error.message, 'error');
@@ -684,7 +684,7 @@
 
         async function suctionOff() {
             try {
-                addLog('🚫 Turning suction OFF...', 'info');
+                addLog('🚫 Turning pump OFF...', 'info');
                 const response = await fetch('/api/dobot/suction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -692,9 +692,9 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    addLog('✅ Suction deactivated', 'success');
+                    addLog('✅ Pump deactivated', 'success');
                 } else {
-                    addLog('❌ Failed to deactivate suction', 'error');
+                    addLog('❌ Failed to deactivate pump', 'error');
                 }
             } catch (error) {
                 addLog('❌ Error: ' + error.message, 'error');
