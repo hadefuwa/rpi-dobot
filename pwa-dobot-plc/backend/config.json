@@ -1,0 +1,23 @@
+{
+  "dobot": {
+    "usb_path": "/dev/ttyACM0",
+    "home_position": {
+      "x": 200.0,
+      "y": 0.0,
+      "z": 150.0,
+      "r": 0.0
+    },
+    "use_usb": true
+  },
+  "plc": {
+    "ip": "192.168.0.150",
+    "rack": 0,
+    "slot": 1,
+    "db_number": 1,
+    "poll_interval": 2.0
+  },
+  "server": {
+    "port": 8080
+  }
+}
+

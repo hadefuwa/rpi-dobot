@@ -313,6 +313,12 @@
                 </div>
             </div>
 
+            <!-- Settings Card -->
+            <div class="card">
+                <h2>⚙️ Settings</h2>
+                <button class="btn btn-primary" onclick="openSettings()">Configure System</button>
+            </div>
+
             <!-- Manual Control Card -->
             <div class="card">
                 <h2>🕹️ Manual Control</h2>
@@ -333,6 +339,62 @@
                 <div style="color: #6b7280;">Waiting for events...</div>
             </div>
             <button class="btn btn-primary" onclick="clearLog()" style="margin-top: 10px;">Clear Log</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto;">
+        <div style="max-width: 800px; margin: 50px auto; background: white; border-radius: 12px; padding: 30px;">
+            <h2 style="color: #2563eb; margin-bottom: 20px;">⚙️ System Settings</h2>
+            
+            <!-- Dobot Settings -->
+            <h3 style="color: #2563eb; margin-top: 20px;">🤖 Dobot Configuration</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 5px;">USB Device Path:</label>
+                <input type="text" id="settingDobotUSB" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;" placeholder="/dev/ttyACM0">
+                <small style="color: #6b7280;">Leave blank for auto-detection</small>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 5px;">Home Position (mm):</label>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                    <input type="number" id="settingHomeX" placeholder="X" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                    <input type="number" id="settingHomeY" placeholder="Y" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                    <input type="number" id="settingHomeZ" placeholder="Z" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                    <input type="number" id="settingHomeR" placeholder="R°" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                </div>
+            </div>
+
+            <!-- PLC Settings -->
+            <h3 style="color: #2563eb; margin-top: 30px;">🏭 PLC Configuration</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 5px;">PLC IP Address:</label>
+                <input type="text" id="settingPLCIP" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;" placeholder="192.168.0.150">
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Rack:</label>
+                    <input type="number" id="settingPLCRack" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;" placeholder="0">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Slot:</label>
+                    <input type="number" id="settingPLCSlot" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;" placeholder="1">
+                </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 5px;">Poll Interval (seconds):</label>
+                <input type="number" step="0.1" id="settingPollInterval" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;" placeholder="2.0">
+                <small style="color: #6b7280;">How often to read PLC data (2.0 recommended for S7-1200)</small>
+            </div>
+
+            <!-- Buttons -->
+            <div style="display: flex; gap: 10px; margin-top: 30px;">
+                <button class="btn btn-success" onclick="saveSettings()" style="flex: 1;">💾 Save Settings</button>
+                <button class="btn btn-danger" onclick="closeSettings()" style="flex: 1;">❌ Cancel</button>
+            </div>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; color: #92400e;">
+                ⚠️ Note: Server restart required for changes to take effect. Click "Save Settings" then restart the app.
+            </div>
         </div>
     </div>
 
@@ -588,6 +650,79 @@
             } catch (error) {
                 addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Settings functions
+        async function openSettings() {
+            try {
+                // Load current settings
+                const response = await fetch('/api/settings');
+                const settings = await response.json();
+                
+                // Populate form
+                document.getElementById('settingDobotUSB').value = settings.dobot.usb_path || '';
+                document.getElementById('settingHomeX').value = settings.dobot.home_position.x;
+                document.getElementById('settingHomeY').value = settings.dobot.home_position.y;
+                document.getElementById('settingHomeZ').value = settings.dobot.home_position.z;
+                document.getElementById('settingHomeR').value = settings.dobot.home_position.r;
+                document.getElementById('settingPLCIP').value = settings.plc.ip;
+                document.getElementById('settingPLCRack').value = settings.plc.rack;
+                document.getElementById('settingPLCSlot').value = settings.plc.slot;
+                document.getElementById('settingPollInterval').value = settings.plc.poll_interval;
+                
+                // Show modal
+                document.getElementById('settingsModal').style.display = 'block';
+            } catch (error) {
+                alert('❌ Error loading settings: ' + error.message);
+            }
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function saveSettings() {
+            try {
+                const settings = {
+                    dobot: {
+                        usb_path: document.getElementById('settingDobotUSB').value || '/dev/ttyACM0',
+                        home_position: {
+                            x: parseFloat(document.getElementById('settingHomeX').value),
+                            y: parseFloat(document.getElementById('settingHomeY').value),
+                            z: parseFloat(document.getElementById('settingHomeZ').value),
+                            r: parseFloat(document.getElementById('settingHomeR').value)
+                        },
+                        use_usb: true
+                    },
+                    plc: {
+                        ip: document.getElementById('settingPLCIP').value,
+                        rack: parseInt(document.getElementById('settingPLCRack').value),
+                        slot: parseInt(document.getElementById('settingPLCSlot').value),
+                        db_number: 1,
+                        poll_interval: parseFloat(document.getElementById('settingPollInterval').value)
+                    }
+                };
+
+                addLog('💾 Saving settings...', 'info');
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    addLog('✅ Settings saved! Restart server to apply.', 'success');
+                    alert('✅ Settings saved successfully!\n\nRestart the server for changes to take effect:\npm2 restart pwa-dobot-plc');
+                    closeSettings();
+                } else {
+                    addLog('❌ Failed to save settings', 'error');
+                    alert('❌ Failed to save settings: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
+                alert('❌ Error saving settings: ' + error.message);
             }
         }
 

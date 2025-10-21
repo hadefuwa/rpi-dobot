@@ -10,6 +10,7 @@ import logging
 import os
 import time
 import threading
+import json
 from plc_client import PLCClient
 from dobot_client import DobotClient
 
@@ -37,23 +38,62 @@ poll_thread = None
 poll_running = False
 poll_interval = 0.1  # 100ms
 
+def load_config():
+    """Load configuration from config.json"""
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    try:
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        # Return defaults if config doesn't exist
+        return {
+            "dobot": {
+                "usb_path": "/dev/ttyACM0",
+                "home_position": {"x": 200.0, "y": 0.0, "z": 150.0, "r": 0.0},
+                "use_usb": True
+            },
+            "plc": {
+                "ip": "192.168.0.150",
+                "rack": 0,
+                "slot": 1,
+                "db_number": 1,
+                "poll_interval": 2.0
+            },
+            "server": {"port": 8080}
+        }
+
+def save_config(config):
+    """Save configuration to config.json"""
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=2)
+
 def init_clients():
-    """Initialize PLC and Dobot clients from environment variables"""
+    """Initialize PLC and Dobot clients from config"""
     global plc_client, dobot_client
 
+    config = load_config()
+
     # PLC settings
-    plc_ip = os.getenv('PLC_IP', '192.168.0.150')
-    plc_rack = int(os.getenv('PLC_RACK', '0'))
-    plc_slot = int(os.getenv('PLC_SLOT', '1'))
+    plc_config = config['plc']
+    plc_client = PLCClient(
+        plc_config['ip'],
+        plc_config['rack'],
+        plc_config['slot']
+    )
 
     # Dobot settings
-    dobot_usb = os.getenv('DOBOT_USE_USB', 'true').lower() == 'true'
-    dobot_usb_path = os.getenv('DOBOT_USB_PATH', '/dev/ttyACM0')
+    dobot_config = config['dobot']
+    dobot_client = DobotClient(
+        use_usb=dobot_config.get('use_usb', True),
+        usb_path=dobot_config.get('usb_path', '/dev/ttyACM0')
+    )
+    
+    # Update home position if specified
+    if 'home_position' in dobot_config:
+        dobot_client.HOME_POSITION = dobot_config['home_position']
 
-    plc_client = PLCClient(plc_ip, plc_rack, plc_slot)
-    dobot_client = DobotClient(use_usb=dobot_usb, usb_path=dobot_usb_path)
-
-    logger.info(f"Clients initialized - PLC: {plc_ip}, Dobot USB: {dobot_usb}")
+    logger.info(f"Clients initialized - PLC: {plc_config['ip']}, Dobot USB: {dobot_config.get('usb_path', 'auto-detect')}")
 
 # ==================================================
 # REST API Endpoints
@@ -245,6 +285,43 @@ def emergency_stop():
         results['plc'] = 'signaled'
 
     return jsonify({'success': True, **results})
+
+@app.route('/api/settings', methods=['GET'])
+def get_settings():
+    """Get current configuration"""
+    try:
+        config = load_config()
+        return jsonify(config)
+    except Exception as e:
+        logger.error(f"Error loading settings: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/settings', methods=['POST'])
+def update_settings():
+    """Update configuration"""
+    try:
+        new_config = request.json
+        
+        # Validate required fields
+        if 'dobot' not in new_config or 'plc' not in new_config:
+            return jsonify({'error': 'Missing required config sections'}), 400
+        
+        # Load current config and merge
+        current_config = load_config()
+        current_config['dobot'].update(new_config['dobot'])
+        current_config['plc'].update(new_config['plc'])
+        
+        # Save to file
+        save_config(current_config)
+        
+        logger.info("⚙️ Settings updated - restart required to apply changes")
+        return jsonify({
+            'success': True,
+            'message': 'Settings saved. Restart server to apply changes.'
+        })
+    except Exception as e:
+        logger.error(f"Error saving settings: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ==================================================
 # WebSocket Events
