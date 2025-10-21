@@ -15,7 +15,15 @@ import './App.css';
 
 function App() {
   const { user, login, logout, isLoading } = useAuth();
-  const { socket, connected } = useSocket(user?.token);
+
+  // Skip auth - use fake user for development
+  const fakeUser = user || {
+    username: 'admin',
+    role: 'admin',
+    token: 'fake-token-no-auth'
+  };
+
+  const { socket, connected } = useSocket(fakeUser?.token);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Handle emergency stop
@@ -38,24 +46,12 @@ function App() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Login onLogin={login} />;
-  }
-
   return (
     <div className="min-h-screen bg-gray-100">
       <EmergencyStop onEmergencyStop={handleEmergencyStop} />
-      
-      <Header 
-        user={user} 
+
+      <Header
+        user={fakeUser}
         onLogout={logout}
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
       />
