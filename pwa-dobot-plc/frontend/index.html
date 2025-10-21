@@ -325,6 +325,7 @@
                 <div class="control-grid">
                     <button class="btn btn-success" onclick="homeRobot()">🏠 Home</button>
                     <button class="btn btn-primary" onclick="moveToTarget()">▶️ Move to Target</button>
+                    <button class="btn btn-primary" onclick="testRobot()">🧪 Test Robot</button>
                     <button class="btn btn-danger emergency-stop" onclick="emergencyStop()">
                         🛑 EMERGENCY STOP
                     </button>
@@ -633,6 +634,37 @@
             } catch (error) {
                 addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function testRobot() {
+            if (!confirm('🧪 Run comprehensive robot test?\n\nThis will:\n1. Read current position\n2. Move to home\n3. Test small movement\n4. Test suction cup\n\nMake sure the robot has clear space!')) {
+                return;
+            }
+
+            try {
+                addLog('🧪 Starting robot test sequence...', 'info');
+                const response = await fetch('/api/dobot/test', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.steps) {
+                    data.steps.forEach(step => {
+                        const emoji = step.success ? '✅' : '❌';
+                        const type = step.success ? 'success' : 'error';
+                        addLog(`${emoji} Step ${step.step}: ${step.name} - ${step.message}`, type);
+                    });
+                }
+
+                if (data.success) {
+                    addLog('🎉 All tests passed! Robot is working perfectly!', 'success');
+                    alert('🎉 All tests passed!\n\nCheck the debug log for details.');
+                } else {
+                    addLog('⚠️ Some tests failed. Check details above.', 'warning');
+                    alert('⚠️ Some tests failed.\n\nCheck the debug log for details.');
+                }
+            } catch (error) {
+                addLog('❌ Test error: ' + error.message, 'error');
+                alert('❌ Test failed: ' + error.message);
             }
         }
 

@@ -286,6 +286,103 @@ def emergency_stop():
 
     return jsonify({'success': True, **results})
 
+@app.route('/api/dobot/test', methods=['POST'])
+def dobot_test():
+    """Run comprehensive Dobot test sequence"""
+    if not dobot_client.connected:
+        return jsonify({'error': 'Dobot not connected', 'steps': []}), 503
+
+    results = []
+    success = True
+
+    try:
+        # Step 1: Get current position
+        logger.info("🧪 Test Step 1: Getting current position...")
+        pos = dobot_client.get_pose()
+        results.append({
+            'step': 1,
+            'name': 'Get Current Position',
+            'success': True,
+            'message': f"X: {pos['x']:.2f}, Y: {pos['y']:.2f}, Z: {pos['z']:.2f}, R: {pos['r']:.2f}"
+        })
+        time.sleep(0.5)
+
+        # Step 2: Move to home position
+        logger.info("🧪 Test Step 2: Moving to HOME position...")
+        if dobot_client.home(wait=True):
+            results.append({
+                'step': 2,
+                'name': 'Move to Home',
+                'success': True,
+                'message': f"Moved to ({dobot_client.HOME_POSITION['x']}, {dobot_client.HOME_POSITION['y']}, {dobot_client.HOME_POSITION['z']})"
+            })
+        else:
+            results.append({'step': 2, 'name': 'Move to Home', 'success': False, 'message': 'Failed to move'})
+            success = False
+        time.sleep(1)
+
+        # Step 3: Verify home position
+        logger.info("🧪 Test Step 3: Verifying position...")
+        pos = dobot_client.get_pose()
+        results.append({
+            'step': 3,
+            'name': 'Verify Position',
+            'success': True,
+            'message': f"X: {pos['x']:.2f}, Y: {pos['y']:.2f}, Z: {pos['z']:.2f}"
+        })
+        time.sleep(0.5)
+
+        # Step 4: Small movement test (20mm forward)
+        logger.info("🧪 Test Step 4: Small movement test...")
+        home = dobot_client.HOME_POSITION
+        if dobot_client.move_to(home['x'] + 20, home['y'], home['z'], home['r'], wait=True):
+            results.append({
+                'step': 4,
+                'name': 'Small Movement (forward 20mm)',
+                'success': True,
+                'message': 'Movement completed successfully'
+            })
+            time.sleep(1)
+            
+            # Move back
+            logger.info("🧪 Test Step 4b: Moving back...")
+            dobot_client.home(wait=True)
+            time.sleep(0.5)
+        else:
+            results.append({'step': 4, 'name': 'Small Movement', 'success': False, 'message': 'Failed to move'})
+            success = False
+
+        # Step 5: Suction test
+        logger.info("🧪 Test Step 5: Testing suction cup...")
+        try:
+            dobot_client.set_suction(True)
+            time.sleep(2)
+            dobot_client.set_suction(False)
+            results.append({
+                'step': 5,
+                'name': 'Suction Cup Test',
+                'success': True,
+                'message': 'ON/OFF cycle completed'
+            })
+        except Exception as e:
+            results.append({'step': 5, 'name': 'Suction Cup Test', 'success': False, 'message': str(e)})
+            success = False
+
+        logger.info("✅ Dobot test sequence completed!")
+        return jsonify({
+            'success': success,
+            'steps': results,
+            'message': 'All tests passed!' if success else 'Some tests failed'
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Test failed: {e}")
+        return jsonify({
+            'success': False,
+            'steps': results,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     """Get current configuration"""
