@@ -263,14 +263,13 @@ class DobotGateway {
       }
     });
 
-    // Socket authentication
-    this.io.use(socketAuth);
+    // Socket authentication - DISABLED FOR DEVELOPMENT
+    // this.io.use(socketAuth);
 
     // Socket connection handling
     this.io.on('connection', (socket) => {
-      logger.info('Client connected', { 
-        username: socket.user.username,
-        socketId: socket.id 
+      logger.info('Client connected', {
+        socketId: socket.id
       });
 
       // Send initial status
