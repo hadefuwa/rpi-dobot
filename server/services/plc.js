@@ -356,7 +356,8 @@ class S7Client {
   }
 
   isConnected() {
-    return this.connected && this.client.Connected();
+    // Use our own connected flag as node-snap7's Connected() can be unreliable
+    return this.connected;
   }
 
   async disconnect() {
