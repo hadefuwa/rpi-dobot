@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Dobot-PLC Control PWA">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-512.png">
+    <title>Dobot-PLC Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #2563eb;
+        }
+
+        .status-indicator {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #10b981;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .data-value {
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin: 8px 0;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .emergency-stop {
+            grid-column: span 2;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 16px;
+            margin: 4px 0;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .offline-banner {
+            background: #f59e0b;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .offline-banner.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-banner" id="offlineBanner">
+        ⚠️ You are currently offline. Some features may be limited.
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Dobot-PLC Control</h1>
+            <div class="status-indicator">
+                <span id="statusText">Disconnected</span>
+                <div class="status-dot" id="statusDot"></div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- PLC Status Card -->
+            <div class="card">
+                <h2>📊 PLC Data</h2>
+                <div class="data-row">
+                    <span class="data-label">Target X:</span>
+                    <span class="data-value" id="targetX">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Target Y:</span>
+                    <span class="data-value" id="targetY">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Target Z:</span>
+                    <span class="data-value" id="targetZ">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Last Update:</span>
+                    <span class="data-value" id="lastUpdate">Never</span>
+                </div>
+            </div>
+
+            <!-- Dobot Status Card -->
+            <div class="card">
+                <h2>🦾 Dobot Position</h2>
+                <div class="data-row">
+                    <span class="data-label">Current X:</span>
+                    <span class="data-value" id="currentX">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Current Y:</span>
+                    <span class="data-value" id="currentY">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Current Z:</span>
+                    <span class="data-value" id="currentZ">0.00</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Current R:</span>
+                    <span class="data-value" id="currentR">0.00</span>
+                </div>
+            </div>
+
+            <!-- Control Bits Card -->
+            <div class="card">
+                <h2>🎛️ Control Bits</h2>
+                <div class="data-row">
+                    <span class="data-label">Start:</span>
+                    <span class="data-value" id="bitStart">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Stop:</span>
+                    <span class="data-value" id="bitStop">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Home:</span>
+                    <span class="data-value" id="bitHome">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">E-Stop:</span>
+                    <span class="data-value" id="bitEstop">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Ready:</span>
+                    <span class="data-value" id="bitReady">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Busy:</span>
+                    <span class="data-value" id="bitBusy">❌</span>
+                </div>
+            </div>
+
+            <!-- Manual Control Card -->
+            <div class="card">
+                <h2>🕹️ Manual Control</h2>
+                <div class="control-grid">
+                    <button class="btn btn-success" onclick="homeRobot()">🏠 Home</button>
+                    <button class="btn btn-primary" onclick="moveToTarget()">▶️ Move to Target</button>
+                    <button class="btn btn-danger emergency-stop" onclick="emergencyStop()">
+                        🛑 EMERGENCY STOP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('Service Worker registered:', reg);
+            }).catch(err => {
+                console.error('Service Worker registration failed:', err);
+            });
+        }
+
+        // Offline detection
+        window.addEventListener('online', () => {
+            document.getElementById('offlineBanner').classList.remove('show');
+        });
+
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineBanner').classList.add('show');
+        });
+
+        // Socket.IO connection
+        const socket = io({
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: Infinity
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            document.getElementById('statusText').textContent = 'Connected';
+            document.getElementById('statusDot').classList.add('connected');
+            socket.emit('start_polling');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            document.getElementById('statusText').textContent = 'Disconnected';
+            document.getElementById('statusDot').classList.remove('connected');
+        });
+
+        socket.on('plc_data', (data) => {
+            // Update target pose
+            document.getElementById('targetX').textContent = data.target_pose.x.toFixed(2);
+            document.getElementById('targetY').textContent = data.target_pose.y.toFixed(2);
+            document.getElementById('targetZ').textContent = data.target_pose.z.toFixed(2);
+
+            // Update control bits
+            const bits = data.control_bits;
+            document.getElementById('bitStart').textContent = bits.start ? '✅' : '❌';
+            document.getElementById('bitStop').textContent = bits.stop ? '✅' : '❌';
+            document.getElementById('bitHome').textContent = bits.home ? '✅' : '❌';
+            document.getElementById('bitEstop').textContent = bits.estop ? '⚠️' : '✅';
+            document.getElementById('bitReady').textContent = bits.ready ? '✅' : '❌';
+            document.getElementById('bitBusy').textContent = bits.busy ? '⚙️' : '✅';
+
+            // Update timestamp
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+        });
+
+        socket.on('dobot_data', (data) => {
+            // Update current pose
+            document.getElementById('currentX').textContent = data.pose.x.toFixed(2);
+            document.getElementById('currentY').textContent = data.pose.y.toFixed(2);
+            document.getElementById('currentZ').textContent = data.pose.z.toFixed(2);
+            document.getElementById('currentR').textContent = data.pose.r.toFixed(2);
+        });
+
+        // Control functions
+        async function homeRobot() {
+            try {
+                const response = await fetch('/api/dobot/home', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Home command sent!');
+                } else {
+                    alert('❌ Home command failed');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function moveToTarget() {
+            const x = parseFloat(document.getElementById('targetX').textContent);
+            const y = parseFloat(document.getElementById('targetY').textContent);
+            const z = parseFloat(document.getElementById('targetZ').textContent);
+
+            try {
+                const response = await fetch('/api/dobot/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ x, y, z, r: 0 })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(`✅ Move command sent! Queue index: ${data.queued_index}`);
+                } else {
+                    alert('❌ Move command failed');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function emergencyStop() {
+            if (!confirm('⚠️ Are you sure you want to trigger EMERGENCY STOP?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/emergency-stop', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('🛑 EMERGENCY STOP activated!');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
