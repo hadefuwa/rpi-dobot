@@ -213,8 +213,22 @@ class DobotClient:
         try:
             logger.info(f"🤖 Executing move_to({x}, {y}, {z}, {r}, wait={wait})")
 
-            # CRITICAL: Clear alarms AND reset pose before EVERY movement
-            # This was the key difference in the working test!
+            # WORKAROUND: Recreate connection for EACH movement (like the working test)
+            # This is the ONLY way I could get it to work consistently
+            logger.info("🔄 Reconnecting for movement...")
+            old_device = self.device
+            old_port = self.actual_port
+
+            try:
+                old_device.close()
+            except:
+                pass
+
+            # Create fresh connection
+            self.device = PyDobot(port=old_port, verbose=False)
+            logger.info("✅ Reconnected")
+
+            # CRITICAL: Clear alarms AND reset pose
             try:
                 from pydobot.message import Message
                 from pydobot.enums.CommunicationProtocolIDs import CommunicationProtocolIDs
@@ -225,7 +239,7 @@ class DobotClient:
                 msg.id = CommunicationProtocolIDs.CLEAR_ALL_ALARMS_STATE
                 msg.ctrl = ControlValues.ONE
                 self.device._send_command(msg)
-                logger.info("✅ Cleared alarms before movement")
+                logger.info("✅ Cleared alarms")
 
                 # Reset pose (CRITICAL!)
                 msg = Message()
@@ -233,19 +247,18 @@ class DobotClient:
                 msg.ctrl = ControlValues.ZERO
                 msg.params = bytearray([0x01, 0x00, 0x00, 0x00])
                 self.device._send_command(msg)
-                logger.info("✅ Reset pose before movement")
+                logger.info("✅ Reset pose")
 
-                time.sleep(0.1)  # Brief pause after reset
+                time.sleep(0.5)  # Brief pause after reset
             except Exception as e:
                 logger.warning(f"⚠️ Could not reset before movement: {e}")
 
-            # Get initial position for verification
+            # Get initial position
             initial_pose = self.get_pose()
             logger.info(f"📍 Initial position: X={initial_pose['x']:.2f}, Y={initial_pose['y']:.2f}, Z={initial_pose['z']:.2f}")
 
-            # Use pydobot's internal _set_ptp_cmd directly for more control
-            from pydobot.enums import PTPMode
-            self.device._set_ptp_cmd(x, y, z, r, mode=PTPMode.MOVL_XYZ, wait=wait)
+            # Use direct move_to like the test
+            self.device.move_to(x, y, z, r, wait=wait)
 
             if wait:
                 # Small delay to let movement complete
