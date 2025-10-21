@@ -38,8 +38,8 @@ A production-ready headless Node.js backend on Raspberry Pi facilitating real-ti
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/yourusername/dobot-gateway.git
-cd dobot-gateway
+git clone https://github.com/hadefuwa/rpi-dobot.git
+cd rpi-dobot
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -420,9 +420,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Documentation**: [Wiki](https://github.com/yourusername/dobot-gateway/wiki)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/dobot-gateway/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/dobot-gateway/discussions)
+- **Documentation**: [Wiki](https://github.com/hadefuwa/rpi-dobot/wiki)
+- **Issues**: [GitHub Issues](https://github.com/hadefuwa/rpi-dobot/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/hadefuwa/rpi-dobot/discussions)
 
 ## 🙏 Acknowledgments
 
