@@ -174,7 +174,8 @@ class DobotGateway {
   }
 
   setupExpress() {
-    // Security middleware
+    // Security middleware - Adjust CSP for HTTP vs HTTPS
+    const isHTTPS = process.env.NODE_ENV === 'production';
     this.app.use(helmet({
       contentSecurityPolicy: {
         directives: {
@@ -182,7 +183,8 @@ class DobotGateway {
           styleSrc: ["'self'", "'unsafe-inline'"],
           scriptSrc: ["'self'"],
           imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "wss:", "ws:"]
+          connectSrc: ["'self'", "wss:", "ws:"],
+          upgradeInsecureRequests: isHTTPS ? [] : null
         }
       }
     }));
