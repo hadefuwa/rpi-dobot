@@ -61,6 +61,11 @@ sudo apt-get install -y \
     python3 \
     python3-pip
 
+# Set up USB permissions for Dobot
+log "Setting up USB permissions for Dobot..."
+sudo usermod -a -G dialout $USER
+sudo usermod -a -G tty $USER
+
 # Install Node.js 20 LTS
 log "Installing Node.js 20 LTS..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -115,6 +120,18 @@ if [ ! -f .env ]; then
     cp .env.example .env
     warning "Please edit .env file with your configuration:"
     echo "  nano $APP_DIR/.env"
+fi
+
+# Check for USB devices
+log "Checking for USB devices..."
+if ls /dev/ttyUSB* 1> /dev/null 2>&1; then
+    success "Found USB devices: $(ls /dev/ttyUSB*)"
+    warning "Make sure to update DOBOT_USB_PATH in .env file"
+elif ls /dev/ttyACM* 1> /dev/null 2>&1; then
+    success "Found USB devices: $(ls /dev/ttyACM*)"
+    warning "Make sure to update DOBOT_USB_PATH in .env file"
+else
+    warning "No USB devices found. Connect your Dobot and check with: ls /dev/ttyUSB*"
 fi
 
 # Generate SSL certificates for HTTPS
