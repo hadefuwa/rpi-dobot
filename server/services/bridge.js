@@ -167,7 +167,7 @@ class Bridge extends EventEmitter {
       this.state.isExecuting = true;
       
       // Read target position from PLC
-      const targetPose = await this.plc.readPoseFromDB(1, 0);
+      const targetPose = await this.plc.readPoseFromDB(1);
       
       // Validate coordinates
       this.validateCoordinates(targetPose.x, targetPose.y, targetPose.z);
