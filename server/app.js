@@ -1,9 +1,9 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const express = require('express');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
-const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
@@ -60,12 +60,32 @@ class DobotGateway {
   }
 
   async initializeServices() {
-    // Initialize Dobot client
+    // Log environment variables for debugging
+    logger.info('Environment variables loaded:', {
+      DOBOT_HOST: process.env.DOBOT_HOST || 'NOT SET',
+      DOBOT_PORT: process.env.DOBOT_PORT || 'NOT SET',
+      DOBOT_USE_USB: process.env.DOBOT_USE_USB || 'NOT SET',
+      PLC_IP: process.env.PLC_IP || 'NOT SET'
+    });
+    
+    // Initialize Dobot client with fallback defaults
+    const dobotHost = process.env.DOBOT_HOST || '192.168.0.30';
+    const dobotPort = parseInt(process.env.DOBOT_PORT || '29999');
+    const dobotUseUSB = process.env.DOBOT_USE_USB === 'true';
+    const dobotUSBPath = process.env.DOBOT_USB_PATH || '/dev/ttyACM0';
+    
+    logger.info('Initializing Dobot with:', {
+      host: dobotHost,
+      port: dobotPort,
+      useUSB: dobotUseUSB,
+      usbPath: dobotUSBPath
+    });
+    
     this.dobotClient = new DobotClient(
-      process.env.DOBOT_HOST,
-      parseInt(process.env.DOBOT_PORT),
-      process.env.DOBOT_USE_USB === 'true',
-      process.env.DOBOT_USB_PATH
+      dobotHost,
+      dobotPort,
+      dobotUseUSB,
+      dobotUSBPath
     );
 
     // Initialize PLC client
