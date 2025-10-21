@@ -211,10 +211,7 @@ router.get('/plc/pose', async (req, res) => {
       return res.status(503).json({ error: 'PLC client not initialized' });
     }
     
-    if (!plcClient.isConnected()) {
-      return res.status(503).json({ error: 'PLC not connected' });
-    }
-    
+    // Let the PLC service handle connection with ensureConnected()
     const pose = await plcClient.readPoseFromDB(1, 0);
     res.json(pose);
   } catch (error) {
@@ -228,14 +225,15 @@ router.post('/plc/pose', async (req, res) => {
     const { plcClient } = req.app.locals;
     const { x, y, z } = req.body;
     
-    if (!plcClient?.isConnected()) {
-      return res.status(503).json({ error: 'PLC not connected' });
+    if (!plcClient) {
+      return res.status(503).json({ error: 'PLC client not initialized' });
     }
     
     if (x === undefined || y === undefined || z === undefined) {
       return res.status(400).json({ error: 'x, y, z coordinates are required' });
     }
     
+    // Let the PLC service handle connection with ensureConnected()
     await plcClient.writePoseToDB({ x, y, z }, 1, 0);
     logger.plc('PLC pose written', { x, y, z });
     
@@ -254,10 +252,7 @@ router.get('/plc/control', async (req, res) => {
       return res.status(503).json({ error: 'PLC client not initialized' });
     }
     
-    if (!plcClient.isConnected()) {
-      return res.status(503).json({ error: 'PLC not connected' });
-    }
-    
+    // Let the PLC service handle connection with ensureConnected()
     const controlBits = await plcClient.getControlBits();
     res.json(controlBits);
   } catch (error) {
@@ -275,10 +270,7 @@ router.post('/plc/control', async (req, res) => {
       return res.status(503).json({ error: 'PLC client not initialized' });
     }
     
-    if (!plcClient.isConnected()) {
-      return res.status(503).json({ error: 'PLC not connected' });
-    }
-    
+    // Let the PLC service handle connection with ensureConnected()
     const controlBits = {};
     if (start !== undefined) controlBits.start = start;
     if (stop !== undefined) controlBits.stop = stop;
