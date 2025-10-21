@@ -27,7 +27,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -37,9 +37,14 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
+        }
+
+        .header-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
         .header h1 {
@@ -47,10 +52,21 @@
             color: #2563eb;
         }
 
-        .status-indicator {
+        .connection-status {
             display: flex;
-            gap: 10px;
+            gap: 20px;
             align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: #f3f4f6;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .status-dot {
@@ -72,7 +88,7 @@
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -95,7 +111,7 @@
         .data-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #f3f4f6;
         }
 
@@ -111,6 +127,7 @@
         .data-value {
             font-weight: 700;
             color: #1f2937;
+            font-family: 'Courier New', monospace;
         }
 
         .btn {
@@ -167,20 +184,6 @@
             grid-column: span 2;
         }
 
-        input[type="number"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #e5e7eb;
-            border-radius: 6px;
-            font-size: 16px;
-            margin: 4px 0;
-        }
-
-        input[type="number"]:focus {
-            outline: none;
-            border-color: #2563eb;
-        }
-
         .offline-banner {
             background: #f59e0b;
             color: white;
@@ -194,6 +197,18 @@
         .offline-banner.show {
             display: block;
         }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .connection-status {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
     </style>
 </head>
 <body>
@@ -203,28 +218,36 @@
 
     <div class="container">
         <div class="header">
-            <h1>🤖 Dobot-PLC Control</h1>
-            <div class="status-indicator">
-                <span id="statusText">Disconnected</span>
-                <div class="status-dot" id="statusDot"></div>
+            <div class="header-content">
+                <h1>🤖 Dobot-PLC Control</h1>
+                <div class="connection-status">
+                    <div class="status-item">
+                        <div class="status-dot" id="plcDot"></div>
+                        <span>PLC: <span id="plcStatus">Disconnected</span></span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot" id="dobotDot"></div>
+                        <span>Dobot: <span id="dobotStatus">Disconnected</span></span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="grid">
             <!-- PLC Status Card -->
             <div class="card">
-                <h2>📊 PLC Data</h2>
+                <h2>📊 PLC Data (DB1)</h2>
                 <div class="data-row">
                     <span class="data-label">Target X:</span>
-                    <span class="data-value" id="targetX">0.00</span>
+                    <span class="data-value" id="targetX">--</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Target Y:</span>
-                    <span class="data-value" id="targetY">0.00</span>
+                    <span class="data-value" id="targetY">--</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Target Z:</span>
-                    <span class="data-value" id="targetZ">0.00</span>
+                    <span class="data-value" id="targetZ">--</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Last Update:</span>
@@ -237,48 +260,56 @@
                 <h2>🦾 Dobot Position</h2>
                 <div class="data-row">
                     <span class="data-label">Current X:</span>
-                    <span class="data-value" id="currentX">0.00</span>
+                    <span class="data-value" id="currentX">--</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Current Y:</span>
-                    <span class="data-value" id="currentY">0.00</span>
+                    <span class="data-value" id="currentY">--</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Current Z:</span>
-                    <span class="data-value" id="currentZ">0.00</span>
+                    <span class="data-value" id="currentZ">--</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">Current R:</span>
-                    <span class="data-value" id="currentR">0.00</span>
+                    <span class="data-value" id="currentR">--</span>
                 </div>
             </div>
 
             <!-- Control Bits Card -->
             <div class="card">
-                <h2>🎛️ Control Bits</h2>
+                <h2>🎛️ Control Bits (M0.x)</h2>
                 <div class="data-row">
-                    <span class="data-label">Start:</span>
+                    <span class="data-label">M0.0 Start:</span>
                     <span class="data-value" id="bitStart">❌</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">Stop:</span>
+                    <span class="data-label">M0.1 Stop:</span>
                     <span class="data-value" id="bitStop">❌</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">Home:</span>
+                    <span class="data-label">M0.2 Home:</span>
                     <span class="data-value" id="bitHome">❌</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">E-Stop:</span>
+                    <span class="data-label">M0.3 E-Stop:</span>
                     <span class="data-value" id="bitEstop">❌</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">Ready:</span>
+                    <span class="data-label">M0.4 Suction:</span>
+                    <span class="data-value" id="bitSuction">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.5 Ready:</span>
                     <span class="data-value" id="bitReady">❌</span>
                 </div>
                 <div class="data-row">
-                    <span class="data-label">Busy:</span>
+                    <span class="data-label">M0.6 Busy:</span>
                     <span class="data-value" id="bitBusy">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.7 Error:</span>
+                    <span class="data-value" id="bitError">❌</span>
                 </div>
             </div>
 
@@ -296,7 +327,6 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
         // Service Worker Registration
         if ('serviceWorker' in navigator) {
@@ -316,53 +346,136 @@
             document.getElementById('offlineBanner').classList.add('show');
         });
 
-        // Socket.IO connection
-        const socket = io({
-            reconnection: true,
-            reconnectionDelay: 1000,
-            reconnectionAttempts: Infinity
-        });
+        // Polling interval (200ms for smooth updates)
+        let pollInterval = null;
 
-        socket.on('connect', () => {
-            console.log('Connected to server');
-            document.getElementById('statusText').textContent = 'Connected';
-            document.getElementById('statusDot').classList.add('connected');
-            socket.emit('start_polling');
-        });
+        // Update PLC status indicator
+        function updatePLCStatus(connected) {
+            const dot = document.getElementById('plcDot');
+            const text = document.getElementById('plcStatus');
 
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-            document.getElementById('statusText').textContent = 'Disconnected';
-            document.getElementById('statusDot').classList.remove('connected');
-        });
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'Connected';
+                text.style.color = '#10b981';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'Disconnected';
+                text.style.color = '#ef4444';
+            }
+        }
 
-        socket.on('plc_data', (data) => {
-            // Update target pose
-            document.getElementById('targetX').textContent = data.target_pose.x.toFixed(2);
-            document.getElementById('targetY').textContent = data.target_pose.y.toFixed(2);
-            document.getElementById('targetZ').textContent = data.target_pose.z.toFixed(2);
+        // Update Dobot status indicator
+        function updateDobotStatus(connected) {
+            const dot = document.getElementById('dobotDot');
+            const text = document.getElementById('dobotStatus');
 
-            // Update control bits
-            const bits = data.control_bits;
-            document.getElementById('bitStart').textContent = bits.start ? '✅' : '❌';
-            document.getElementById('bitStop').textContent = bits.stop ? '✅' : '❌';
-            document.getElementById('bitHome').textContent = bits.home ? '✅' : '❌';
-            document.getElementById('bitEstop').textContent = bits.estop ? '⚠️' : '✅';
-            document.getElementById('bitReady').textContent = bits.ready ? '✅' : '❌';
-            document.getElementById('bitBusy').textContent = bits.busy ? '⚙️' : '✅';
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'Connected';
+                text.style.color = '#10b981';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'Disconnected';
+                text.style.color = '#ef4444';
+            }
+        }
 
-            // Update timestamp
-            const now = new Date();
-            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
-        });
+        // Fetch PLC data
+        async function fetchPLCData() {
+            try {
+                // Get PLC status
+                const statusRes = await fetch('/api/plc/status');
+                const status = await statusRes.json();
+                updatePLCStatus(status.connected);
 
-        socket.on('dobot_data', (data) => {
-            // Update current pose
-            document.getElementById('currentX').textContent = data.pose.x.toFixed(2);
-            document.getElementById('currentY').textContent = data.pose.y.toFixed(2);
-            document.getElementById('currentZ').textContent = data.pose.z.toFixed(2);
-            document.getElementById('currentR').textContent = data.pose.r.toFixed(2);
-        });
+                // Get PLC pose
+                const poseRes = await fetch('/api/plc/pose');
+                const pose = await poseRes.json();
+
+                document.getElementById('targetX').textContent = pose.x?.toFixed(2) || '--';
+                document.getElementById('targetY').textContent = pose.y?.toFixed(2) || '--';
+                document.getElementById('targetZ').textContent = pose.z?.toFixed(2) || '--';
+
+                // Get control bits
+                const bitsRes = await fetch('/api/plc/control');
+                const bits = await bitsRes.json();
+
+                document.getElementById('bitStart').textContent = bits.start ? '✅' : '❌';
+                document.getElementById('bitStop').textContent = bits.stop ? '✅' : '❌';
+                document.getElementById('bitHome').textContent = bits.home ? '✅' : '❌';
+                document.getElementById('bitEstop').textContent = bits.estop ? '⚠️' : '✅';
+                document.getElementById('bitSuction').textContent = bits.suction ? '✅' : '❌';
+                document.getElementById('bitReady').textContent = bits.ready ? '✅' : '❌';
+                document.getElementById('bitBusy').textContent = bits.busy ? '⚙️' : '✅';
+                document.getElementById('bitError').textContent = bits.error ? '❌' : '✅';
+
+                // Update timestamp
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+
+            } catch (error) {
+                console.error('Error fetching PLC data:', error);
+                updatePLCStatus(false);
+            }
+        }
+
+        // Fetch Dobot data
+        async function fetchDobotData() {
+            try {
+                // Get Dobot status
+                const statusRes = await fetch('/api/dobot/status');
+                const status = await statusRes.json();
+                updateDobotStatus(status.connected);
+
+                // Get Dobot pose if connected
+                if (status.connected) {
+                    const poseRes = await fetch('/api/dobot/pose');
+                    const pose = await poseRes.json();
+
+                    document.getElementById('currentX').textContent = pose.x?.toFixed(2) || '--';
+                    document.getElementById('currentY').textContent = pose.y?.toFixed(2) || '--';
+                    document.getElementById('currentZ').textContent = pose.z?.toFixed(2) || '--';
+                    document.getElementById('currentR').textContent = pose.r?.toFixed(2) || '--';
+                } else {
+                    document.getElementById('currentX').textContent = '--';
+                    document.getElementById('currentY').textContent = '--';
+                    document.getElementById('currentZ').textContent = '--';
+                    document.getElementById('currentR').textContent = '--';
+                }
+
+            } catch (error) {
+                console.error('Error fetching Dobot data:', error);
+                updateDobotStatus(false);
+            }
+        }
+
+        // Main polling function
+        async function pollData() {
+            await Promise.all([
+                fetchPLCData(),
+                fetchDobotData()
+            ]);
+        }
+
+        // Start polling
+        function startPolling() {
+            if (pollInterval) return;
+
+            // Initial fetch
+            pollData();
+
+            // Poll every 200ms
+            pollInterval = setInterval(pollData, 200);
+        }
+
+        // Stop polling
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
 
         // Control functions
         async function homeRobot() {
@@ -372,7 +485,7 @@
                 if (data.success) {
                     alert('✅ Home command sent!');
                 } else {
-                    alert('❌ Home command failed');
+                    alert('❌ Home command failed: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
                 alert('❌ Error: ' + error.message);
@@ -384,6 +497,11 @@
             const y = parseFloat(document.getElementById('targetY').textContent);
             const z = parseFloat(document.getElementById('targetZ').textContent);
 
+            if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                alert('❌ Invalid target position values');
+                return;
+            }
+
             try {
                 const response = await fetch('/api/dobot/move', {
                     method: 'POST',
@@ -394,7 +512,7 @@
                 if (data.success) {
                     alert(`✅ Move command sent! Queue index: ${data.queued_index}`);
                 } else {
-                    alert('❌ Move command failed');
+                    alert('❌ Move command failed: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
                 alert('❌ Error: ' + error.message);
@@ -416,6 +534,21 @@
                 alert('❌ Error: ' + error.message);
             }
         }
+
+        // Start polling when page loads
+        window.addEventListener('load', startPolling);
+
+        // Stop polling when page unloads
+        window.addEventListener('beforeunload', stopPolling);
+
+        // Stop polling when page is hidden (tab switched)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                startPolling();
+            }
+        });
     </script>
 </body>
 </html>
