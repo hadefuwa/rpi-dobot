@@ -4,7 +4,8 @@ Handles USB/Serial communication with Dobot Magician robot
 """
 
 import logging
-from typing import Dict, Optional
+import glob
+from typing import Dict, Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -33,30 +34,73 @@ class DobotClient:
 
         Args:
             use_usb: Use USB connection (True) or skip Dobot entirely (False)
-            usb_path: USB device path for Dobot
+            usb_path: USB device path for Dobot (will auto-detect if not found)
         """
         self.use_usb = use_usb
         self.usb_path = usb_path
         self.connected = False
         self.last_error = ""
         self.device = None
+        self.actual_port = None  # Store the actual port that worked
+
+    @staticmethod
+    def find_dobot_ports() -> List[str]:
+        """Find all potential Dobot USB ports"""
+        ports = []
+        
+        # Check ttyACM devices (most common for Dobot)
+        ports.extend(glob.glob('/dev/ttyACM*'))
+        
+        # Check ttyUSB devices (fallback)
+        ports.extend(glob.glob('/dev/ttyUSB*'))
+        
+        return sorted(ports)
 
     def connect(self) -> bool:
-        """Connect to Dobot robot"""
+        """Connect to Dobot robot with automatic port detection"""
         if not self.use_usb or not DOBOT_AVAILABLE:
             logger.info("Dobot connection skipped (USB disabled or library not available)")
             return False
 
+        # Try configured port first
+        if self._try_connect(self.usb_path):
+            return True
+        
+        # If configured port fails, scan all USB ports
+        logger.warning(f"⚠️ {self.usb_path} not found, scanning all USB ports...")
+        available_ports = self.find_dobot_ports()
+        
+        if not available_ports:
+            self.last_error = "No USB devices found (ttyACM* or ttyUSB*)"
+            logger.error(f"❌ {self.last_error}")
+            return False
+        
+        logger.info(f"Found USB devices: {', '.join(available_ports)}")
+        
+        # Try each port
+        for port in available_ports:
+            if port == self.usb_path:
+                continue  # Already tried this one
+            
+            if self._try_connect(port):
+                logger.info(f"💡 TIP: Update your .env file to use DOBOT_USB_PATH={port}")
+                return True
+        
+        self.last_error = f"Dobot not found on any USB port: {', '.join(available_ports)}"
+        logger.error(f"❌ {self.last_error}")
+        return False
+
+    def _try_connect(self, port: str) -> bool:
+        """Try to connect to a specific port"""
         try:
-            logger.info(f"Connecting to Dobot on {self.usb_path}")
-            self.device = PyDobot(port=self.usb_path, verbose=False)
+            logger.info(f"Trying to connect to Dobot on {port}...")
+            self.device = PyDobot(port=port, verbose=False)
             self.connected = True
-            logger.info("✅ Connected to Dobot")
+            self.actual_port = port
+            logger.info(f"✅ Connected to Dobot on {port}")
             return True
         except Exception as e:
-            self.last_error = f"Connection error: {str(e)}"
-            logger.error(f"Failed to connect to Dobot: {e}")
-            self.connected = False
+            logger.debug(f"Port {port} failed: {e}")
             return False
 
     def disconnect(self):
