@@ -126,8 +126,20 @@ class DobotClient:
         try:
             logger.info("🔧 Initializing robot parameters...")
 
-            # Set PTP (Point-to-Point) parameters using pydobot's internal method
-            # This is what was missing in the basic pydobot usage!
+            # CRITICAL: Clear all alarms first!
+            # This was the issue preventing movement
+            try:
+                from pydobot.message import Message
+                from pydobot.enums.CommunicationProtocolIDs import CommunicationProtocolIDs
+                from pydobot.enums.ControlValues import ControlValues
+
+                msg = Message()
+                msg.id = CommunicationProtocolIDs.CLEAR_ALL_ALARMS_STATE
+                msg.ctrl = ControlValues.ONE
+                self.device._send_command(msg)
+                logger.info("✅ Cleared all alarms")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not clear alarms: {e}")
 
             # Clear any existing queue
             try:
