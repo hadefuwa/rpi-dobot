@@ -66,81 +66,106 @@ export default function Dashboard({ socket, connected }) {
   }
 
   return (
-    <div className="h-[calc(100vh-70px)] overflow-hidden p-2">
-      {/* Compact Header */}
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-lg font-bold">Dashboard</h1>
-        <span className="text-xs text-gray-500">
-          {lastUpdate && lastUpdate.toLocaleTimeString()}
-        </span>
+    <div className="min-h-screen bg-gray-50 p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Real-time monitoring and control of the Dobot Gateway system
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-500">
+              Last update: {lastUpdate ? lastUpdate.toLocaleTimeString() : 'Never'}
+            </div>
+            <div className={`status-indicator ${
+              connected ? 'status-connected' : 'status-disconnected'
+            }`}>
+              {connected ? 'Connected' : 'Disconnected'}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Single Page Grid - No Scroll */}
-      <div className="grid grid-cols-12 gap-2 h-[calc(100%-40px)]">
-
-        {/* Left Column - Status Indicators (3 cols) */}
-        <div className="col-span-3 space-y-2">
-          {/* Dobot */}
-          <div className="card p-2">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-semibold">Dobot</h3>
-              {getStatusIcon(systemStatus?.dobot?.connected)}
-            </div>
-            <div className="text-xs text-gray-600">
-              {systemStatus?.dobot?.connected ? 'Connected' : 'Disconnected'}
-            </div>
-            {systemStatus?.dobot?.pose && (
-              <div className="text-[10px] text-gray-500 mt-1">
-                <div>X: {systemStatus.dobot.pose.x.toFixed(0)}</div>
-                <div>Y: {systemStatus.dobot.pose.y.toFixed(0)}</div>
-                <div>Z: {systemStatus.dobot.pose.z.toFixed(0)}</div>
+      {/* Main Grid */}
+      <div className="grid grid-cols-12 gap-6">
+        
+        {/* Left Column - System Status (3 cols) */}
+        <div className="col-span-3 space-y-6">
+          {/* System Status Cards */}
+          <div className="grid gap-4">
+            {/* Dobot Status */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Dobot Robot</h3>
+                {getStatusIcon(systemStatus?.dobot?.connected)}
               </div>
-            )}
-          </div>
-
-          {/* PLC */}
-          <div className="card p-2">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-semibold">PLC</h3>
-              {getStatusIcon(systemStatus?.plc?.connected)}
-            </div>
-            <div className="text-xs text-gray-600">
-              {systemStatus?.plc?.connected ? 'Connected' : 'Disconnected'}
-            </div>
-          </div>
-
-          {/* Bridge */}
-          <div className="card p-2">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-semibold">Bridge</h3>
-              {getStatusIcon(systemStatus?.bridge?.running)}
-            </div>
-            <div className="text-xs text-gray-600">
-              {systemStatus?.bridge?.running ? 'Running' : 'Stopped'}
-            </div>
-          </div>
-
-          {/* System */}
-          <div className="card p-2">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-xs font-semibold">System</h3>
-              <Cpu className="h-3 w-3 text-blue-500" />
-            </div>
-            <div className="text-[10px] text-gray-600">
-              <div>Up: {systemStatus?.system?.uptime ?
-                `${Math.floor(systemStatus.system.uptime / 3600)}h ${Math.floor((systemStatus.system.uptime % 3600) / 60)}m`
-                : 'N/A'}
+              <div className="space-y-2">
+                <div className={`text-sm ${
+                  systemStatus?.dobot?.connected ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {systemStatus?.dobot?.connected ? 'Connected' : 'Disconnected'}
+                </div>
+                {systemStatus?.dobot?.pose && (
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <div>X: {systemStatus.dobot.pose.x.toFixed(1)}mm</div>
+                    <div>Y: {systemStatus.dobot.pose.y.toFixed(1)}mm</div>
+                    <div>Z: {systemStatus.dobot.pose.z.toFixed(1)}mm</div>
+                  </div>
+                )}
               </div>
-              <div>Mem: {systemStatus?.system?.memory ?
-                `${Math.round(systemStatus.system.memory.heapUsed / 1024 / 1024)}MB`
-                : 'N/A'}
+            </div>
+
+            {/* PLC Status */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">PLC Controller</h3>
+                {getStatusIcon(systemStatus?.plc?.connected)}
+              </div>
+              <div className={`text-sm ${
+                systemStatus?.plc?.connected ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {systemStatus?.plc?.connected ? 'Connected' : 'Disconnected'}
+              </div>
+            </div>
+
+            {/* Bridge Status */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Bridge Service</h3>
+                {getStatusIcon(systemStatus?.bridge?.running)}
+              </div>
+              <div className={`text-sm ${
+                systemStatus?.bridge?.running ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {systemStatus?.bridge?.running ? 'Running' : 'Stopped'}
+              </div>
+            </div>
+
+            {/* System Info */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">System Info</h3>
+                <Cpu className="h-4 w-4 text-blue-500" />
+              </div>
+              <div className="text-xs text-gray-600 space-y-1">
+                <div>Uptime: {systemStatus?.system?.uptime ?
+                  `${Math.floor(systemStatus.system.uptime / 3600)}h ${Math.floor((systemStatus.system.uptime % 3600) / 60)}m`
+                  : 'N/A'}
+                </div>
+                <div>Memory: {systemStatus?.system?.memory ?
+                  `${Math.round(systemStatus.system.memory.heapUsed / 1024 / 1024)}MB`
+                  : 'N/A'}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Connection Status */}
-          <div className="card p-2 flex-1 overflow-auto">
-            <h3 className="text-xs font-semibold mb-1">Connections</h3>
+          <div className="card">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Connection Status</h3>
             <ConnectionStatus
               socket={socket}
               connected={connected}
@@ -150,22 +175,22 @@ export default function Dashboard({ socket, connected }) {
         </div>
 
         {/* Middle Column - Controls (5 cols) */}
-        <div className="col-span-5 space-y-2 overflow-auto">
-          <div className="card p-3">
-            <h3 className="text-sm font-semibold mb-2">Controls</h3>
+        <div className="col-span-5">
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Robot Controls</h3>
             <ControlPanel
               socket={socket}
               connected={connected}
-              compact={true}
+              compact={false}
             />
           </div>
         </div>
 
         {/* Right Column - Monitoring (4 cols) */}
-        <div className="col-span-4 space-y-2 overflow-auto">
+        <div className="col-span-4 space-y-6">
           {/* Current Pose */}
-          <div className="card p-2">
-            <h3 className="text-xs font-semibold mb-2">Current Pose</h3>
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Position</h3>
             <PoseDisplay
               pose={systemStatus?.dobot?.pose}
               connected={systemStatus?.dobot?.connected}
@@ -173,8 +198,8 @@ export default function Dashboard({ socket, connected }) {
           </div>
 
           {/* PLC Monitor */}
-          <div className="card p-2">
-            <h3 className="text-xs font-semibold mb-2">PLC Monitor</h3>
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">PLC Monitor</h3>
             <PLCMonitor
               socket={socket}
               connected={connected}

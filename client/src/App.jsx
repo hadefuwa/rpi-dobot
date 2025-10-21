@@ -47,7 +47,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <EmergencyStop onEmergencyStop={handleEmergencyStop} />
 
       <Header
@@ -62,7 +62,7 @@ function App() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 w-full">
           <Routes>
             <Route 
               path="/" 
@@ -76,24 +76,41 @@ function App() {
             <Route 
               path="/control" 
               element={
-                <ControlPanel 
-                  socket={socket} 
-                  connected={connected}
-                />
+                <div className="min-h-screen bg-gray-50 p-6">
+                  <div className="max-w-6xl mx-auto">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6">Control Panel</h1>
+                    <ControlPanel 
+                      socket={socket} 
+                      connected={connected}
+                    />
+                  </div>
+                </div>
               } 
             />
             <Route 
               path="/plc" 
               element={
-                <PLCMonitor 
-                  socket={socket} 
-                  connected={connected}
-                />
+                <div className="min-h-screen bg-gray-50 p-6">
+                  <div className="max-w-6xl mx-auto">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6">PLC Monitor</h1>
+                    <PLCMonitor 
+                      socket={socket} 
+                      connected={connected}
+                    />
+                  </div>
+                </div>
               } 
             />
             <Route 
               path="/settings" 
-              element={<Settings />} 
+              element={
+                <div className="min-h-screen bg-gray-50 p-6">
+                  <div className="max-w-4xl mx-auto">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
+                    <Settings />
+                  </div>
+                </div>
+              } 
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

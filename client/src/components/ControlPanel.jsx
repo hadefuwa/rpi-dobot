@@ -7,7 +7,8 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Loader2
+  Loader2,
+  MapPin
 } from 'lucide-react';
 import { dobotAPI } from '../services/api';
 import toast from 'react-hot-toast';
