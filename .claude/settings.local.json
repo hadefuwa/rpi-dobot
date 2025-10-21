@@ -18,7 +18,8 @@
       "Bash(git tag:*)",
       "Bash(git remote add:*)",
       "Bash(git remote:*)",
-      "Bash(sshpass:*)"
+      "Bash(sshpass:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
