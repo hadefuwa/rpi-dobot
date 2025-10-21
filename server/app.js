@@ -171,23 +171,49 @@ class DobotGateway {
   }
 
   async connectToServices() {
-    try {
-      // Connect to Dobot
-      logger.info('Connecting to Dobot...');
-      await this.dobotClient.connect();
+    // Connect to Dobot (non-blocking)
+    logger.info('Attempting to connect to Dobot...');
+    this.dobotClient.connect().then(() => {
+      logger.info('✅ Dobot connected successfully');
       
-      // Connect to PLC
-      logger.info('Connecting to PLC...');
-      await this.plcClient.connect();
+      // Try to start bridge if PLC is also connected
+      if (this.plcClient.isConnected() && !this.bridge.state.running) {
+        this.bridge.start().catch(err => {
+          logger.error('Failed to start bridge after Dobot connection:', err);
+        });
+      }
+    }).catch(error => {
+      logger.warn('⚠️ Dobot connection failed (will retry):', error.message);
+      // Schedule retry
+      setTimeout(() => {
+        if (!this.dobotClient.connected && !this.isShuttingDown) {
+          logger.info('Retrying Dobot connection...');
+          this.connectToServices();
+        }
+      }, 5000);
+    });
+    
+    // Connect to PLC (non-blocking)
+    logger.info('Attempting to connect to PLC...');
+    this.plcClient.connect().then(() => {
+      logger.info('✅ PLC connected successfully');
       
-      // Start bridge
-      logger.info('Starting bridge service...');
-      await this.bridge.start();
-      
-    } catch (error) {
-      logger.error('Failed to connect to services:', error);
-      // Don't throw - allow server to start even if services are unavailable
-    }
+      // Try to start bridge if Dobot is also connected
+      if (this.dobotClient.connected && !this.bridge.state.running) {
+        this.bridge.start().catch(err => {
+          logger.error('Failed to start bridge after PLC connection:', err);
+        });
+      }
+    }).catch(error => {
+      logger.warn('⚠️ PLC connection failed (will retry):', error.message);
+      // Schedule retry
+      setTimeout(() => {
+        if (!this.plcClient.isConnected() && !this.isShuttingDown) {
+          logger.info('Retrying PLC connection...');
+          this.plcClient.connect().catch(() => {});
+        }
+      }, 5000);
+    });
   }
 
   setupExpress() {
@@ -326,8 +352,14 @@ class DobotGateway {
       };
       
       const httpsServer = https.createServer(options, this.app);
+      httpsServer.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          logger.error(`Port ${port} is already in use. Kill existing process and try again.`);
+          process.exit(1);
+        }
+      });
       httpsServer.listen(port, () => {
-        logger.info(`HTTPS server running on port ${port}`);
+        logger.info(`✅ HTTPS server running on port ${port}`);
       });
 
       // Also start HTTP server for redirects
@@ -335,16 +367,30 @@ class DobotGateway {
         res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
         res.end();
       });
+      httpServer.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          logger.error(`Port ${httpPort} is already in use. Kill existing process and try again.`);
+          process.exit(1);
+        }
+      });
       httpServer.listen(httpPort, () => {
-        logger.info(`HTTP server running on port ${httpPort} (redirects to HTTPS)`);
+        logger.info(`✅ HTTP server running on port ${httpPort} (redirects to HTTPS)`);
       });
 
       return httpsServer;
     } else {
       // HTTP server for development
       const httpServer = http.createServer(this.app);
+      httpServer.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          logger.error(`❌ Port ${httpPort} is already in use!`);
+          logger.error(`Run: sudo lsof -ti:${httpPort} | xargs -r sudo kill -9`);
+          process.exit(1);
+        }
+      });
       httpServer.listen(httpPort, () => {
-        logger.info(`HTTP server running on port ${httpPort}`);
+        logger.info(`✅ HTTP server running on port ${httpPort}`);
+        logger.info(`🌐 Access the web interface at: http://localhost:${httpPort}`);
       });
       return httpServer;
     }
