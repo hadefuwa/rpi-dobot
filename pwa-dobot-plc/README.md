@@ -20,21 +20,43 @@ git clone https://github.com/hadefuwa/rpi-dobot.git
 cd rpi-dobot/pwa-dobot-plc/backend
 ```
 
-### 2. Install Python dependencies
+### 2. Install System Dependencies
 ```bash
 # Install system packages
 sudo apt-get update
-sudo apt-get install -y python3-pip python3-venv
+sudo apt-get install -y python3-pip python3-venv build-essential
 
-# Create virtual environment
+# Install Snap7 library (for PLC communication)
+cd ~
+wget https://sourceforge.net/projects/snap7/files/1.4.2/snap7-full-1.4.2.tar.gz
+tar -zxvf snap7-full-1.4.2.tar.gz
+cd snap7-full-1.4.2/build/unix
+make -f arm_v7_linux.mk  # For Raspberry Pi 3/4
+sudo cp ../bin/arm_v7-linux/libsnap7.so /usr/lib/
+sudo ldconfig
+```
+
+### 3. Create Virtual Environment and Install Python Packages
+```bash
+cd ~/rpi-dobot/pwa-dobot-plc/backend
 python3 -m venv venv
 source venv/bin/activate
+
+# Upgrade pip
+pip install --upgrade pip
 
 # Install Python packages
 pip install -r requirements.txt
 ```
 
-### 3. Configure Dobot USB permissions
+This installs:
+- Flask (web server)
+- Flask-SocketIO (real-time updates)
+- python-snap7 (PLC communication)
+- pydobot (Dobot control)
+- pyserial (USB communication)
+
+### 4. Configure Dobot USB permissions
 ```bash
 # Add your user to dialout group
 sudo usermod -a -G dialout $USER
@@ -46,7 +68,7 @@ newgrp dialout
 ls -la /dev/ttyACM*
 ```
 
-### 4. Configure settings
+### 5. Configure settings
 ```bash
 # Copy and edit .env file
 cp .env.example .env
@@ -57,7 +79,7 @@ Update these values:
 - `DOBOT_USB_PATH` - Your Dobot device (usually `/dev/ttyACM1`)
 - `PLC_IP` - Your PLC IP address (usually `192.168.0.150`)
 
-### 5. Test the application
+### 6. Test the application
 ```bash
 # Make sure you're in the virtual environment
 source venv/bin/activate
@@ -68,7 +90,7 @@ python app.py
 
 Visit `http://your-pi-ip:8080` in your browser!
 
-### 6. Set up PM2 for auto-start
+### 7. Set up PM2 for auto-start
 ```bash
 # Install PM2 globally
 npm install -g pm2
