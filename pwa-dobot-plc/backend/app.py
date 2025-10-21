@@ -291,6 +291,11 @@ def get_settings():
     """Get current configuration"""
     try:
         config = load_config()
+        
+        # Add available USB ports to the response
+        available_ports = dobot_client.find_dobot_ports() if dobot_client else []
+        config['available_usb_ports'] = available_ports
+        
         return jsonify(config)
     except Exception as e:
         logger.error(f"Error loading settings: {e}")

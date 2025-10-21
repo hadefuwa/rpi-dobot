@@ -351,8 +351,10 @@
             <h3 style="color: #2563eb; margin-top: 20px;">🤖 Dobot Configuration</h3>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 600; margin-bottom: 5px;">USB Device Path:</label>
-                <input type="text" id="settingDobotUSB" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;" placeholder="/dev/ttyACM0">
-                <small style="color: #6b7280;">Leave blank for auto-detection</small>
+                <select id="settingDobotUSB" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                    <option value="">Auto-detect (recommended)</option>
+                </select>
+                <small style="color: #6b7280;">Select detected device or use auto-detect</small>
             </div>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 600; margin-bottom: 5px;">Home Position (mm):</label>
@@ -656,12 +658,34 @@
         // Settings functions
         async function openSettings() {
             try {
+                addLog('⚙️ Loading settings...', 'info');
+                
                 // Load current settings
                 const response = await fetch('/api/settings');
                 const settings = await response.json();
                 
-                // Populate form
-                document.getElementById('settingDobotUSB').value = settings.dobot.usb_path || '';
+                // Populate USB port dropdown
+                const usbSelect = document.getElementById('settingDobotUSB');
+                usbSelect.innerHTML = '<option value="">Auto-detect (recommended)</option>';
+                
+                if (settings.available_usb_ports && settings.available_usb_ports.length > 0) {
+                    addLog(`✅ Found ${settings.available_usb_ports.length} USB devices`, 'success');
+                    settings.available_usb_ports.forEach(port => {
+                        const option = document.createElement('option');
+                        option.value = port;
+                        option.textContent = port;
+                        usbSelect.appendChild(option);
+                    });
+                } else {
+                    addLog('⚠️ No USB devices detected', 'warning');
+                    const option = document.createElement('option');
+                    option.value = '/dev/ttyACM0';
+                    option.textContent = '/dev/ttyACM0 (fallback)';
+                    usbSelect.appendChild(option);
+                }
+                
+                // Populate form with current values
+                usbSelect.value = settings.dobot.usb_path || '';
                 document.getElementById('settingHomeX').value = settings.dobot.home_position.x;
                 document.getElementById('settingHomeY').value = settings.dobot.home_position.y;
                 document.getElementById('settingHomeZ').value = settings.dobot.home_position.z;
@@ -674,6 +698,7 @@
                 // Show modal
                 document.getElementById('settingsModal').style.display = 'block';
             } catch (error) {
+                addLog('❌ Error loading settings: ' + error.message, 'error');
                 alert('❌ Error loading settings: ' + error.message);
             }
         }
