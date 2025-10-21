@@ -174,19 +174,28 @@ class DobotGateway {
   }
 
   setupExpress() {
-    // Security middleware - Adjust CSP for HTTP vs HTTPS
-    const isHTTPS = process.env.NODE_ENV === 'production';
+    // Security middleware - Disable HTTPS-only features when running on HTTP
+    const isProduction = process.env.NODE_ENV === 'production';
+
     this.app.use(helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
           scriptSrc: ["'self'"],
           imgSrc: ["'self'", "data:", "https:"],
           connectSrc: ["'self'", "wss:", "ws:"],
-          upgradeInsecureRequests: isHTTPS ? [] : null
+          upgradeInsecureRequests: isProduction ? [] : null
         }
-      }
+      },
+      crossOriginOpenerPolicy: isProduction ? { policy: "same-origin" } : false,
+      crossOriginResourcePolicy: isProduction ? { policy: "same-origin" } : false,
+      originAgentCluster: isProduction ? true : false,
+      strictTransportSecurity: isProduction ? {
+        maxAge: 15552000,
+        includeSubDomains: true
+      } : false
     }));
 
     // CORS configuration
@@ -197,11 +206,26 @@ class DobotGateway {
       credentials: true
     }));
 
-    // Rate limiting
+    // Rate limiting - More permissive in development
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100, // limit each IP to 100 requests per windowMs
-      message: 'Too many requests from this IP'
+      max: isProduction ? 100 : 1000, // Higher limit in development for assets
+      message: 'Too many requests from this IP',
+      standardHeaders: true,
+      legacyHeaders: false,
+      // Skip rate limiting for static assets in development
+      skip: (req) => {
+        if (!isProduction && (
+          req.path.startsWith('/assets/') ||
+          req.path.startsWith('/registerSW.js') ||
+          req.path.startsWith('/manifest') ||
+          req.path.endsWith('.css') ||
+          req.path.endsWith('.js')
+        )) {
+          return true;
+        }
+        return false;
+      }
     });
     this.app.use(limiter);
 
@@ -212,12 +236,6 @@ class DobotGateway {
 
     // Request logging
     this.app.use(logger.request);
-
-    // Serve static files from client build
-    const clientBuildPath = path.join(__dirname, '../client/dist');
-    if (fs.existsSync(clientBuildPath)) {
-      this.app.use(express.static(clientBuildPath));
-    }
 
     // Store services in app locals for route access
     this.app.locals.dobotClient = this.dobotClient;
@@ -321,14 +339,20 @@ class DobotGateway {
 
     // Health check endpoint
     this.app.get('/health', (req, res) => {
-      res.json({ 
-        status: 'ok', 
+      res.json({
+        status: 'ok',
         timestamp: Date.now(),
         uptime: process.uptime()
       });
     });
 
-    // Serve React app for all other routes
+    // Serve static files from client build (MUST be before catch-all route)
+    const clientBuildPath = path.join(__dirname, '../client/dist');
+    if (fs.existsSync(clientBuildPath)) {
+      this.app.use(express.static(clientBuildPath));
+    }
+
+    // Serve React app for all other routes (MUST be last)
     this.app.get('*', (req, res) => {
       const clientBuildPath = path.join(__dirname, '../client/dist/index.html');
       if (fs.existsSync(clientBuildPath)) {
