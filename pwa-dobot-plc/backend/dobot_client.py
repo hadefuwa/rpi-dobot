@@ -241,6 +241,26 @@ class DobotClient:
 
         try:
             self.device.suck(enable)
-            logger.info(f"Suction cup {'enabled' if enable else 'disabled'}")
+            logger.info(f"💨 Suction cup {'enabled' if enable else 'disabled'}")
         except Exception as e:
-            logger.error(f"Error setting suction: {e}")
+            logger.error(f"❌ Error setting suction: {e}")
+
+    def set_gripper(self, open_gripper: bool):
+        """
+        Control gripper (open/close)
+        
+        Args:
+            open_gripper: True to open, False to close
+        """
+        if not self.connected or not self.device:
+            logger.error("❌ Dobot not connected")
+            return
+
+        try:
+            # PyDobot gripper control
+            # grip() method: True = grip (close), False = release (open)
+            # So we need to invert the logic: open_gripper=True means grip=False
+            self.device.grip(not open_gripper)
+            logger.info(f"✋ Gripper {'opened' if open_gripper else 'closed'}")
+        except Exception as e:
+            logger.error(f"❌ Error controlling gripper: {e}")
