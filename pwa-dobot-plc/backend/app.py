@@ -254,8 +254,14 @@ def dobot_move():
         data.get('r', 0),
         wait=True  # Wait=True for immediate execution
     )
-    logger.info(f"✅ Move command result: {success}")
-    return jsonify({'success': success, 'executed': success})
+
+    if success:
+        logger.info(f"✅ Move command succeeded")
+        return jsonify({'success': True, 'executed': True})
+    else:
+        error_msg = dobot_client.last_error or 'Movement failed'
+        logger.error(f"❌ Move command failed: {error_msg}")
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/api/dobot/pose', methods=['GET'])
 def get_dobot_pose():

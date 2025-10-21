@@ -279,10 +279,13 @@ class DobotClient:
 
                 if distance_moved > 1.0:
                     logger.info(f"✅ Movement completed! Moved {distance_moved:.2f}mm total")
+                    return True
                 else:
-                    logger.warning(f"⚠️ Position barely changed ({distance_moved:.2f}mm). Robot may not be moving.")
+                    logger.error(f"❌ Robot did NOT move! Position barely changed ({distance_moved:.2f}mm)")
+                    self.last_error = f"Robot did not move (only {distance_moved:.2f}mm). Check if robot is powered on and not in alarm state."
+                    return False
 
-            logger.info(f"✅ Move command {'completed' if wait else 'queued'}: ({x}, {y}, {z}, {r})")
+            logger.info(f"✅ Move command queued: ({x}, {y}, {z}, {r})")
             return True
 
         except Exception as e:
