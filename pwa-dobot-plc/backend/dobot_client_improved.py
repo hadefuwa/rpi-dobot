@@ -243,8 +243,9 @@ class DobotClient:
             initial_pose = self.get_pose()
             logger.info(f"📍 Initial position: X={initial_pose['x']:.2f}, Y={initial_pose['y']:.2f}, Z={initial_pose['z']:.2f}")
 
-            # Use pydobot's move_to with wait=True for reliability
-            self.device.move_to(x, y, z, r, wait=wait)
+            # Use pydobot's internal _set_ptp_cmd directly for more control
+            from pydobot.enums import PTPMode
+            self.device._set_ptp_cmd(x, y, z, r, mode=PTPMode.MOVL_XYZ, wait=wait)
 
             if wait:
                 # Small delay to let movement complete
