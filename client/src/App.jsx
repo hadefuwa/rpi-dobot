@@ -57,12 +57,12 @@ function App() {
       />
       
       <div className="flex">
-        <Sidebar 
+        <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
-        
-        <main className="flex-1 p-6">
+
+        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           <Routes>
             <Route 
               path="/" 
