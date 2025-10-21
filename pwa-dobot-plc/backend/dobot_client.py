@@ -19,6 +19,14 @@ except ImportError:
 class DobotClient:
     """Dobot Robot Communication Client"""
 
+    # Default home position for Dobot Magician
+    HOME_POSITION = {
+        'x': 200.0,
+        'y': 0.0,
+        'z': 150.0,
+        'r': 0.0
+    }
+
     def __init__(self, use_usb: bool = True, usb_path: str = '/dev/ttyACM0'):
         """
         Initialize Dobot client
@@ -80,33 +88,62 @@ class DobotClient:
             logger.error(self.last_error)
             return {'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 0.0}
 
-    def move_to(self, x: float, y: float, z: float, r: float = 0) -> Optional[int]:
-        """Move robot to position"""
+    def move_to(self, x: float, y: float, z: float, r: float = 0, wait: bool = False) -> bool:
+        """
+        Move robot to position
+
+        Args:
+            x: X coordinate in mm
+            y: Y coordinate in mm
+            z: Z coordinate in mm
+            r: Rotation in degrees
+            wait: Wait for movement to complete before returning
+
+        Returns:
+            True if command sent successfully, False otherwise
+        """
         if not self.connected or not self.device:
-            return None
+            self.last_error = "Dobot not connected"
+            return False
 
         try:
-            queued_index = self.device.move_to(x, y, z, r, wait=False)
-            logger.info(f"Move command queued: ({x}, {y}, {z}, {r}) - index {queued_index}")
-            return queued_index
+            self.device.move_to(x, y, z, r, wait=wait)
+            logger.info(f"Move command {'completed' if wait else 'queued'}: ({x}, {y}, {z}, {r})")
+            return True
         except Exception as e:
             self.last_error = f"Error moving: {str(e)}"
             logger.error(self.last_error)
-            return None
+            return False
 
-    def home(self) -> Optional[int]:
-        """Home the robot"""
+    def home(self, wait: bool = True) -> bool:
+        """
+        Move robot to home position
+
+        Args:
+            wait: Wait for movement to complete before returning
+
+        Returns:
+            True if command sent successfully, False otherwise
+        """
         if not self.connected or not self.device:
-            return None
+            self.last_error = "Dobot not connected"
+            return False
 
         try:
-            queued_index = self.device.home()
-            logger.info(f"Home command queued - index {queued_index}")
-            return queued_index
+            logger.info(f"Moving to home position: {self.HOME_POSITION}")
+            self.device.move_to(
+                self.HOME_POSITION['x'],
+                self.HOME_POSITION['y'],
+                self.HOME_POSITION['z'],
+                self.HOME_POSITION['r'],
+                wait=wait
+            )
+            logger.info(f"Home command {'completed' if wait else 'queued'}")
+            return True
         except Exception as e:
             self.last_error = f"Error homing: {str(e)}"
             logger.error(self.last_error)
-            return None
+            return False
 
     def clear_queue(self):
         """Clear command queue"""

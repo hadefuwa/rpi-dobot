@@ -191,8 +191,8 @@ def dobot_home():
     if not dobot_client.connected:
         return jsonify({'error': 'Dobot not connected'}), 503
 
-    queued_index = dobot_client.home()
-    return jsonify({'success': True, 'queued_index': queued_index})
+    success = dobot_client.home(wait=False)
+    return jsonify({'success': success})
 
 @app.route('/api/dobot/move', methods=['POST'])
 def dobot_move():
@@ -204,13 +204,14 @@ def dobot_move():
     if not dobot_client.connected:
         return jsonify({'error': 'Dobot not connected'}), 503
 
-    queued_index = dobot_client.move_to(
+    success = dobot_client.move_to(
         data['x'],
         data['y'],
         data['z'],
-        data.get('r', 0)
+        data.get('r', 0),
+        wait=False
     )
-    return jsonify({'success': True, 'queued_index': queued_index})
+    return jsonify({'success': success})
 
 @app.route('/api/dobot/pose', methods=['GET'])
 def get_dobot_pose():
