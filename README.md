@@ -292,7 +292,14 @@ PLC_SLOT=2                      # Different slot
 - **Change JWT_SECRET**: Generate a strong secret key for production
 - **Network Access**: Ensure Dobot and PLC are accessible from Raspberry Pi
 - **Firewall**: Open required ports (29999 for Dobot, 102 for S7Comm)
-- **USB Permissions**: If using USB, add user to dialout group: `sudo usermod -a -G dialout $USER`
+- **USB Permissions**: If using USB, add user to dialout group: `sudo usermod -a -G dialout pi`
+- **USB Device Path**: Check the correct USB path with `ls /dev/ttyACM*` or `ls /dev/ttyUSB*`. Common paths:
+  - `/dev/ttyACM0` for Dobot Magician (ACM devices)
+  - `/dev/ttyUSB0` for USB-to-Serial adapters
+- **Dependencies**: Make sure to install all dependencies:
+  - Server: `npm install` in project root
+  - Client: `cd client && npm install && npm run build`
+- **PM2 Startup**: Enable PM2 to start on boot: `pm2 save && pm2 startup`
 
 #### Step 5: Start the Application
 
@@ -376,29 +383,114 @@ Open your browser and navigate to:
 
 ### 6. Verify Installation
 
-**Check Service Status:**
+This section shows you exactly how to test that everything is working correctly.
+
+**6.1 Check Service Status:**
 ```bash
-# PM2 status
+# PM2 status - Should show 'online'
 pm2 status
 
-# Systemd status  
-sudo systemctl status dobot-gateway
+# Expected output:
+# ┌────┬──────────────────┬────────┬──────┬───────────┬──────────┬
+# │ id │ name             │ status │ ↺    │ cpu      │ mem      │
+# ├────┼──────────────────┼────────┼──────┼──────────┼──────────┤
+# │ 0  │ dobot-gateway    │ online │ 0    │ 0%       │ 58.9mb   │
+# └────┴──────────────────┴────────┴──────┴──────────┴──────────┘
 
-# Check if ports are listening
+# Check if port 8080 is listening
 sudo netstat -tlnp | grep :8080
-sudo netstat -tlnp | grep :443
+# OR
+lsof -i :8080
+
+# Expected: tcp6 :::8080 :::* LISTEN
 ```
 
-**Test Connections:**
+**6.2 Test HTTP Endpoints (Local on Pi):**
 ```bash
-# Test Dobot connection
-curl -k https://localhost/api/status
+# Test health endpoint - Should return {"status":"ok"}
+curl http://localhost:8080/health
 
-# Test PLC connection
-curl -k https://localhost/api/plc/status
+# Example successful response:
+# {"status":"ok","timestamp":1761024468620,"uptime":640.106}
 
-# Check health endpoint
-curl -k https://localhost/api/health
+# Test Socket.IO endpoint - Should return {"code":0}
+curl http://localhost:8080/socket.io/
+
+# Example successful response:
+# {"code":0,"message":"Transport unknown"}
+```
+
+**6.3 Test Remote Access (From your computer):**
+```bash
+# Replace 'rpi' with your Pi's IP address if needed
+curl http://rpi:8080/health
+
+# Or from Windows PowerShell:
+# Invoke-WebRequest -Uri "http://rpi:8080/health"
+
+# Open web browser and navigate to:
+# http://rpi:8080
+# You should see the Dobot Gateway web interface
+```
+
+**6.4 Verify Hardware Connections (Check PM2 Logs):**
+```bash
+# View application startup logs
+pm2 logs dobot-gateway --lines 50
+
+# Look for these SUCCESS messages:
+# ✅ "Connected to Dobot via USB at /dev/ttyACM0"
+# ✅ "Dobot connected successfully"
+# ✅ "Connected to S7-1200 PLC at 192.168.0.99"
+# ✅ "Bridge started"
+# ✅ "HTTP server running on port 8080"
+
+# Example successful startup:
+# info: Connected to Dobot via USB at /dev/ttyACM0
+# info: Dobot connected successfully
+# info: Connected to S7-1200 PLC at 192.168.0.99
+# info: Bridge started
+# info: HTTP server running on port 8080
+```
+
+**6.5 Complete Test Checklist:**
+
+Run through this checklist to confirm everything works:
+
+- [ ] **App Running**: `pm2 status` shows "online" status
+- [ ] **Port Open**: Port 8080 is listening
+- [ ] **Health Endpoint**: `curl http://localhost:8080/health` returns OK
+- [ ] **Remote Access**: Can access `http://rpi:8080` from another computer
+- [ ] **Dobot Connected**: Logs show "Connected to Dobot via USB"
+- [ ] **PLC Connected**: Logs show "Connected to S7-1200 PLC"
+- [ ] **Bridge Running**: Logs show "Bridge started"
+- [ ] **Web Interface**: Browser shows the control panel at `http://rpi:8080`
+
+**6.6 Test from Windows/Mac/Linux Computer:**
+```bash
+# From your development machine, test connectivity:
+
+# 1. Ping the Raspberry Pi
+ping rpi
+
+# 2. Test HTTP access
+curl http://rpi:8080/health
+
+# 3. Open web browser
+# Navigate to: http://rpi:8080
+# You should see the Dobot Gateway login page
+```
+
+**6.7 Monitor Real-Time Logs:**
+```bash
+# View live logs (Press Ctrl+C to stop)
+pm2 logs dobot-gateway
+
+# Monitor system resources
+pm2 monit
+
+# View specific error logs only
+pm2 logs dobot-gateway --err
 ```
 
 #### Step 7: Troubleshooting Common Issues

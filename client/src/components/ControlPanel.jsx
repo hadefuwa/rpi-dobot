@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { 
-  Home, 
-  Move, 
-  Square, 
-  SuctionCup, 
-  Play, 
+import {
+  Home,
+  Move,
+  Square,
+  Grip,
+  Play,
   Pause,
   RotateCcw,
   Loader2
@@ -49,7 +49,7 @@ export default function ControlPanel({ socket, connected, compact = false }) {
           break;
           
         case 'suction':
-          response = await dobotAPI.setSuctionCup(suctionEnabled);
+          response = await dobotAPI.setGrip(suctionEnabled);
           toast.success(`Suction cup ${suctionEnabled ? 'enabled' : 'disabled'}`);
           break;
           
@@ -143,7 +143,7 @@ export default function ControlPanel({ socket, connected, compact = false }) {
             {isLoading.suction ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <SuctionCup className="h-4 w-4" />
+              <Grip className="h-4 w-4" />
             )}
             {suctionEnabled ? 'On' : 'Off'}
           </button>
@@ -195,7 +195,7 @@ export default function ControlPanel({ socket, connected, compact = false }) {
           {isLoading.suction ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <SuctionCup className="h-5 w-5" />
+            <Grip className="h-5 w-5" />
           )}
           Suction
         </button>
