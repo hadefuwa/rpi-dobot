@@ -269,6 +269,46 @@ pm2 monit
 pm2 restart dobot-gateway
 ```
 
+## 🔧 Dobot Magician Protocol Implementation
+
+### Protocol Specification (V1.1.5)
+
+**Packet Structure:**
+```
+Header (2 bytes): 0xAA 0xAA
+Length (1 byte): Payload length + 2
+ID (1 byte): Command identifier
+Ctrl (1 byte): Bit 0: R/W, Bit 1: IsQueued
+Params (N bytes): Command-specific data (little-endian)
+Checksum (1 byte): 2's complement of sum(bytes[2:])
+```
+
+**Key Commands:**
+
+| Command | ID | Description | Queued |
+|---------|----|-----------|----|
+| **GetPose** | 0x0A | Read X,Y,Z,R position | No |
+| **SetPTPCmd** | 0x54 | Point-to-point movement | Yes |
+| **SetHOMECmd** | 0x1F | Home the robot | Yes |
+| **SetQueuedCmdClear** | 0xF5 | Clear command queue | No |
+| **SetEndEffectorSuctionCup** | 0x3E | Control suction cup | No |
+
+### Connection Methods
+
+**TCP Connection (Recommended):**
+```bash
+DOBOT_HOST=192.168.0.30
+DOBOT_PORT=29999
+DOBOT_USE_USB=false
+```
+
+**USB Serial Connection:**
+```bash
+DOBOT_USE_USB=true
+DOBOT_USB_PATH=/dev/ttyUSB0
+# Baud Rate: 115200, Data Bits: 8, Stop Bits: 1, Parity: None
+```
+
 ## 📊 PLC Memory Mapping
 
 The system uses specific memory addresses in the S7-1200 PLC for communication:
@@ -286,6 +326,13 @@ The system uses specific memory addresses in the S7-1200 PLC for communication:
 | **DB1.DBD16** | REAL | Current Y Position | Read |
 | **DB1.DBD20** | REAL | Current Z Position | Read |
 | **DB1.DBW24** | INT | Status Code | Read |
+
+### S7Comm Protocol Details
+
+- **Port**: 102 (standard S7Comm)
+- **Rack/Slot**: Usually 0/1 for S7-1200
+- **Data Types**: REAL (32-bit float), BOOL (1-bit), INT (16-bit)
+- **Endianness**: Big-endian for S7 data
 
 ## 🔌 API Endpoints
 
@@ -312,6 +359,267 @@ The system uses specific memory addresses in the S7-1200 PLC for communication:
 - `GET /api/health` - System health check
 - `GET /api/status` - Overall system status
 - `GET /api/logs` - View system logs
+
+## 🛡️ Security & Authentication
+
+### JWT Implementation
+
+**Token Structure:**
+```javascript
+{
+  "id": "user_id",
+  "username": "username", 
+  "role": "admin|operator|viewer",
+  "iat": 1234567890,
+  "exp": 1234597890
+}
+```
+
+**Role-Based Access Control:**
+
+| Role | Permissions |
+|------|------------|
+| **Admin** | Full control, user management, system settings |
+| **Operator** | Robot control, monitoring, emergency stop |
+| **Viewer** | Read-only access, monitoring only |
+
+### HTTPS Configuration
+
+**Self-Signed Certificate (Development):**
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+```
+
+**Local Trusted Certificate (Recommended):**
+```bash
+# Install mkcert
+npm install -g mkcert
+mkcert -install
+mkcert raspberrypi.local localhost 127.0.0.1
+```
+
+## 🧪 Testing Strategy
+
+### Test Structure
+
+```
+tests/
+├── unit/
+│   ├── dobot.test.js      # Protocol unit tests
+│   ├── plc.test.js        # PLC communication tests
+│   └── bridge.test.js     # Bridge logic tests
+├── integration/
+│   ├── api.test.js        # API endpoint tests
+│   └── websocket.test.js  # Real-time communication tests
+└── e2e/
+    └── user-flow.test.js  # End-to-end user scenarios
+```
+
+### Running Tests
+
+```bash
+# Unit tests
+npm run test:unit
+
+# Integration tests  
+npm run test:integration
+
+# E2E tests
+npm run test:e2e
+
+# All tests
+npm test
+```
+
+### Test Coverage
+
+- **Unit Tests**: Protocol parsing, command building, data validation
+- **Integration Tests**: API endpoints, database operations, external services
+- **E2E Tests**: Complete user workflows, browser automation
+
+## 📊 Monitoring & Logging
+
+### Winston Logging Configuration
+
+**Log Levels:**
+- `error`: System errors, connection failures
+- `warn`: Warnings, retry attempts
+- `info`: General information, user actions
+- `debug`: Detailed debugging information
+
+**Log Files:**
+- `/var/log/dobot-gateway/error.log` - Error logs only
+- `/var/log/dobot-gateway/combined.log` - All logs
+- Console output for development
+
+### Health Monitoring
+
+**Health Check Endpoint:**
+```bash
+curl -k https://localhost/api/health
+```
+
+**Response Example:**
+```json
+{
+  "uptime": 3600,
+  "timestamp": 1234567890,
+  "dobot": "connected",
+  "plc": "connected", 
+  "memory": {
+    "rss": 45678912,
+    "heapTotal": 12345678,
+    "heapUsed": 8765432
+  },
+  "cpu": {
+    "user": 1234567,
+    "system": 987654
+  }
+}
+```
+
+### Performance Metrics
+
+**Key Metrics:**
+- Connection status (Dobot, PLC)
+- Command execution time
+- Memory usage
+- CPU utilization
+- Error rates
+- Response times
+
+## 🚨 Safety & Error Handling
+
+### Emergency Stop Implementation
+
+**Hardware E-Stop Integration:**
+```javascript
+// GPIO pin monitoring for physical E-stop
+const eStopPin = new Gpio(17, 'in', 'falling');
+eStopPin.watch((err, value) => {
+  if (value === 0) {
+    emergencyStop();
+  }
+});
+```
+
+**Software E-Stop:**
+- Web interface emergency stop button
+- API endpoint: `POST /api/dobot/emergency-stop`
+- Automatic command queue clearing
+- PLC notification via M0.3
+
+### Command Validation
+
+**Position Limits:**
+```javascript
+const limits = {
+  x: { min: -300, max: 300 },
+  y: { min: -300, max: 300 }, 
+  z: { min: -100, max: 400 },
+  r: { min: -180, max: 180 }
+};
+```
+
+**Safety Features:**
+- Position boundary checking
+- Speed limit validation
+- Command timeout handling
+- Connection loss detection
+- Automatic reconnection
+
+### Error Recovery
+
+**Automatic Retry Logic:**
+- Connection failures: 5 retries with exponential backoff
+- Command timeouts: 3 retries with increasing timeout
+- Graceful degradation on service failures
+- State recovery after reconnection
+
+## ⚡ Performance Optimization
+
+### Node.js Tuning
+
+**Memory Management:**
+```bash
+# Start with optimized settings
+node --max-old-space-size=512 --optimize-for-size server/app.js
+```
+
+**Polling Optimization:**
+- Configurable poll interval (default: 100ms)
+- Adaptive polling based on activity
+- Batch operations where possible
+
+### WebSocket Optimization
+
+**Message Compression:**
+- Automatic compression for messages > 1KB
+- Per-message deflate compression
+- Reduced bandwidth usage
+
+**Connection Management:**
+- Connection pooling
+- Automatic reconnection
+- Heartbeat monitoring
+
+## 📱 PWA Implementation
+
+### Progressive Web App Features
+
+**Core PWA Capabilities:**
+- **Offline Support**: Service worker caching for offline operation
+- **Installable**: Add to home screen on mobile/desktop
+- **Responsive**: Works on all device sizes
+- **Secure**: HTTPS/WSS required for PWA features
+
+### Frontend Architecture
+
+**React Component Structure:**
+```
+src/
+├── components/
+│   ├── Dashboard.jsx          # Main dashboard
+│   ├── ConnectionStatus.jsx   # Connection indicators
+│   ├── PoseDisplay.jsx        # Robot position display
+│   ├── ControlPanel.jsx       # Manual controls
+│   ├── PLCMonitor.jsx         # PLC I/O status
+│   ├── EmergencyStop.jsx      # E-stop button
+│   └── Login.jsx              # Authentication
+├── hooks/
+│   ├── useAuth.js             # Authentication hook
+│   └── useSocket.js           # WebSocket connection
+└── services/
+    └── api.js                 # API client
+```
+
+### Real-Time Communication
+
+**WebSocket Events:**
+```javascript
+// Server to Client
+'dobot-pose-update'     // Robot position changes
+'plc-status-update'     // PLC I/O changes
+'connection-status'     // Connection state changes
+'emergency-stop'        // E-stop triggered
+
+// Client to Server  
+'dobot-move'           // Move robot command
+'dobot-home'           // Home robot command
+'emergency-stop'       // Trigger E-stop
+```
+
+### Service Worker Configuration
+
+**Caching Strategy:**
+- **Cache First**: Static assets (JS, CSS, images)
+- **Network First**: API calls and real-time data
+- **Stale While Revalidate**: App shell and components
+
+**Offline Fallback:**
+- Cached dashboard for offline viewing
+- Connection status indicators
+- Emergency stop functionality (if connected)
 
 ## 🔧 Manual Installation
 
@@ -653,11 +961,89 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Issues**: [GitHub Issues](https://github.com/hadefuwa/rpi-dobot/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/hadefuwa/rpi-dobot/discussions)
 
+## 🚀 Extensibility & Future Features
+
+### MQTT Integration
+
+**Industrial IoT Connectivity:**
+```javascript
+const mqtt = require('mqtt');
+const client = mqtt.connect('mqtt://broker.local');
+
+// Publish robot status
+client.publish('factory/dobot/pose', JSON.stringify(pose));
+client.publish('factory/dobot/status', JSON.stringify(status));
+```
+
+### Multiple Robot Support
+
+**Multi-Robot Architecture:**
+- Support for multiple Dobot robots
+- Load balancing across robots
+- Coordinated movements
+- Individual robot monitoring
+
+### Advanced Monitoring
+
+**Grafana Dashboard Integration:**
+- Real-time metrics visualization
+- Historical data analysis
+- Custom dashboards
+- Alerting and notifications
+
+### Machine Learning Integration
+
+**Predictive Maintenance:**
+- Robot performance analysis
+- Predictive failure detection
+- Optimization recommendations
+- Usage pattern analysis
+
+## 📈 Production Readiness Checklist
+
+### ✅ Core Features
+- [x] Dobot binary protocol implementation
+- [x] S7-1200 PLC communication via Snap7
+- [x] Real-time WebSocket communication
+- [x] JWT authentication with role-based access
+- [x] React PWA with offline support
+- [x] Emergency stop functionality
+- [x] Comprehensive error handling
+
+### ✅ Security
+- [x] HTTPS/WSS encryption
+- [x] JWT token authentication
+- [x] Role-based access control
+- [x] Input validation and sanitization
+- [x] Secure configuration management
+
+### ✅ Testing
+- [x] Unit tests for core functionality
+- [x] Integration tests for API endpoints
+- [x] E2E tests for user workflows
+- [x] Mock services for testing
+
+### ✅ Monitoring
+- [x] Winston structured logging
+- [x] Health check endpoints
+- [x] Performance metrics
+- [x] Error tracking and reporting
+
+### ✅ Deployment
+- [x] PM2/systemd service management
+- [x] Automated setup script
+- [x] Environment configuration
+- [x] Log rotation and management
+
 ## 🙏 Acknowledgments
 
-- Dobot Technology for the Magician robot
-- Siemens for the S7-1200 PLC
-- The open-source community for the amazing tools and libraries
+- **Dobot Technology** for the Magician robot and protocol documentation
+- **Siemens** for the S7-1200 PLC and S7Comm protocol
+- **Node.js community** for excellent tooling and libraries
+- **React team** for the amazing frontend framework
+- **Snap7 project** for PLC communication library
+- **Socket.io** for real-time communication capabilities
+- **The open-source community** for the amazing tools and libraries
 
 ---
 
