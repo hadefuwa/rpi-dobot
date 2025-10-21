@@ -52,37 +52,266 @@ Edit the configuration file:
 nano .env
 ```
 
-Key settings:
+#### Required Configuration Settings
+
+**Dobot Robot Settings:**
 ```bash
 # Dobot Configuration
+DOBOT_HOST=192.168.0.30          # IP address of your Dobot Magician
+DOBOT_PORT=29999                 # TCP port (default: 29999)
+DOBOT_USE_USB=false              # Set to 'true' for USB connection
+DOBOT_USB_PATH=/dev/ttyUSB0      # USB device path (if using USB)
+```
+
+**PLC Settings:**
+```bash
+# PLC Configuration  
+PLC_IP=192.168.0.10              # IP address of your S7-1200 PLC
+PLC_RACK=0                       # PLC rack number (usually 0)
+PLC_SLOT=1                       # PLC slot number (usually 1)
+```
+
+**Security Settings:**
+```bash
+# Security (REQUIRED - Change these!)
+JWT_SECRET=your-super-secret-key-change-this-in-production
+JWT_EXPIRES_IN=8h
+SALT_ROUNDS=12
+```
+
+**Network Settings:**
+```bash
+# Network Configuration
+NODE_ENV=production
+PORT=8080                        # HTTP port for development
+HTTPS_PORT=443                   # HTTPS port for production
+```
+
+**Logging & Performance:**
+```bash
+# Logging
+LOG_LEVEL=info                   # debug, info, warn, error
+LOG_DIR=/var/log/dobot-gateway
+
+# Performance
+POLL_INTERVAL=100                # PLC polling interval (ms)
+MAX_OLD_SPACE_SIZE=512          # Node.js memory limit (MB)
+```
+
+#### Configuration Examples
+
+**For USB Connection to Dobot:**
+```bash
+DOBOT_HOST=192.168.0.30
+DOBOT_PORT=29999
+DOBOT_USE_USB=true
+DOBOT_USB_PATH=/dev/ttyUSB0
+```
+
+**For TCP Connection to Dobot:**
+```bash
 DOBOT_HOST=192.168.0.30
 DOBOT_PORT=29999
 DOBOT_USE_USB=false
-
-# PLC Configuration
-PLC_IP=192.168.0.10
-PLC_RACK=0
-PLC_SLOT=1
-
-# Security
-JWT_SECRET=your-super-secret-key-change-this
 ```
 
-### 3. Access the Application
+**For Different PLC Configuration:**
+```bash
+PLC_IP=192.168.1.100            # Different PLC IP
+PLC_RACK=0                      # Standard rack
+PLC_SLOT=2                      # Different slot
+```
+
+#### Important Notes
+
+- **Change JWT_SECRET**: Generate a strong secret key for production
+- **Network Access**: Ensure Dobot and PLC are accessible from Raspberry Pi
+- **Firewall**: Open required ports (29999 for Dobot, 102 for S7Comm)
+- **USB Permissions**: If using USB, add user to dialout group: `sudo usermod -a -G dialout $USER`
+
+### 3. Start the Application
+
+**Option A: Using PM2 (Recommended)**
+```bash
+# Start the application
+pm2 start ecosystem.config.js
+
+# Check status
+pm2 status
+
+# View logs
+pm2 logs dobot-gateway
+
+# Restart if needed
+pm2 restart dobot-gateway
+```
+
+**Option B: Using systemd**
+```bash
+# Enable and start the service
+sudo systemctl enable dobot-gateway
+sudo systemctl start dobot-gateway
+
+# Check status
+sudo systemctl status dobot-gateway
+
+# View logs
+sudo journalctl -u dobot-gateway -f
+```
+
+**Option C: Manual Start (Development)**
+```bash
+# Install dependencies
+npm install
+cd client && npm install && npm run build && cd ..
+
+# Start the server
+node server/app.js
+```
+
+### 4. Access the Application
 
 Open your browser and navigate to:
-- `https://raspberrypi.local`
-- `https://localhost`
-- `https://[PI_IP_ADDRESS]`
+- **Production**: `https://raspberrypi.local` or `https://[PI_IP_ADDRESS]`
+- **Development**: `http://localhost:8080`
 
-### 4. Login
+### 5. Default Login Credentials
 
-Use the default credentials:
-- **Admin**: `admin` / `admin123`
-- **Operator**: `operator` / `operator123`
-- **Viewer**: `viewer` / `viewer123`
+| Role | Username | Password | Permissions |
+|------|----------|----------|------------|
+| **Admin** | `admin` | `admin123` | Full control, user management |
+| **Operator** | `operator` | `operator123` | Robot control, monitoring |
+| **Viewer** | `viewer` | `viewer123` | Read-only access |
 
 ⚠️ **Change default passwords in production!**
+
+### 6. Verify Installation
+
+**Check Service Status:**
+```bash
+# PM2 status
+pm2 status
+
+# Systemd status  
+sudo systemctl status dobot-gateway
+
+# Check if ports are listening
+sudo netstat -tlnp | grep :8080
+sudo netstat -tlnp | grep :443
+```
+
+**Test Connections:**
+```bash
+# Test Dobot connection
+curl -k https://localhost/api/status
+
+# Test PLC connection
+curl -k https://localhost/api/plc/status
+
+# Check health endpoint
+curl -k https://localhost/api/health
+```
+
+### 7. Troubleshooting
+
+**Common Issues:**
+
+**Connection Refused:**
+```bash
+# Check if service is running
+pm2 status
+sudo systemctl status dobot-gateway
+
+# Check logs for errors
+pm2 logs dobot-gateway
+sudo journalctl -u dobot-gateway -f
+```
+
+**Dobot Connection Failed:**
+```bash
+# Verify Dobot is accessible
+ping 192.168.0.30
+telnet 192.168.0.30 29999
+
+# Check USB connection
+ls -la /dev/ttyUSB*
+sudo usermod -a -G dialout $USER
+```
+
+**PLC Connection Failed:**
+```bash
+# Verify PLC is accessible
+ping 192.168.0.10
+telnet 192.168.0.10 102
+
+# Check S7Comm port (102) is open
+sudo ufw allow 102
+```
+
+**Permission Issues:**
+```bash
+# Fix log directory permissions
+sudo mkdir -p /var/log/dobot-gateway
+sudo chown $USER:$USER /var/log/dobot-gateway
+
+# Fix USB permissions
+sudo usermod -a -G dialout $USER
+sudo reboot
+```
+
+**Memory Issues:**
+```bash
+# Check memory usage
+free -h
+pm2 monit
+
+# Restart if needed
+pm2 restart dobot-gateway
+```
+
+## 📊 PLC Memory Mapping
+
+The system uses specific memory addresses in the S7-1200 PLC for communication:
+
+| Address | Type | Description | Access |
+|---------|------|-------------|--------|
+| **M0.0** | BOOL | Start Dobot Command | Write |
+| **M0.1** | BOOL | Stop/Pause Command | Write |
+| **M0.2** | BOOL | Reset/Home Command | Write |
+| **M0.3** | BOOL | Emergency Stop | Write |
+| **DB1.DBD0** | REAL | Target X Position | Write |
+| **DB1.DBD4** | REAL | Target Y Position | Write |
+| **DB1.DBD8** | REAL | Target Z Position | Write |
+| **DB1.DBD12** | REAL | Current X Position | Read |
+| **DB1.DBD16** | REAL | Current Y Position | Read |
+| **DB1.DBD20** | REAL | Current Z Position | Read |
+| **DB1.DBW24** | INT | Status Code | Read |
+
+## 🔌 API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user
+
+### Dobot Control
+- `GET /api/dobot/status` - Get Dobot connection status
+- `GET /api/dobot/pose` - Get current robot pose
+- `POST /api/dobot/home` - Home the robot
+- `POST /api/dobot/move` - Move to position
+- `POST /api/dobot/stop` - Stop robot movement
+- `POST /api/dobot/emergency-stop` - Emergency stop
+
+### PLC Communication
+- `GET /api/plc/status` - Get PLC connection status
+- `GET /api/plc/read/:address` - Read PLC memory
+- `POST /api/plc/write/:address` - Write to PLC memory
+- `GET /api/plc/io` - Get all I/O status
+
+### System
+- `GET /api/health` - System health check
+- `GET /api/status` - Overall system status
+- `GET /api/logs` - View system logs
 
 ## 🔧 Manual Installation
 
