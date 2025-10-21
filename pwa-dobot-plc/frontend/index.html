@@ -332,6 +332,25 @@
                 </div>
             </div>
 
+            <!-- Manual Position Input Card -->
+            <div class="card">
+                <h2>🎯 Manual Position</h2>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px;">Enter Target Coordinates (mm):</label>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px;">
+                        <input type="number" id="manualX" placeholder="X" step="0.1" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                        <input type="number" id="manualY" placeholder="Y" step="0.1" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                        <input type="number" id="manualZ" placeholder="Z" step="0.1" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                        <input type="number" id="manualR" placeholder="R (deg)" step="0.1" value="0" style="padding: 8px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                    </div>
+                    <button class="btn btn-primary" onclick="moveToManual()" style="width: 100%;">▶️ Move to Position</button>
+                    <button class="btn btn-success" onclick="useCurrentPosition()" style="width: 100%; margin-top: 8px;">📍 Use Current Position</button>
+                </div>
+                <small style="color: #6b7280; display: block; margin-top: 10px;">
+                    Enter X, Y, Z coordinates in millimeters and R (rotation) in degrees
+                </small>
+            </div>
+
             <!-- Suction & Gripper Control Card -->
             <div class="card">
                 <h2>🤏 End Effector Control</h2>
@@ -650,8 +669,8 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    addLog(`✅ Move command sent! Queue index: ${data.queued_index}`, 'success');
-                    alert(`✅ Move command sent! Queue index: ${data.queued_index}`);
+                    addLog('✅ Move command executed successfully!', 'success');
+                    alert('✅ Robot moved successfully!');
                 } else {
                     addLog('❌ Move failed: ' + (data.error || 'Unknown error'), 'error');
                     alert('❌ Move command failed: ' + (data.error || 'Unknown error'));
@@ -660,6 +679,66 @@
                 addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error: ' + error.message);
             }
+        }
+
+        async function moveToManual() {
+            const x = parseFloat(document.getElementById('manualX').value);
+            const y = parseFloat(document.getElementById('manualY').value);
+            const z = parseFloat(document.getElementById('manualZ').value);
+            const r = parseFloat(document.getElementById('manualR').value) || 0;
+
+            if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                addLog('❌ Please enter valid X, Y, Z coordinates', 'error');
+                alert('❌ Please enter valid X, Y, Z coordinates');
+                return;
+            }
+
+            // Safety check - warn if values are extreme
+            if (Math.abs(x) > 500 || Math.abs(y) > 500 || z < 0 || z > 500) {
+                if (!confirm(`⚠️ Warning: Position (${x}, ${y}, ${z}) may be outside safe range.\n\nTypical range: X: ±300mm, Y: ±300mm, Z: 0-400mm\n\nContinue anyway?`)) {
+                    return;
+                }
+            }
+
+            try {
+                addLog(`▶️ Moving to manual position (${x}, ${y}, ${z}, ${r})...`, 'info');
+                const response = await fetch('/api/dobot/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ x, y, z, r })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('✅ Robot moved successfully!', 'success');
+                    alert('✅ Robot moved successfully!');
+                } else {
+                    addLog('❌ Move failed: ' + (data.error || 'Unknown error'), 'error');
+                    alert('❌ Move failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        function useCurrentPosition() {
+            const x = document.getElementById('currentX').textContent;
+            const y = document.getElementById('currentY').textContent;
+            const z = document.getElementById('currentZ').textContent;
+            const r = document.getElementById('currentR').textContent;
+
+            if (x === '--' || y === '--' || z === '--') {
+                addLog('❌ No current position available. Connect to Dobot first.', 'error');
+                alert('❌ No current position available. Connect to Dobot first.');
+                return;
+            }
+
+            document.getElementById('manualX').value = parseFloat(x);
+            document.getElementById('manualY').value = parseFloat(y);
+            document.getElementById('manualZ').value = parseFloat(z);
+            document.getElementById('manualR').value = parseFloat(r);
+
+            addLog('✅ Current position loaded into manual controls', 'success');
         }
 
         // Pump control
