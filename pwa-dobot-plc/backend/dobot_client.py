@@ -145,6 +145,28 @@ class DobotClient:
             logger.error(self.last_error)
             return False
 
+    def start_queue(self):
+        """Start executing the command queue"""
+        if not self.connected or not self.device:
+            return
+        
+        try:
+            self.device.start_queue()
+            logger.info("✅ Command queue started")
+        except Exception as e:
+            logger.error(f"Error starting queue: {e}")
+
+    def stop_queue(self):
+        """Stop executing the command queue"""
+        if not self.connected or not self.device:
+            return
+        
+        try:
+            self.device.stop_queue()
+            logger.info("Command queue stopped")
+        except Exception as e:
+            logger.error(f"Error stopping queue: {e}")
+
     def clear_queue(self):
         """Clear command queue"""
         if not self.connected or not self.device:

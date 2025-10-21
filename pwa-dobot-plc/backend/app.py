@@ -192,6 +192,8 @@ def dobot_home():
         return jsonify({'error': 'Dobot not connected'}), 503
 
     success = dobot_client.home(wait=False)
+    if success:
+        dobot_client.start_queue()  # Start executing the queued command
     return jsonify({'success': success})
 
 @app.route('/api/dobot/move', methods=['POST'])
@@ -211,7 +213,9 @@ def dobot_move():
         data.get('r', 0),
         wait=False
     )
-    return jsonify({'success': success})
+    if success:
+        dobot_client.start_queue()  # Start executing the queued command
+    return jsonify({'success': success, 'queued_index': 'queued'})
 
 @app.route('/api/dobot/pose', methods=['GET'])
 def get_dobot_pose():
@@ -225,13 +229,14 @@ def get_dobot_pose():
 @app.route('/api/emergency-stop', methods=['POST'])
 def emergency_stop():
     """Emergency stop - stop both Dobot and signal PLC"""
-    logger.error("EMERGENCY STOP TRIGGERED")
+    logger.error("🛑 EMERGENCY STOP TRIGGERED")
 
     results = {}
 
     # Stop Dobot
     if dobot_client.connected:
-        dobot_client.clear_queue()
+        dobot_client.stop_queue()  # Stop queue execution first
+        dobot_client.clear_queue()  # Then clear queued commands
         results['dobot'] = 'stopped'
 
     # Signal PLC
