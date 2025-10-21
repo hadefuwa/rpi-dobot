@@ -257,6 +257,16 @@ class DobotClient extends EventEmitter {
     return response;
   }
 
+  async startQueue() {
+    const response = await this.sendCommand(0xF6, 0x00);
+    return response;
+  }
+
+  async stopQueue() {
+    const response = await this.sendCommand(0xF7, 0x00);
+    return response;
+  }
+
   async setSuctionCup(enable) {
     const params = Buffer.allocUnsafe(1);
     params.writeUInt8(enable ? 1 : 0, 0);

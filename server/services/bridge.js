@@ -180,6 +180,9 @@ class Bridge extends EventEmitter {
         0 // Default R rotation
       );
       
+      // Start executing the queued command
+      await this.dobot.startQueue();
+      
       logger.info(`Movement queued with index ${queuedIndex}`);
       
       // Reset start bit in PLC
@@ -205,6 +208,9 @@ class Bridge extends EventEmitter {
       
       // Execute home command
       const queuedIndex = await this.dobot.home();
+      
+      // Start executing the queued command
+      await this.dobot.startQueue();
       
       logger.info(`Home command queued with index ${queuedIndex}`);
       
@@ -361,6 +367,7 @@ class Bridge extends EventEmitter {
           }
           this.validateCoordinates(params.x, params.y, params.z);
           const queuedIndex = await this.dobot.movePTP(params.x, params.y, params.z, params.r || 0);
+          await this.dobot.startQueue(); // Start executing the queued command
           return { queuedIndex };
         case 'stop':
           return await this.handleStopCommand();

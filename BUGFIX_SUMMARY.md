@@ -1,9 +1,57 @@
 # Dobot Commands Not Sending - Bug Fix Summary
 
 ## Issue
-Dobot commands were not being sent to the robot when using the web interface.
+Dobot commands were not being executed by the robot when using the web interface or PLC.
 
 ## Root Causes Found
+
+### 🔴 **CRITICAL Bug #0: Missing Queue Start Commands** ⭐ **MAIN ISSUE**
+
+**Location:** `server/services/dobot.js` and all command execution points
+
+**Problem:**
+The Dobot Magician uses a **command queue system**. Commands are added to a queue but don't execute automatically. The queue must be explicitly started with command ID `0xF6` (SetQueuedCmdStartExec).
+
+The codebase was:
+1. ✅ Queuing commands (home, move) correctly
+2. ❌ **NEVER starting the queue execution**
+3. ❌ Missing `startQueue()` and `stopQueue()` methods entirely
+
+This is why commands appeared to "send" but the robot never moved!
+
+**Impact:**
+- **100% of queued commands failed to execute**
+- Robot would receive commands but never act on them
+- This affected both web app AND PLC control
+- Commands were sitting in queue indefinitely
+
+**Fix Applied:**
+1. Added missing `startQueue()` method (command 0xF6)
+2. Added missing `stopQueue()` method (command 0xF7)
+3. Updated all command endpoints to call `startQueue()` after queuing
+4. Updated bridge service to start queue for PLC commands
+5. Improved stop command to properly stop queue before clearing
+
+**Code Added:**
+```javascript
+async startQueue() {
+  const response = await this.sendCommand(0xF6, 0x00);
+  return response;
+}
+
+async stopQueue() {
+  const response = await this.sendCommand(0xF7, 0x00);
+  return response;
+}
+```
+
+**All affected files:**
+- `server/services/dobot.js` - Added queue control methods
+- `server/routes/api.js` - Start queue after home/move commands
+- `server/services/bridge.js` - Start queue for PLC-triggered commands
+- Added new queue control API endpoints
+
+---
 
 ### 🔴 **Critical Bug #1: Variable Name Collision in `server/services/dobot.js`**
 

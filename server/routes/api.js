@@ -97,6 +97,7 @@ router.post('/dobot/home', async (req, res) => {
     }
     
     const queuedIndex = await dobotClient.home();
+    await dobotClient.startQueue(); // Start executing the queued command
     logger.dobot('Home command executed', { queuedIndex });
     
     res.json({ success: true, queuedIndex });
@@ -120,6 +121,7 @@ router.post('/dobot/move', async (req, res) => {
     }
     
     const queuedIndex = await dobotClient.movePTP(x, y, z, r);
+    await dobotClient.startQueue(); // Start executing the queued command
     logger.dobot('Move command executed', { x, y, z, r, queuedIndex });
     
     res.json({ success: true, queuedIndex });
@@ -137,7 +139,8 @@ router.post('/dobot/stop', async (req, res) => {
       return res.status(503).json({ error: 'Dobot not connected' });
     }
     
-    await dobotClient.clearQueue();
+    await dobotClient.stopQueue(); // Stop queue execution first
+    await dobotClient.clearQueue(); // Then clear all queued commands
     logger.dobot('Stop command executed', { user: req.user?.username || 'anonymous' });
     
     res.json({ success: true });
@@ -199,6 +202,58 @@ router.get('/dobot/status', async (req, res) => {
   } catch (error) {
     logger.error('Get status failed:', error);
     res.status(500).json({ error: 'Failed to get status', details: error.message });
+  }
+});
+
+// Queue control endpoints
+router.post('/dobot/queue/start', async (req, res) => {
+  try {
+    const { dobotClient } = req.app.locals;
+    
+    if (!dobotClient?.connected) {
+      return res.status(503).json({ error: 'Dobot not connected' });
+    }
+    
+    await dobotClient.startQueue();
+    logger.dobot('Queue started');
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Start queue failed:', error);
+    res.status(500).json({ error: 'Failed to start queue', details: error.message });
+  }
+});
+
+router.post('/dobot/queue/stop', async (req, res) => {
+  try {
+    const { dobotClient } = req.app.locals;
+    
+    if (!dobotClient?.connected) {
+      return res.status(503).json({ error: 'Dobot not connected' });
+    }
+    
+    await dobotClient.stopQueue();
+    logger.dobot('Queue stopped');
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Stop queue failed:', error);
+    res.status(500).json({ error: 'Failed to stop queue', details: error.message });
+  }
+});
+
+router.post('/dobot/queue/clear', async (req, res) => {
+  try {
+    const { dobotClient } = req.app.locals;
+    
+    if (!dobotClient?.connected) {
+      return res.status(503).json({ error: 'Dobot not connected' });
+    }
+    
+    await dobotClient.clearQueue();
+    logger.dobot('Queue cleared');
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Clear queue failed:', error);
+    res.status(500).json({ error: 'Failed to clear queue', details: error.message });
   }
 });
 
