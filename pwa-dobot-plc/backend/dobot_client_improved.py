@@ -225,8 +225,10 @@ class DobotClient:
                 pass
 
             # Create fresh connection
+            time.sleep(0.5)  # Wait for port to be fully released
             self.device = PyDobot(port=old_port, verbose=False)
             logger.info("✅ Reconnected")
+            time.sleep(0.5)  # Wait for new connection to stabilize
 
             # CRITICAL: Clear alarms AND reset pose
             try:
