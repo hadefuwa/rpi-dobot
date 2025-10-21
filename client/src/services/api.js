@@ -78,7 +78,10 @@ export const plcAPI = {
   getControl: () => api.get('/plc/control'),
   
   // Set control bits
-  setControl: (bits) => api.post('/plc/control', bits)
+  setControl: (bits) => api.post('/plc/control', bits),
+  
+  // Test PLC connection
+  testConnection: () => api.get('/plc/test')
 };
 
 export const bridgeAPI = {
@@ -104,7 +107,12 @@ export const systemAPI = {
   health: () => api.get('/health'),
   
   // Emergency stop
-  emergencyStop: () => api.post('/emergency-stop')
+  emergencyStop: () => api.post('/emergency-stop'),
+  
+  // Settings management
+  getSettings: () => api.get('/settings'),
+  saveSettings: (settings) => api.post('/settings', settings),
+  testPLCConnection: (plcConfig) => api.post('/settings/test-plc', plcConfig)
 };
 
 export { api };

@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
-import { 
-  Cpu, 
-  Database, 
-  ToggleLeft, 
-  ToggleRight, 
+import {
+  Cpu,
+  Database,
+  ToggleLeft,
+  ToggleRight,
   RefreshCw,
   Loader2,
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
 import { plcAPI } from '../services/api';
-import toast from 'react-hot-toast';
+import { useDebugLog } from '../contexts/DebugLogContext';
 
 export default function PLCMonitor({ socket, connected, compact = false }) {
+  const { addLog } = useDebugLog();
   const [plcData, setPlcData] = useState({
     pose: { x: 0, y: 0, z: 0 },
     control: { start: false, stop: false, home: false, estop: false },
@@ -43,6 +44,17 @@ export default function PLCMonitor({ socket, connected, compact = false }) {
     
     try {
       setIsLoading(true);
+      
+      // First test the connection
+      const testResponse = await plcAPI.testConnection();
+      const testData = testResponse.data;
+      
+      if (!testData.connected) {
+        addLog('warning', 'PLC not connected', testData.healthCheck?.error || 'Unknown error');
+        return;
+      }
+      
+      // If connected, fetch the actual data
       const [poseResponse, controlResponse] = await Promise.all([
         plcAPI.getPose(),
         plcAPI.getControl()
@@ -54,11 +66,10 @@ export default function PLCMonitor({ socket, connected, compact = false }) {
         status: 0 // Would need separate API call for status
       });
       setLastUpdate(new Date());
+      addLog('success', 'PLC data fetched successfully');
     } catch (error) {
       console.error('Failed to fetch PLC data:', error);
-      if (!isLoading) {
-        toast.error('Failed to fetch PLC data');
-      }
+      addLog('error', 'Failed to fetch PLC data', error.message);
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +77,7 @@ export default function PLCMonitor({ socket, connected, compact = false }) {
 
   const handleControlBit = async (bit, value) => {
     if (!connected) {
-      toast.error('Not connected to server');
+      addLog('warning', 'Not connected to server');
       return;
     }
 
@@ -76,10 +87,10 @@ export default function PLCMonitor({ socket, connected, compact = false }) {
         ...prev,
         control: { ...prev.control, [bit]: value }
       }));
-      toast.success(`${bit} ${value ? 'set' : 'cleared'}`);
+      addLog('success', `${bit} ${value ? 'set' : 'cleared'}`);
     } catch (error) {
       console.error('Failed to set control bit:', error);
-      toast.error(`Failed to set ${bit}`);
+      addLog('error', `Failed to set ${bit}`, error.message);
     }
   };
 

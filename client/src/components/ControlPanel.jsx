@@ -11,9 +11,10 @@ import {
   MapPin
 } from 'lucide-react';
 import { dobotAPI } from '../services/api';
-import toast from 'react-hot-toast';
+import { useDebugLog } from '../contexts/DebugLogContext';
 
 export default function ControlPanel({ socket, connected, compact = false }) {
+  const { addLog } = useDebugLog();
   const [isLoading, setIsLoading] = useState({});
   const [targetPose, setTargetPose] = useState({ x: 200, y: 0, z: 100, r: 0 });
   const [suctionEnabled, setSuctionEnabled] = useState(false);
@@ -24,48 +25,48 @@ export default function ControlPanel({ socket, connected, compact = false }) {
 
   const handleCommand = async (command, params = {}) => {
     if (!connected) {
-      toast.error('Not connected to server');
+      addLog('warning', 'Not connected to server');
       return;
     }
 
     setLoading(command, true);
-    
+
     try {
       let response;
-      
+
       switch (command) {
         case 'home':
           response = await dobotAPI.home();
-          toast.success('Home command sent');
+          addLog('success', 'Home command sent');
           break;
-          
+
         case 'move':
           response = await dobotAPI.move(targetPose.x, targetPose.y, targetPose.z, targetPose.r);
-          toast.success(`Move command sent to (${targetPose.x}, ${targetPose.y}, ${targetPose.z})`);
+          addLog('success', `Move command sent to (${targetPose.x}, ${targetPose.y}, ${targetPose.z})`);
           break;
-          
+
         case 'stop':
           response = await dobotAPI.stop();
-          toast.success('Stop command sent');
+          addLog('success', 'Stop command sent');
           break;
-          
+
         case 'suction':
           response = await dobotAPI.setGrip(suctionEnabled);
-          toast.success(`Suction cup ${suctionEnabled ? 'enabled' : 'disabled'}`);
+          addLog('success', `Suction cup ${suctionEnabled ? 'enabled' : 'disabled'}`);
           break;
-          
+
         default:
           throw new Error('Unknown command');
       }
-      
+
       // Emit via socket for real-time updates
       if (socket) {
         socket.emit('dobot_command', { command, params });
       }
-      
+
     } catch (error) {
       console.error('Command failed:', error);
-      toast.error(`Command failed: ${error.message}`);
+      addLog('error', 'Command failed', error.message);
     } finally {
       setLoading(command, false);
     }

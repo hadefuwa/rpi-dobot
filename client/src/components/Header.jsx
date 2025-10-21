@@ -1,7 +1,7 @@
-import { Menu, LogOut, User, Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff, Square } from 'lucide-react';
 import { useSocket } from '../hooks/useSocket';
 
-export default function Header({ user, onLogout, onMenuClick }) {
+export default function Header({ user, onEmergencyStop }) {
   const { connected } = useSocket(user?.token);
 
   return (
@@ -10,18 +10,22 @@ export default function Header({ user, onLogout, onMenuClick }) {
         <div className="flex justify-between items-center h-16">
           {/* Left side */}
           <div className="flex items-center">
+            <h1 className="text-xl font-semibold text-gray-900">
+              Dobot Gateway
+            </h1>
+          </div>
+
+          {/* Center - Emergency Stop Button */}
+          <div className="flex items-center">
             <button
-              onClick={onMenuClick}
-              className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 lg:hidden"
+              onClick={onEmergencyStop}
+              className="flex flex-col items-center justify-center bg-red-600 hover:bg-red-700 text-white font-bold rounded-full w-16 h-16 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+              title="Emergency Stop"
+              aria-label="Emergency Stop"
             >
-              <Menu className="h-6 w-6" />
+              <Square className="h-5 w-5 mb-1" />
+              <span className="text-xs font-bold leading-none">STOP</span>
             </button>
-            
-            <div className="ml-4 lg:ml-0">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Dobot Gateway
-              </h1>
-            </div>
           </div>
 
           {/* Right side */}
@@ -39,31 +43,6 @@ export default function Header({ user, onLogout, onMenuClick }) {
                   <span className="text-sm font-medium">Disconnected</span>
                 </div>
               )}
-            </div>
-
-            {/* User menu */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <User className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.username}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize">
-                    {user?.role}
-                  </p>
-                </div>
-              </div>
-              
-              <button
-                onClick={onLogout}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-                title="Logout"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
             </div>
           </div>
         </div>

@@ -28,19 +28,49 @@ router.get('/health', (req, res) => {
   res.json(health);
 });
 
+// Helper function to add timeout to promises
+const withTimeout = (promise, timeoutMs = 1000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+    )
+  ]);
+};
+
 // System status (no auth required)
 router.get('/status', async (req, res) => {
   try {
     const { dobotClient, plcClient, bridge } = req.app.locals;
-    
+
+    // Get pose with timeout
+    let pose = null;
+    if (dobotClient?.connected) {
+      try {
+        pose = await withTimeout(dobotClient.getPose(), 500);
+      } catch (err) {
+        // Timeout or error - just leave pose as null
+      }
+    }
+
+    // Get PLC health with timeout
+    let plcHealth = { status: 'disconnected' };
+    if (plcClient?.isConnected()) {
+      try {
+        plcHealth = await withTimeout(plcClient.healthCheck(), 500);
+      } catch (err) {
+        plcHealth = { status: 'error' };
+      }
+    }
+
     const status = {
       dobot: {
         connected: dobotClient?.connected || false,
-        pose: dobotClient?.connected ? await dobotClient.getPose().catch(() => null) : null
+        pose: pose
       },
       plc: {
         connected: plcClient?.isConnected() || false,
-        health: plcClient?.connected ? await plcClient.healthCheck().catch(() => ({ status: 'error' })) : { status: 'disconnected' }
+        health: plcHealth
       },
       bridge: bridge?.getStatus() || { running: false },
       system: {
@@ -49,7 +79,7 @@ router.get('/status', async (req, res) => {
         uptime: process.uptime()
       }
     };
-    
+
     res.json(status);
   } catch (error) {
     logger.error('Status check failed:', error);
@@ -177,7 +207,11 @@ router.get('/plc/pose', async (req, res) => {
   try {
     const { plcClient } = req.app.locals;
     
-    if (!plcClient?.isConnected()) {
+    if (!plcClient) {
+      return res.status(503).json({ error: 'PLC client not initialized' });
+    }
+    
+    if (!plcClient.isConnected()) {
       return res.status(503).json({ error: 'PLC not connected' });
     }
     
@@ -216,7 +250,11 @@ router.get('/plc/control', async (req, res) => {
   try {
     const { plcClient } = req.app.locals;
     
-    if (!plcClient?.isConnected()) {
+    if (!plcClient) {
+      return res.status(503).json({ error: 'PLC client not initialized' });
+    }
+    
+    if (!plcClient.isConnected()) {
       return res.status(503).json({ error: 'PLC not connected' });
     }
     
@@ -233,7 +271,11 @@ router.post('/plc/control', async (req, res) => {
     const { plcClient } = req.app.locals;
     const { start, stop, home, estop } = req.body;
     
-    if (!plcClient?.isConnected()) {
+    if (!plcClient) {
+      return res.status(503).json({ error: 'PLC client not initialized' });
+    }
+    
+    if (!plcClient.isConnected()) {
       return res.status(503).json({ error: 'PLC not connected' });
     }
     
@@ -250,6 +292,32 @@ router.post('/plc/control', async (req, res) => {
   } catch (error) {
     logger.error('Write PLC control bits failed:', error);
     res.status(500).json({ error: 'Failed to write PLC control bits', details: error.message });
+  }
+});
+
+// PLC connection test endpoint
+router.get('/plc/test', async (req, res) => {
+  try {
+    const { plcClient } = req.app.locals;
+    
+    if (!plcClient) {
+      return res.status(503).json({ error: 'PLC client not initialized' });
+    }
+    
+    const connectionTest = await plcClient.testConnection();
+    const healthCheck = await plcClient.healthCheck();
+    
+    res.json({
+      connectionTest,
+      healthCheck,
+      connected: plcClient.isConnected(),
+      ip: plcClient.ip,
+      rack: plcClient.rack,
+      slot: plcClient.slot
+    });
+  } catch (error) {
+    logger.error('PLC test failed:', error);
+    res.status(500).json({ error: 'PLC test failed', details: error.message });
   }
 });
 
@@ -367,6 +435,103 @@ router.post('/emergency-stop', async (req, res) => {
   } catch (error) {
     logger.error('Emergency stop failed:', error);
     res.status(500).json({ error: 'Emergency stop failed', details: error.message });
+  }
+});
+
+// Settings management endpoints
+router.get('/settings', async (req, res) => {
+  try {
+    const { plcClient } = req.app.locals;
+    
+    // Get current PLC configuration
+    const plcConfig = {
+      ip: plcClient?.ip || process.env.PLC_IP || '192.168.0.10',
+      rack: plcClient?.rack || parseInt(process.env.PLC_RACK) || 0,
+      slot: plcClient?.slot || parseInt(process.env.PLC_SLOT) || 1
+    };
+    
+    res.json({
+      plc: plcConfig,
+      dobot: {
+        host: process.env.DOBOT_HOST || '192.168.1.100',
+        port: parseInt(process.env.DOBOT_PORT) || 29999,
+        useUSB: process.env.DOBOT_USE_USB === 'true',
+        usbPath: process.env.DOBOT_USB_PATH || '/dev/ttyUSB0'
+      },
+      system: {
+        pollInterval: parseInt(process.env.POLL_INTERVAL) || 100,
+        logLevel: process.env.LOG_LEVEL || 'info'
+      }
+    });
+  } catch (error) {
+    logger.error('Get settings failed:', error);
+    res.status(500).json({ error: 'Failed to get settings', details: error.message });
+  }
+});
+
+router.post('/settings', async (req, res) => {
+  try {
+    const { plc, dobot, system } = req.body;
+    
+    // Update environment variables (this would typically be saved to a config file)
+    if (plc) {
+      process.env.PLC_IP = plc.ip;
+      process.env.PLC_RACK = plc.rack.toString();
+      process.env.PLC_SLOT = plc.slot.toString();
+    }
+    
+    if (dobot) {
+      process.env.DOBOT_HOST = dobot.host;
+      process.env.DOBOT_PORT = dobot.port.toString();
+      process.env.DOBOT_USE_USB = dobot.useUSB.toString();
+      process.env.DOBOT_USB_PATH = dobot.usbPath;
+    }
+    
+    if (system) {
+      process.env.POLL_INTERVAL = system.pollInterval.toString();
+      process.env.LOG_LEVEL = system.logLevel;
+    }
+    
+    logger.info('Settings updated', { plc, dobot, system });
+    res.json({ success: true, message: 'Settings saved successfully' });
+  } catch (error) {
+    logger.error('Save settings failed:', error);
+    res.status(500).json({ error: 'Failed to save settings', details: error.message });
+  }
+});
+
+router.post('/settings/test-plc', async (req, res) => {
+  try {
+    const { ip, rack, slot } = req.body;
+    
+    if (!ip) {
+      return res.status(400).json({ error: 'PLC IP address is required' });
+    }
+    
+    // Create a temporary PLC client for testing
+    const S7Client = require('../services/plc');
+    const testClient = new S7Client(ip, rack || 0, slot || 1);
+    
+    // Test connection
+    const connectionTest = await testClient.testConnection();
+    const healthCheck = await testClient.healthCheck();
+    
+    // Clean up
+    await testClient.disconnect();
+    
+    res.json({
+      success: connectionTest.success,
+      connectionTest,
+      healthCheck,
+      config: { ip, rack: rack || 0, slot: slot || 1 }
+    });
+  } catch (error) {
+    logger.error('PLC connection test failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'PLC connection test failed', 
+      details: error.message 
+    });
   }
 });
 

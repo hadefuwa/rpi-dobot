@@ -186,40 +186,6 @@ body {
   color: #2563eb;
 }
 
-/* Emergency Stop */
-.emergency-stop {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 1000;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  font-size: 10px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.emergency-stop:hover {
-  background: #dc2626;
-  transform: scale(1.05);
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.emergency-stop:active {
-  transform: scale(0.95);
-}
 
 /* Utility Classes */
 .label {

@@ -7,7 +7,8 @@ import {
   CheckCircle,
   Wifi,
   Cpu,
-  Database
+  Database,
+  TestTube
 } from 'lucide-react';
 import { systemAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -32,10 +33,13 @@ export default function Settings() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTestingPLC, setIsTestingPLC] = useState(false);
   const [systemInfo, setSystemInfo] = useState(null);
+  const [plcTestResult, setPlcTestResult] = useState(null);
 
   useEffect(() => {
     fetchSystemInfo();
+    loadSettings();
   }, []);
 
   const fetchSystemInfo = async () => {
@@ -48,6 +52,16 @@ export default function Settings() {
       toast.error('Failed to fetch system information');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const response = await systemAPI.getSettings();
+      setSettings(response.data);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      toast.error('Failed to load settings');
     }
   };
 
@@ -64,14 +78,35 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      // In a real implementation, this would save to the server
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await systemAPI.saveSettings(settings);
       toast.success('Settings saved successfully');
     } catch (error) {
       console.error('Failed to save settings:', error);
       toast.error('Failed to save settings');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const testPLCConnection = async () => {
+    try {
+      setIsTestingPLC(true);
+      setPlcTestResult(null);
+      
+      const response = await systemAPI.testPLCConnection(settings.plc);
+      setPlcTestResult(response.data);
+      
+      if (response.data.success) {
+        toast.success('PLC connection test successful!');
+      } else {
+        toast.error('PLC connection test failed');
+      }
+    } catch (error) {
+      console.error('PLC connection test failed:', error);
+      toast.error('PLC connection test failed');
+      setPlcTestResult({ success: false, error: error.message });
+    } finally {
+      setIsTestingPLC(false);
     }
   };
 
@@ -237,7 +272,22 @@ export default function Settings() {
 
       {/* PLC Settings */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">PLC Configuration</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">PLC Configuration</h3>
+          <button
+            onClick={testPLCConnection}
+            disabled={isTestingPLC}
+            className="btn btn-secondary btn-sm"
+          >
+            {isTestingPLC ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <TestTube className="h-4 w-4" />
+            )}
+            {isTestingPLC ? 'Testing...' : 'Test Connection'}
+          </button>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="label">IP Address</label>
@@ -274,6 +324,48 @@ export default function Settings() {
             />
           </div>
         </div>
+        
+        {/* PLC Test Results */}
+        {plcTestResult && (
+          <div className={`mt-4 p-4 rounded-lg border ${
+            plcTestResult.success 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <div className="flex items-start space-x-2">
+              {plcTestResult.success ? (
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <h4 className={`text-sm font-medium ${
+                  plcTestResult.success ? 'text-green-800' : 'text-red-800'
+                }`}>
+                  PLC Connection Test {plcTestResult.success ? 'Successful' : 'Failed'}
+                </h4>
+                <div className="mt-2 text-sm">
+                  <p className={plcTestResult.success ? 'text-green-700' : 'text-red-700'}>
+                    <strong>IP:</strong> {plcTestResult.config?.ip} | 
+                    <strong> Rack:</strong> {plcTestResult.config?.rack} | 
+                    <strong> Slot:</strong> {plcTestResult.config?.slot}
+                  </p>
+                  {plcTestResult.connectionTest && (
+                    <p className={plcTestResult.success ? 'text-green-700' : 'text-red-700'}>
+                      <strong>Connection:</strong> {plcTestResult.connectionTest.message || plcTestResult.connectionTest.error}
+                    </p>
+                  )}
+                  {plcTestResult.healthCheck && (
+                    <p className={plcTestResult.success ? 'text-green-700' : 'text-red-700'}>
+                      <strong>Health:</strong> {plcTestResult.healthCheck.status} 
+                      {plcTestResult.healthCheck.error && ` - ${plcTestResult.healthCheck.error}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* System Settings */}

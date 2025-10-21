@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sshpass -p \"1\" ssh -o StrictHostKeyChecking=no pi@rpi \"cd ~/rpi-dobot && pwd && ls -la\")",
+      "Bash(ssh:*)",
+      "Read(//c/Users/Hamed/.ssh/**)",
+      "Bash(ssh-keygen:*)",
+      "Bash(cat:*)",
+      "Bash(scp:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
