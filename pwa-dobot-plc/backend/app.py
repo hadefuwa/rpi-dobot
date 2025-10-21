@@ -191,9 +191,11 @@ def dobot_home():
     if not dobot_client.connected:
         return jsonify({'error': 'Dobot not connected'}), 503
 
+    logger.info("🏠 Home command received from web interface")
     success = dobot_client.home(wait=False)
     if success:
         dobot_client.start_queue()  # Start executing the queued command
+    logger.info(f"Home command result: {success}")
     return jsonify({'success': success})
 
 @app.route('/api/dobot/move', methods=['POST'])
@@ -206,6 +208,7 @@ def dobot_move():
     if not dobot_client.connected:
         return jsonify({'error': 'Dobot not connected'}), 503
 
+    logger.info(f"▶️ Move command received: ({data['x']}, {data['y']}, {data['z']}, {data.get('r', 0)})")
     success = dobot_client.move_to(
         data['x'],
         data['y'],
@@ -214,7 +217,9 @@ def dobot_move():
         wait=False
     )
     if success:
+        logger.info("Calling start_queue()...")
         dobot_client.start_queue()  # Start executing the queued command
+    logger.info(f"Move command result: {success}")
     return jsonify({'success': success, 'queued_index': 'queued'})
 
 @app.route('/api/dobot/pose', methods=['GET'])

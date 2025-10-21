@@ -325,6 +325,15 @@
                 </div>
             </div>
         </div>
+
+        <!-- Debug Log Card -->
+        <div class="card" style="margin-top: 20px;">
+            <h2>📋 Debug Log</h2>
+            <div id="debugLog" style="font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto; background: #f3f4f6; padding: 12px; border-radius: 6px;">
+                <div style="color: #6b7280;">Waiting for events...</div>
+            </div>
+            <button class="btn btn-primary" onclick="clearLog()" style="margin-top: 10px;">Clear Log</button>
+        </div>
     </div>
 
     <script>
@@ -482,17 +491,51 @@
             }
         }
 
+        // Debug log functions
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'info': '#3b82f6',
+                'success': '#10b981',
+                'error': '#ef4444',
+                'warning': '#f59e0b'
+            };
+            const color = colors[type] || colors['info'];
+            
+            const entry = document.createElement('div');
+            entry.style.color = color;
+            entry.style.marginBottom = '4px';
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // Keep only last 50 entries
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.firstChild);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('debugLog').innerHTML = '<div style="color: #6b7280;">Log cleared...</div>';
+        }
+
         // Control functions
         async function homeRobot() {
             try {
+                addLog('🏠 Sending home command...', 'info');
                 const response = await fetch('/api/dobot/home', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
+                    addLog('✅ Home command sent!', 'success');
                     alert('✅ Home command sent!');
                 } else {
+                    addLog('❌ Home failed: ' + (data.error || 'Unknown error'), 'error');
                     alert('❌ Home command failed: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error: ' + error.message);
             }
         }
@@ -503,11 +546,13 @@
             const z = parseFloat(document.getElementById('targetZ').textContent);
 
             if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                addLog('❌ Invalid target position values', 'error');
                 alert('❌ Invalid target position values');
                 return;
             }
 
             try {
+                addLog(`▶️ Moving to (${x}, ${y}, ${z})...`, 'info');
                 const response = await fetch('/api/dobot/move', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -515,11 +560,14 @@
                 });
                 const data = await response.json();
                 if (data.success) {
+                    addLog(`✅ Move command sent! Queue index: ${data.queued_index}`, 'success');
                     alert(`✅ Move command sent! Queue index: ${data.queued_index}`);
                 } else {
+                    addLog('❌ Move failed: ' + (data.error || 'Unknown error'), 'error');
                     alert('❌ Move command failed: ' + (data.error || 'Unknown error'));
                 }
             } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error: ' + error.message);
             }
         }
@@ -530,12 +578,15 @@
             }
 
             try {
+                addLog('🛑 EMERGENCY STOP TRIGGERED!', 'error');
                 const response = await fetch('/api/emergency-stop', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
+                    addLog('🛑 EMERGENCY STOP activated! All movement stopped.', 'warning');
                     alert('🛑 EMERGENCY STOP activated!');
                 }
             } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error: ' + error.message);
             }
         }

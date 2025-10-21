@@ -151,10 +151,14 @@ class DobotClient:
             return
         
         try:
-            self.device.start_queue()
-            logger.info("✅ Command queue started")
+            # Try to start the queue if the method exists
+            if hasattr(self.device, 'start_queue'):
+                self.device.start_queue()
+                logger.info("✅ Command queue started")
+            else:
+                logger.warning("⚠️ start_queue method not available - pydobot may auto-execute commands")
         except Exception as e:
-            logger.error(f"Error starting queue: {e}")
+            logger.error(f"❌ Error starting queue: {e}")
 
     def stop_queue(self):
         """Stop executing the command queue"""
@@ -162,10 +166,15 @@ class DobotClient:
             return
         
         try:
-            self.device.stop_queue()
-            logger.info("Command queue stopped")
+            # Try to stop the queue if the method exists
+            if hasattr(self.device, 'stop_queue'):
+                self.device.stop_queue()
+                logger.info("Command queue stopped")
+            else:
+                logger.warning("⚠️ stop_queue method not available - using clear_queue instead")
+                self.clear_queue()
         except Exception as e:
-            logger.error(f"Error stopping queue: {e}")
+            logger.error(f"❌ Error stopping queue: {e}")
 
     def clear_queue(self):
         """Clear command queue"""
