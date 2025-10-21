@@ -1,23 +1,18 @@
-// PM2 Ecosystem configuration for PWA Dobot-PLC Control
-const path = require('path');
-
 module.exports = {
   apps: [{
     name: 'pwa-dobot-plc',
-    script: 'app.py',
-    cwd: path.join(__dirname, '../backend'),
-    interpreter: 'python3',
+    cwd: '/home/pi/rpi-dobot/pwa-dobot-plc/backend',
+    script: 'venv/bin/python',
+    args: 'app.py',
     instances: 1,
     autorestart: true,
     watch: false,
-    max_memory_restart: '500M',
+    max_memory_restart: '200M',
     env: {
-      PLC_IP: '192.168.0.150',
-      PLC_RACK: '0',
-      PLC_SLOT: '1',
-      DOBOT_USE_USB: 'true',
-      DOBOT_USB_PATH: '/dev/ttyACM1',
-      PORT: '8080'
-    }
+      NODE_ENV: 'production'
+    },
+    error_file: '/home/pi/logs/pwa-dobot-plc-error.log',
+    out_file: '/home/pi/logs/pwa-dobot-plc-out.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
   }]
 };
