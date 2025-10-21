@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Dobot-PLC Control PWA">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-512.png">
+    <title>Dobot-PLC Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #2563eb;
+        }
+
+        .connection-status {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: #f3f4f6;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #10b981;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        .data-value {
+            font-weight: 700;
+            color: #1f2937;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin: 8px 0;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .emergency-stop {
+            grid-column: span 2;
+        }
+
+        .offline-banner {
+            background: #f59e0b;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .offline-banner.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .connection-status {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-banner" id="offlineBanner">
+        ⚠️ You are currently offline. Some features may be limited.
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>🤖 Dobot-PLC Control</h1>
+                <div class="connection-status">
+                    <div class="status-item">
+                        <div class="status-dot" id="plcDot"></div>
+                        <span>PLC: <span id="plcStatus">Disconnected</span></span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot" id="dobotDot"></div>
+                        <span>Dobot: <span id="dobotStatus">Disconnected</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- PLC Status Card -->
+            <div class="card">
+                <h2>📊 PLC Data (DB1)</h2>
+                <div class="data-row">
+                    <span class="data-label">Target X:</span>
+                    <span class="data-value" id="targetX">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Target Y:</span>
+                    <span class="data-value" id="targetY">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Target Z:</span>
+                    <span class="data-value" id="targetZ">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Last Update:</span>
+                    <span class="data-value" id="lastUpdate">Never</span>
+                </div>
+            </div>
+
+            <!-- Dobot Status Card -->
+            <div class="card">
+                <h2>🦾 Dobot Position</h2>
+                <div class="data-row">
+                    <span class="data-label">Current X:</span>
+                    <span class="data-value" id="currentX">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Current Y:</span>
+                    <span class="data-value" id="currentY">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Current Z:</span>
+                    <span class="data-value" id="currentZ">--</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Current R:</span>
+                    <span class="data-value" id="currentR">--</span>
+                </div>
+            </div>
+
+            <!-- Control Bits Card -->
+            <div class="card">
+                <h2>🎛️ Control Bits (M0.x)</h2>
+                <div class="data-row">
+                    <span class="data-label">M0.0 Start:</span>
+                    <span class="data-value" id="bitStart">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.1 Stop:</span>
+                    <span class="data-value" id="bitStop">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.2 Home:</span>
+                    <span class="data-value" id="bitHome">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.3 E-Stop:</span>
+                    <span class="data-value" id="bitEstop">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.4 Suction:</span>
+                    <span class="data-value" id="bitSuction">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.5 Ready:</span>
+                    <span class="data-value" id="bitReady">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.6 Busy:</span>
+                    <span class="data-value" id="bitBusy">❌</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">M0.7 Error:</span>
+                    <span class="data-value" id="bitError">❌</span>
+                </div>
+            </div>
+
+            <!-- Manual Control Card -->
+            <div class="card">
+                <h2>🕹️ Manual Control</h2>
+                <div class="control-grid">
+                    <button class="btn btn-success" onclick="homeRobot()">🏠 Home</button>
+                    <button class="btn btn-primary" onclick="moveToTarget()">▶️ Move to Target</button>
+                    <button class="btn btn-danger emergency-stop" onclick="emergencyStop()">
+                        🛑 EMERGENCY STOP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('Service Worker registered:', reg);
+            }).catch(err => {
+                console.error('Service Worker registration failed:', err);
+            });
+        }
+
+        // Offline detection
+        window.addEventListener('online', () => {
+            document.getElementById('offlineBanner').classList.remove('show');
+        });
+
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineBanner').classList.add('show');
+        });
+
+        // Polling interval (1000ms to avoid flooding PLC)
+        let pollInterval = null;
+        let isPolling = false;
+
+        // Update PLC status indicator
+        function updatePLCStatus(connected) {
+            const dot = document.getElementById('plcDot');
+            const text = document.getElementById('plcStatus');
+
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'Connected';
+                text.style.color = '#10b981';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'Disconnected';
+                text.style.color = '#ef4444';
+            }
+        }
+
+        // Update Dobot status indicator
+        function updateDobotStatus(connected) {
+            const dot = document.getElementById('dobotDot');
+            const text = document.getElementById('dobotStatus');
+
+            if (connected) {
+                dot.classList.add('connected');
+                text.textContent = 'Connected';
+                text.style.color = '#10b981';
+            } else {
+                dot.classList.remove('connected');
+                text.textContent = 'Disconnected';
+                text.style.color = '#ef4444';
+            }
+        }
+
+        // Fetch all data in a single optimized request
+        async function fetchAllData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+
+                // Update PLC status
+                updatePLCStatus(data.plc.status.connected);
+
+                // Update PLC target pose
+                document.getElementById('targetX').textContent = data.plc.pose.x?.toFixed(2) || '--';
+                document.getElementById('targetY').textContent = data.plc.pose.y?.toFixed(2) || '--';
+                document.getElementById('targetZ').textContent = data.plc.pose.z?.toFixed(2) || '--';
+
+                // Update control bits with ON/OFF text
+                const bits = data.plc.control;
+                document.getElementById('bitStart').textContent = bits.start ? 'ON' : 'OFF';
+                document.getElementById('bitStart').style.color = bits.start ? '#10b981' : '#ef4444';
+
+                document.getElementById('bitStop').textContent = bits.stop ? 'ON' : 'OFF';
+                document.getElementById('bitStop').style.color = bits.stop ? '#10b981' : '#ef4444';
+
+                document.getElementById('bitHome').textContent = bits.home ? 'ON' : 'OFF';
+                document.getElementById('bitHome').style.color = bits.home ? '#10b981' : '#ef4444';
+
+                document.getElementById('bitEstop').textContent = bits.estop ? 'ON' : 'OFF';
+                document.getElementById('bitEstop').style.color = bits.estop ? '#ef4444' : '#10b981';
+
+                document.getElementById('bitSuction').textContent = bits.suction ? 'ON' : 'OFF';
+                document.getElementById('bitSuction').style.color = bits.suction ? '#10b981' : '#ef4444';
+
+                document.getElementById('bitReady').textContent = bits.ready ? 'ON' : 'OFF';
+                document.getElementById('bitReady').style.color = bits.ready ? '#10b981' : '#ef4444';
+
+                document.getElementById('bitBusy').textContent = bits.busy ? 'ON' : 'OFF';
+                document.getElementById('bitBusy').style.color = bits.busy ? '#f59e0b' : '#10b981';
+
+                document.getElementById('bitError').textContent = bits.error ? 'ON' : 'OFF';
+                document.getElementById('bitError').style.color = bits.error ? '#ef4444' : '#10b981';
+
+                // Update Dobot status
+                updateDobotStatus(data.dobot.status.connected);
+
+                // Update Dobot pose
+                if (data.dobot.status.connected) {
+                    document.getElementById('currentX').textContent = data.dobot.pose.x?.toFixed(2) || '--';
+                    document.getElementById('currentY').textContent = data.dobot.pose.y?.toFixed(2) || '--';
+                    document.getElementById('currentZ').textContent = data.dobot.pose.z?.toFixed(2) || '--';
+                    document.getElementById('currentR').textContent = data.dobot.pose.r?.toFixed(2) || '--';
+                } else {
+                    document.getElementById('currentX').textContent = '--';
+                    document.getElementById('currentY').textContent = '--';
+                    document.getElementById('currentZ').textContent = '--';
+                    document.getElementById('currentR').textContent = '--';
+                }
+
+                // Update timestamp
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                updatePLCStatus(false);
+                updateDobotStatus(false);
+            }
+        }
+
+        // Main polling function
+        async function pollData() {
+            // Skip if already polling to prevent overlap
+            if (isPolling) return;
+
+            isPolling = true;
+            try {
+                // Single optimized fetch to avoid flooding PLC
+                await fetchAllData();
+            } finally {
+                isPolling = false;
+            }
+        }
+
+        // Start polling
+        function startPolling() {
+            if (pollInterval) return;
+
+            // Initial fetch
+            pollData();
+
+            // Poll every 2000ms (2 seconds) to avoid flooding PLC
+            pollInterval = setInterval(pollData, 2000);
+        }
+
+        // Stop polling
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        // Control functions
+        async function homeRobot() {
+            try {
+                const response = await fetch('/api/dobot/home', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ Home command sent!');
+                } else {
+                    alert('❌ Home command failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function moveToTarget() {
+            const x = parseFloat(document.getElementById('targetX').textContent);
+            const y = parseFloat(document.getElementById('targetY').textContent);
+            const z = parseFloat(document.getElementById('targetZ').textContent);
+
+            if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                alert('❌ Invalid target position values');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/dobot/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ x, y, z, r: 0 })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(`✅ Move command sent! Queue index: ${data.queued_index}`);
+                } else {
+                    alert('❌ Move command failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function emergencyStop() {
+            if (!confirm('⚠️ Are you sure you want to trigger EMERGENCY STOP?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/emergency-stop', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('🛑 EMERGENCY STOP activated!');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Start polling when page loads
+        window.addEventListener('load', startPolling);
+
+        // Stop polling when page unloads
+        window.addEventListener('beforeunload', stopPolling);
+
+        // Stop polling when page is hidden (tab switched)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                startPolling();
+            }
+        });
+    </script>
+</body>
+</html>
