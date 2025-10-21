@@ -3,10 +3,17 @@ const router = express.Router();
 const { verifyToken, requirePermission, requireRole, login, logout, getCurrentUser, authRateLimit } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
-// Authentication routes
+// Authentication routes - DISABLED FOR DEVELOPMENT
 router.post('/auth/login', authRateLimit, login);
-router.post('/auth/logout', verifyToken, logout);
-router.get('/auth/me', verifyToken, getCurrentUser);
+router.post('/auth/logout', logout);
+router.get('/auth/me', (req, res) => {
+  // Return fake admin user for development
+  res.json({
+    username: 'admin',
+    role: 'admin',
+    permissions: ['read', 'write', 'control', 'admin']
+  });
+});
 
 // Health check (no auth required)
 router.get('/health', (req, res) => {
@@ -21,8 +28,8 @@ router.get('/health', (req, res) => {
   res.json(health);
 });
 
-// System status (requires read permission)
-router.get('/status', verifyToken, requirePermission('read'), async (req, res) => {
+// System status (no auth required)
+router.get('/status', async (req, res) => {
   try {
     const { dobotClient, plcClient, bridge } = req.app.locals;
     
@@ -51,7 +58,7 @@ router.get('/status', verifyToken, requirePermission('read'), async (req, res) =
 });
 
 // Dobot control routes (requires control permission)
-router.post('/dobot/home', verifyToken, requirePermission('control'), async (req, res) => {
+router.post('/dobot/home', async (req, res) => {
   try {
     const { dobotClient } = req.app.locals;
     
@@ -60,7 +67,7 @@ router.post('/dobot/home', verifyToken, requirePermission('control'), async (req
     }
     
     const queuedIndex = await dobotClient.home();
-    logger.dobot('Home command executed', { queuedIndex, user: req.user.username });
+    logger.dobot('Home command executed', { queuedIndex });
     
     res.json({ success: true, queuedIndex });
   } catch (error) {
@@ -69,7 +76,7 @@ router.post('/dobot/home', verifyToken, requirePermission('control'), async (req
   }
 });
 
-router.post('/dobot/move', verifyToken, requirePermission('control'), async (req, res) => {
+router.post('/dobot/move', async (req, res) => {
   try {
     const { dobotClient } = req.app.locals;
     const { x, y, z, r = 0 } = req.body;
@@ -83,7 +90,7 @@ router.post('/dobot/move', verifyToken, requirePermission('control'), async (req
     }
     
     const queuedIndex = await dobotClient.movePTP(x, y, z, r);
-    logger.dobot('Move command executed', { x, y, z, r, queuedIndex, user: req.user.username });
+    logger.dobot('Move command executed', { x, y, z, r, queuedIndex });
     
     res.json({ success: true, queuedIndex });
   } catch (error) {
@@ -92,7 +99,7 @@ router.post('/dobot/move', verifyToken, requirePermission('control'), async (req
   }
 });
 
-router.post('/dobot/stop', verifyToken, requirePermission('control'), async (req, res) => {
+router.post('/dobot/stop', async (req, res) => {
   try {
     const { dobotClient } = req.app.locals;
     
@@ -110,7 +117,7 @@ router.post('/dobot/stop', verifyToken, requirePermission('control'), async (req
   }
 });
 
-router.post('/dobot/suction', verifyToken, requirePermission('control'), async (req, res) => {
+router.post('/dobot/suction', async (req, res) => {
   try {
     const { dobotClient } = req.app.locals;
     const { enable } = req.body;
@@ -124,7 +131,7 @@ router.post('/dobot/suction', verifyToken, requirePermission('control'), async (
     }
     
     await dobotClient.setSuctionCup(enable);
-    logger.dobot('Suction cup command executed', { enable, user: req.user.username });
+    logger.dobot('Suction cup command executed', { enable });
     
     res.json({ success: true, enabled: enable });
   } catch (error) {
@@ -133,7 +140,7 @@ router.post('/dobot/suction', verifyToken, requirePermission('control'), async (
   }
 });
 
-router.get('/dobot/pose', verifyToken, requirePermission('read'), async (req, res) => {
+router.get('/dobot/pose', async (req, res) => {
   try {
     const { dobotClient } = req.app.locals;
     
@@ -149,7 +156,7 @@ router.get('/dobot/pose', verifyToken, requirePermission('read'), async (req, re
   }
 });
 
-router.get('/dobot/status', verifyToken, requirePermission('read'), async (req, res) => {
+router.get('/dobot/status', async (req, res) => {
   try {
     const { dobotClient } = req.app.locals;
     
@@ -166,7 +173,7 @@ router.get('/dobot/status', verifyToken, requirePermission('read'), async (req, 
 });
 
 // PLC control routes (requires control permission)
-router.get('/plc/pose', verifyToken, requirePermission('read'), async (req, res) => {
+router.get('/plc/pose', async (req, res) => {
   try {
     const { plcClient } = req.app.locals;
     
@@ -182,7 +189,7 @@ router.get('/plc/pose', verifyToken, requirePermission('read'), async (req, res)
   }
 });
 
-router.post('/plc/pose', verifyToken, requirePermission('write'), async (req, res) => {
+router.post('/plc/pose', async (req, res) => {
   try {
     const { plcClient } = req.app.locals;
     const { x, y, z } = req.body;
@@ -196,7 +203,7 @@ router.post('/plc/pose', verifyToken, requirePermission('write'), async (req, re
     }
     
     await plcClient.writePoseToDB({ x, y, z }, 1, 0);
-    logger.plc('PLC pose written', { x, y, z, user: req.user.username });
+    logger.plc('PLC pose written', { x, y, z });
     
     res.json({ success: true });
   } catch (error) {
@@ -205,7 +212,7 @@ router.post('/plc/pose', verifyToken, requirePermission('write'), async (req, re
   }
 });
 
-router.get('/plc/control', verifyToken, requirePermission('read'), async (req, res) => {
+router.get('/plc/control', async (req, res) => {
   try {
     const { plcClient } = req.app.locals;
     
@@ -221,7 +228,7 @@ router.get('/plc/control', verifyToken, requirePermission('read'), async (req, r
   }
 });
 
-router.post('/plc/control', verifyToken, requirePermission('write'), async (req, res) => {
+router.post('/plc/control', async (req, res) => {
   try {
     const { plcClient } = req.app.locals;
     const { start, stop, home, estop } = req.body;
@@ -237,7 +244,7 @@ router.post('/plc/control', verifyToken, requirePermission('write'), async (req,
     if (estop !== undefined) controlBits.estop = estop;
     
     await plcClient.setControlBits(controlBits);
-    logger.plc('PLC control bits written', { controlBits, user: req.user.username });
+    logger.plc('PLC control bits written', { controlBits });
     
     res.json({ success: true });
   } catch (error) {
@@ -247,7 +254,7 @@ router.post('/plc/control', verifyToken, requirePermission('write'), async (req,
 });
 
 // Bridge control routes (requires control permission)
-router.post('/bridge/start', verifyToken, requirePermission('control'), async (req, res) => {
+router.post('/bridge/start', async (req, res) => {
   try {
     const { bridge } = req.app.locals;
     
@@ -265,7 +272,7 @@ router.post('/bridge/start', verifyToken, requirePermission('control'), async (r
   }
 });
 
-router.post('/bridge/stop', verifyToken, requirePermission('control'), async (req, res) => {
+router.post('/bridge/stop', async (req, res) => {
   try {
     const { bridge } = req.app.locals;
     
@@ -283,7 +290,7 @@ router.post('/bridge/stop', verifyToken, requirePermission('control'), async (re
   }
 });
 
-router.get('/bridge/status', verifyToken, requirePermission('read'), async (req, res) => {
+router.get('/bridge/status', async (req, res) => {
   try {
     const { bridge } = req.app.locals;
     
@@ -299,7 +306,7 @@ router.get('/bridge/status', verifyToken, requirePermission('read'), async (req,
   }
 });
 
-router.post('/bridge/command', verifyToken, requirePermission('control'), async (req, res) => {
+router.post('/bridge/command', async (req, res) => {
   try {
     const { bridge } = req.app.locals;
     const { command, params = {} } = req.body;
@@ -313,7 +320,7 @@ router.post('/bridge/command', verifyToken, requirePermission('control'), async 
     }
     
     const result = await bridge.executeCommand(command, params);
-    logger.bridge('Bridge command executed', { command, params, user: req.user.username });
+    logger.bridge('Bridge command executed', { command, params });
     
     res.json({ success: true, result });
   } catch (error) {
@@ -364,7 +371,7 @@ router.post('/emergency-stop', async (req, res) => {
 });
 
 // Logs endpoint (admin only)
-router.get('/logs', verifyToken, requireRole('admin'), (req, res) => {
+router.get('/logs', (req, res) => {
   // This would typically read from log files
   // For now, return a placeholder
   res.json({ message: 'Log viewing not implemented yet' });
