@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-app = Flask(__name__, static_folder='../frontend/dist')
+app = Flask(__name__, static_folder='../frontend')
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 CORS(app)
 
