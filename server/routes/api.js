@@ -138,7 +138,7 @@ router.post('/dobot/stop', async (req, res) => {
     }
     
     await dobotClient.clearQueue();
-    logger.dobot('Stop command executed', { user: req.user.username });
+    logger.dobot('Stop command executed', { user: req.user?.username || 'anonymous' });
     
     res.json({ success: true });
   } catch (error) {
@@ -323,7 +323,7 @@ router.post('/bridge/start', async (req, res) => {
     }
     
     await bridge.start();
-    logger.bridge('Bridge started', { user: req.user.username });
+    logger.bridge('Bridge started', { user: req.user?.username || 'anonymous' });
     
     res.json({ success: true });
   } catch (error) {
@@ -341,7 +341,7 @@ router.post('/bridge/stop', async (req, res) => {
     }
     
     await bridge.stop();
-    logger.bridge('Bridge stopped', { user: req.user.username });
+    logger.bridge('Bridge stopped', { user: req.user?.username || 'anonymous' });
     
     res.json({ success: true });
   } catch (error) {

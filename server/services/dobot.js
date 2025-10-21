@@ -11,7 +11,7 @@ class DobotClient extends EventEmitter {
     this.useUSB = useUSB;
     this.usbPath = usbPath;
     this.socket = null;
-    this.port = null;
+    this.serialPort = null;  // Fixed: renamed from this.port to this.serialPort to avoid conflict
     this.connected = false;
     this.commandQueue = [];
     this.responseHandlers = new Map();
@@ -60,7 +60,7 @@ class DobotClient extends EventEmitter {
 
   async connectUSB() {
     return new Promise((resolve, reject) => {
-      this.port = new SerialPort({
+      this.serialPort = new SerialPort({
         path: this.usbPath,
         baudRate: 115200,
         dataBits: 8,
@@ -76,12 +76,12 @@ class DobotClient extends EventEmitter {
         }
       });
 
-      this.port.on('data', (data) => this.handleResponse(data));
-      this.port.on('error', (err) => {
+      this.serialPort.on('data', (data) => this.handleResponse(data));
+      this.serialPort.on('error', (err) => {
         logger.error('Dobot USB error:', err);
         this.handleError(err);
       });
-      this.port.on('close', () => this.handleDisconnect());
+      this.serialPort.on('close', () => this.handleDisconnect());
     });
   }
 
@@ -133,7 +133,7 @@ class DobotClient extends EventEmitter {
       
       try {
         if (this.useUSB) {
-          this.port.write(packet);
+          this.serialPort.write(packet);
         } else {
           this.socket.write(packet);
         }
@@ -299,9 +299,9 @@ class DobotClient extends EventEmitter {
       this.socket.destroy();
       this.socket = null;
     }
-    if (this.port) {
-      this.port.close();
-      this.port = null;
+    if (this.serialPort) {
+      this.serialPort.close();
+      this.serialPort = null;
     }
     this.connected = false;
     this.emit('disconnected');

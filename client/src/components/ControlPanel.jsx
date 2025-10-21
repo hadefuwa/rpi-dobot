@@ -51,7 +51,7 @@ export default function ControlPanel({ socket, connected, compact = false }) {
           break;
 
         case 'suction':
-          response = await dobotAPI.setGrip(suctionEnabled);
+          response = await dobotAPI.setSuctionCup(suctionEnabled);
           addLog('success', `Suction cup ${suctionEnabled ? 'enabled' : 'disabled'}`);
           break;
 
