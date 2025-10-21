@@ -151,11 +151,11 @@ Copy and paste this template, then modify the values:
 # DOBOT GATEWAY CONFIGURATION
 # ===========================================
 
-# Dobot Robot Settings
-DOBOT_HOST=192.168.0.30          # CHANGE THIS: Your Dobot's IP address
-DOBOT_PORT=29999                 # Keep this (default port)
-DOBOT_USE_USB=false              # Set to 'true' if using USB cable
-DOBOT_USB_PATH=/dev/ttyUSB0      # USB path (only if using USB)
+# Dobot Robot Settings (USB Connection)
+DOBOT_HOST=192.168.0.30          # Not used for USB connection
+DOBOT_PORT=29999                 # Not used for USB connection  
+DOBOT_USE_USB=true               # Set to 'true' for USB connection
+DOBOT_USB_PATH=/dev/ttyUSB0      # USB device path (check with: ls /dev/ttyUSB*)
 
 # PLC Settings  
 PLC_IP=192.168.0.10              # CHANGE THIS: Your PLC's IP address
@@ -177,16 +177,25 @@ LOG_LEVEL=info
 LOG_DIR=/var/log/dobot-gateway
 ```
 
-**4.3 How to Find Your Device IP Addresses**
+**4.3 How to Configure Your Devices**
 
-**Finding Your Dobot's IP Address:**
-1. Connect your Dobot to the same network as your Raspberry Pi
-2. Check your router's admin panel (usually 192.168.1.1 or 192.168.0.1)
-3. Look for a device named "Dobot" or similar
-4. Note the IP address (e.g., 192.168.0.30)
+**Dobot Magician (USB Connection):**
+The Dobot Magician connects via USB cable, just like the official Dobot app. You don't need to find an IP address.
+
+**Finding Your Dobot's USB Device Path:**
+1. Connect your Dobot to your Raspberry Pi via USB cable
+2. Power on your Dobot
+3. Check which USB device it appears as:
+   ```bash
+   ls /dev/ttyUSB*
+   # or
+   ls /dev/ttyACM*
+   ```
+4. You should see something like `/dev/ttyUSB0` or `/dev/ttyACM0`
+5. Update the `DOBOT_USB_PATH` in your `.env` file with this path
 
 **Finding Your PLC's IP Address:**
-1. Connect your S7-1200 to the same network
+1. Connect your S7-1200 to the same network as your Raspberry Pi
 2. Use TIA Portal to check the PLC's IP settings
 3. Or check your router's admin panel for the PLC device
 4. Note the IP address (e.g., 192.168.0.10)
@@ -439,20 +448,22 @@ hostname -I
 **Problem**: Dobot connection status is red
 **Solution**:
 ```bash
-# 1. Check if your Dobot is powered on
-# 2. Verify the IP address in .env file
+# 1. Check if your Dobot is powered on and connected via USB
+# 2. Check if the USB device is detected
+ls /dev/ttyUSB*
+ls /dev/ttyACM*
+
+# 3. Verify the USB path in .env file
 nano .env
+# Make sure DOBOT_USB_PATH matches the device found above
 
-# 3. Test network connectivity
-ping YOUR_DOBOT_IP_ADDRESS
-
-# 4. Test the specific port
-telnet YOUR_DOBOT_IP_ADDRESS 29999
-
-# 5. If using USB, check USB permissions
+# 4. Check USB permissions
 ls -la /dev/ttyUSB*
 sudo usermod -a -G dialout $USER
 sudo reboot
+
+# 5. Test USB connection (after reboot)
+sudo chmod 666 /dev/ttyUSB0  # Replace with your device path
 ```
 
 **7.4 PLC Shows as "Disconnected"**
@@ -623,7 +634,7 @@ pm2 restart dobot-gateway
 hostname -I  # Get your Pi's IP address
 
 # If connections fail
-ping YOUR_DOBOT_IP_ADDRESS  # Test Dobot connection
+ls /dev/ttyUSB*             # Check if Dobot USB device is detected
 ping YOUR_PLC_IP_ADDRESS    # Test PLC connection
 ```
 
@@ -637,7 +648,7 @@ ping YOUR_PLC_IP_ADDRESS    # Test PLC connection
 
 **Useful Information to Include When Asking for Help:**
 - Your Raspberry Pi's IP address
-- Your Dobot's IP address  
+- Your Dobot's USB device path (from `ls /dev/ttyUSB*`)
 - Your PLC's IP address
 - The output of `pm2 status`
 - The last few lines of `pm2 logs dobot-gateway`
