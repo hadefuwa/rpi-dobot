@@ -74,10 +74,16 @@ def get_all_data():
     if not plc_client.is_connected():
         plc_client.connect()
 
-    # Get all PLC data in optimized way
+    # Get all PLC data in optimized way with small delays between operations
     plc_status = plc_client.get_status()
-    target_pose = plc_client.read_target_pose() if plc_status['connected'] else {'x': 0.0, 'y': 0.0, 'z': 0.0}
-    control_bits = plc_client.read_control_bits() if plc_status['connected'] else {}
+
+    if plc_status['connected']:
+        target_pose = plc_client.read_target_pose()
+        time.sleep(0.05)  # 50ms delay to avoid job pending
+        control_bits = plc_client.read_control_bits()
+    else:
+        target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+        control_bits = {}
 
     # Get Dobot data
     dobot_status_data = {
