@@ -185,11 +185,20 @@ class DobotClient extends EventEmitter {
         if (handler.cmdId === cmdId) {
           clearTimeout(handler.timer);
           this.responseHandlers.delete(commandId);
+          
+          const queuedIndex = payload.length >= 4 ? payload.readUInt32LE(0) : undefined;
+          
+          // Enhanced logging for debugging
+          logger.info(`Dobot response - Command: 0x${cmdId.toString(16)}, Ctrl: 0x${ctrl.toString(16)}, Payload length: ${payload.length}, QueueIndex: ${queuedIndex}`);
+          if (payload.length > 0 && payload.length < 20) {
+            logger.debug(`Payload hex: ${payload.toString('hex')}`);
+          }
+          
           handler.resolve({ 
             payload, 
             ctrl, 
             cmdId,
-            queuedIndex: payload.length >= 4 ? payload.readUInt32LE(0) : undefined
+            queuedIndex
           });
           break;
         }
@@ -241,6 +250,8 @@ class DobotClient extends EventEmitter {
     // Validate coordinates
     this.validateCoordinates(x, y, z, r);
     
+    logger.info(`Sending movePTP command: x=${x}, y=${y}, z=${z}, r=${r}, mode=${mode}`);
+    
     const params = Buffer.allocUnsafe(17);
     params.writeUInt8(mode, 0); // Mode: MOVJ_XYZ
     params.writeFloatLE(x, 1);
@@ -249,6 +260,7 @@ class DobotClient extends EventEmitter {
     params.writeFloatLE(r, 13);
     
     const response = await this.sendCommand(0x54, 0x02, params);
+    logger.info(`movePTP response received. QueueIndex: ${response.queuedIndex}`);
     return response.queuedIndex;
   }
 
@@ -258,7 +270,9 @@ class DobotClient extends EventEmitter {
   }
 
   async startQueue() {
+    logger.info('Starting Dobot command queue execution (0xF6)');
     const response = await this.sendCommand(0xF6, 0x00);
+    logger.info('Queue start command sent');
     return response;
   }
 
