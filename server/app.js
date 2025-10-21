@@ -1,5 +1,5 @@
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const config = require('../config');
 const express = require('express');
 const http = require('http');
 const https = require('https');
@@ -60,44 +60,41 @@ class DobotGateway {
   }
 
   async initializeServices() {
-    // Log environment variables for debugging
-    logger.info('Environment variables loaded:', {
-      DOBOT_HOST: process.env.DOBOT_HOST || 'NOT SET',
-      DOBOT_PORT: process.env.DOBOT_PORT || 'NOT SET',
-      DOBOT_USE_USB: process.env.DOBOT_USE_USB || 'NOT SET',
-      PLC_IP: process.env.PLC_IP || 'NOT SET'
+    // Log configuration being used
+    logger.info('Configuration loaded:', {
+      DOBOT_HOST: config.dobot.host,
+      DOBOT_PORT: config.dobot.port,
+      DOBOT_USE_USB: config.dobot.useUSB,
+      PLC_IP: config.plc.ip
     });
-    
-    // Initialize Dobot client with fallback defaults
-    const dobotHost = process.env.DOBOT_HOST || '192.168.0.30';
-    const dobotPort = parseInt(process.env.DOBOT_PORT || '29999');
-    const dobotUseUSB = process.env.DOBOT_USE_USB === 'true';
-    const dobotUSBPath = process.env.DOBOT_USB_PATH || '/dev/ttyACM0';
     
     logger.info('Initializing Dobot with:', {
-      host: dobotHost,
-      port: dobotPort,
-      useUSB: dobotUseUSB,
-      usbPath: dobotUSBPath
+      host: config.dobot.host,
+      port: config.dobot.port,
+      useUSB: config.dobot.useUSB,
+      usbPath: config.dobot.usbPath
     });
     
+    // Initialize Dobot client from config
     this.dobotClient = new DobotClient(
-      dobotHost,
-      dobotPort,
-      dobotUseUSB,
-      dobotUSBPath
+      config.dobot.host,
+      config.dobot.port,
+      config.dobot.useUSB,
+      config.dobot.usbPath
     );
 
-    // Initialize PLC client
+    // Initialize PLC client from config
     this.plcClient = new S7Client(
-      process.env.PLC_IP,
-      parseInt(process.env.PLC_RACK),
-      parseInt(process.env.PLC_SLOT)
+      config.plc.ip,
+      config.plc.rack,
+      config.plc.slot
     );
 
-    // Initialize Bridge
+    // Initialize Bridge from config
     this.bridge = new Bridge(this.dobotClient, this.plcClient, {
-      pollInterval: parseInt(process.env.POLL_INTERVAL) || 100
+      pollInterval: config.bridge.pollInterval,
+      maxRetries: config.bridge.maxRetries,
+      retryDelay: config.bridge.retryDelay
     });
 
     // Setup service event handlers
@@ -195,7 +192,7 @@ class DobotGateway {
 
   setupExpress() {
     // Security middleware - Disable HTTPS-only features when running on HTTP
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = config.server.nodeEnv === 'production';
 
     this.app.use(helmet({
       contentSecurityPolicy: {
@@ -220,7 +217,7 @@ class DobotGateway {
 
     // CORS configuration
     this.app.use(cors({
-      origin: process.env.NODE_ENV === 'production' 
+      origin: config.server.nodeEnv === 'production' 
         ? ['https://raspberrypi.local', 'https://localhost'] 
         : true,
       credentials: true
@@ -268,7 +265,7 @@ class DobotGateway {
     
     this.io = new Server(this.server, {
       cors: {
-        origin: process.env.NODE_ENV === 'production' 
+        origin: config.server.nodeEnv === 'production' 
           ? ['https://raspberrypi.local', 'https://localhost'] 
           : true,
         credentials: true
@@ -317,14 +314,15 @@ class DobotGateway {
   }
 
   createServer() {
-    const port = parseInt(process.env.PORT) || 443;
-    const httpPort = parseInt(process.env.HTTP_PORT) || 8080;
+    const port = config.server.httpsPort;
+    const httpPort = config.server.port;
 
-    if (process.env.NODE_ENV === 'production' && fs.existsSync(process.env.SSL_KEY_PATH) && fs.existsSync(process.env.SSL_CERT_PATH)) {
+    if (config.server.nodeEnv === 'production' && config.security.sslKeyPath && config.security.sslCertPath && 
+        fs.existsSync(config.security.sslKeyPath) && fs.existsSync(config.security.sslCertPath)) {
       // HTTPS server
       const options = {
-        key: fs.readFileSync(process.env.SSL_KEY_PATH),
-        cert: fs.readFileSync(process.env.SSL_CERT_PATH)
+        key: fs.readFileSync(config.security.sslKeyPath),
+        cert: fs.readFileSync(config.security.sslCertPath)
       };
       
       const httpsServer = https.createServer(options, this.app);
@@ -393,7 +391,7 @@ class DobotGateway {
       logger.error('Unhandled error:', error);
       res.status(500).json({ 
         error: 'Internal server error',
-        ...(process.env.NODE_ENV === 'development' && { details: error.message })
+        ...(config.server.nodeEnv === 'development' && { details: error.message })
       });
     });
 
