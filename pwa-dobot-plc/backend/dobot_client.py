@@ -285,53 +285,11 @@ class DobotClient:
         try:
             logger.info(f"🤖 Executing move_to({x}, {y}, {z}, {r}, wait={wait})")
 
-            # WORKAROUND: Recreate connection for EACH movement (like the working test)
-            # This is the ONLY way I could get it to work consistently
-            logger.info("🔄 Reconnecting for movement...")
-            old_device = self.device
-            old_port = self.actual_port
-
-            try:
-                old_device.close()
-            except:
-                pass
-
-            # Create fresh connection
-            time.sleep(0.5)  # Wait for port to be fully released
-            self.device = PyDobot(port=old_port, verbose=False)
-            logger.info("✅ Reconnected")
-            time.sleep(0.5)  # Wait for new connection to stabilize
-
-            # CRITICAL: Clear alarms AND reset pose
-            try:
-                from pydobot.message import Message
-                from pydobot.enums.CommunicationProtocolIDs import CommunicationProtocolIDs
-                from pydobot.enums.ControlValues import ControlValues
-
-                # Clear alarms
-                msg = Message()
-                msg.id = CommunicationProtocolIDs.CLEAR_ALL_ALARMS_STATE
-                msg.ctrl = ControlValues.ONE
-                self.device._send_command(msg)
-                logger.info("✅ Cleared alarms")
-
-                # Reset pose (CRITICAL!)
-                msg = Message()
-                msg.id = CommunicationProtocolIDs.RESET_POSE
-                msg.ctrl = ControlValues.ZERO
-                msg.params = bytearray([0x01, 0x00, 0x00, 0x00])
-                self.device._send_command(msg)
-                logger.info("✅ Reset pose")
-
-                time.sleep(0.5)  # Brief pause after reset
-            except Exception as e:
-                logger.warning(f"⚠️ Could not reset before movement: {e}")
-
             # Get initial position
             initial_pose = self.get_pose()
             logger.info(f"📍 Initial position: X={initial_pose['x']:.2f}, Y={initial_pose['y']:.2f}, Z={initial_pose['z']:.2f}")
 
-            # Use direct move_to like the test
+            # Use direct move_to
             self.device.move_to(x, y, z, r, wait=wait)
 
             if wait:
