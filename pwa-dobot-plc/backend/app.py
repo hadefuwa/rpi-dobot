@@ -302,7 +302,10 @@ def dobot_move():
     if not dobot_client.connected:
         return jsonify({'error': 'Dobot not connected'}), 503
 
-    logger.info(f"▶️ Move command received: ({data['x']}, {data['y']}, {data['z']}, {data.get('r', 0)})")
+    # Get position before move
+    pos_before = dobot_client.get_pose()
+    logger.info(f"▶️ Move command: ({data['x']}, {data['y']}, {data['z']}, {data.get('r', 0)}) - Current: ({pos_before['x']:.1f}, {pos_before['y']:.1f}, {pos_before['z']:.1f})")
+
     success = dobot_client.move_to(
         data['x'],
         data['y'],
@@ -312,8 +315,21 @@ def dobot_move():
     )
 
     if success:
-        logger.info(f"✅ Move command succeeded")
-        return jsonify({'success': True, 'executed': True})
+        # Verify robot actually moved
+        time.sleep(0.3)  # Brief delay to ensure movement settled
+        pos_after = dobot_client.get_pose()
+
+        # Calculate distance moved
+        distance = ((pos_after['x'] - pos_before['x'])**2 +
+                   (pos_after['y'] - pos_before['y'])**2 +
+                   (pos_after['z'] - pos_before['z'])**2)**0.5
+
+        if distance > 1.0:  # Moved more than 1mm
+            logger.info(f"✅ ACTUAL MOVEMENT: Moved {distance:.1f}mm to ({pos_after['x']:.1f}, {pos_after['y']:.1f}, {pos_after['z']:.1f})")
+            return jsonify({'success': True, 'executed': True, 'distance_moved': round(distance, 1)})
+        else:
+            logger.error(f"⚠️ ROBOT DID NOT MOVE! Distance: {distance:.1f}mm - Position: ({pos_after['x']:.1f}, {pos_after['y']:.1f}, {pos_after['z']:.1f})")
+            return jsonify({'success': False, 'error': f'Robot did not move (only {distance:.1f}mm)', 'distance_moved': round(distance, 1)}), 500
     else:
         error_msg = dobot_client.last_error or 'Movement failed'
         logger.error(f"❌ Move command failed: {error_msg}")
