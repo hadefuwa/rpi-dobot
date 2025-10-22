@@ -63,59 +63,131 @@ class DobotClient:
 
     def connect(self) -> bool:
         """Connect to Dobot robot with improved initialization"""
-        if not self.use_usb or not DOBOT_AVAILABLE:
-            logger.info("Dobot connection skipped (USB disabled or library not available)")
+        logger.info("🔌 Starting Dobot connection process...")
+        
+        if not self.use_usb:
+            self.last_error = "USB connection disabled in configuration"
+            logger.warning(f"⚠️ {self.last_error}")
+            return False
+            
+        if not DOBOT_AVAILABLE:
+            self.last_error = "pydobot library not installed or not available"
+            logger.error(f"❌ {self.last_error}")
+            logger.error("💡 To fix: pip install pydobot")
             return False
 
+        logger.info(f"📋 Connection settings: use_usb={self.use_usb}, usb_path={self.usb_path}")
+
         try:
-            # Try configured port first
-            if self._try_connect(self.usb_path):
-                self._initialize_robot()
-                return True
+            # Check if configured port exists
+            import os
+            if not os.path.exists(self.usb_path):
+                logger.warning(f"⚠️ Configured port {self.usb_path} does not exist")
+            else:
+                logger.info(f"✅ Configured port {self.usb_path} exists, attempting connection...")
+                if self._try_connect(self.usb_path):
+                    self._initialize_robot()
+                    return True
+                else:
+                    logger.warning(f"⚠️ Failed to connect to configured port {self.usb_path}")
 
             # If configured port fails, scan all USB ports
-            logger.warning(f"⚠️ {self.usb_path} not found, scanning all USB ports...")
+            logger.info("🔍 Scanning for available USB devices...")
             available_ports = self.find_dobot_ports()
 
             if not available_ports:
                 self.last_error = "No USB devices found (ttyACM* or ttyUSB*)"
                 logger.error(f"❌ {self.last_error}")
+                logger.error("💡 Troubleshooting steps:")
+                logger.error("   1. Check if Dobot is connected via USB")
+                logger.error("   2. Check if USB cable is working")
+                logger.error("   3. Try: ls /dev/tty* | grep -E '(ACM|USB)'")
+                logger.error("   4. Check if user has permission to access USB devices")
                 return False
 
-            logger.info(f"Found USB devices: {', '.join(available_ports)}")
+            logger.info(f"📱 Found {len(available_ports)} USB devices: {', '.join(available_ports)}")
 
             # Try each port
-            for port in available_ports:
+            for i, port in enumerate(available_ports, 1):
                 if port == self.usb_path:
-                    continue  # Already tried this one
+                    logger.info(f"⏭️ Skipping {port} (already tried as configured port)")
+                    continue
 
+                logger.info(f"🔌 Attempting connection {i}/{len(available_ports)}: {port}")
                 if self._try_connect(port):
-                    logger.info(f"💡 TIP: Update your .env file to use DOBOT_USB_PATH={port}")
+                    logger.info(f"💡 TIP: Update your config to use USB path: {port}")
                     self._initialize_robot()
                     return True
 
             self.last_error = f"Dobot not found on any USB port: {', '.join(available_ports)}"
             logger.error(f"❌ {self.last_error}")
+            logger.error("💡 Troubleshooting steps:")
+            logger.error("   1. Check if Dobot is powered on")
+            logger.error("   2. Check if Dobot is in the correct mode")
+            logger.error("   3. Try unplugging and reconnecting USB")
+            logger.error("   4. Check if another program is using the device")
+            logger.error("   5. Try: sudo chmod 666 /dev/ttyACM*")
             return False
 
         except Exception as e:
             self.last_error = f"Connection error: {str(e)}"
             logger.error(f"❌ {self.last_error}")
             import traceback
+            logger.error("📋 Full error traceback:")
             logger.error(traceback.format_exc())
             return False
 
     def _try_connect(self, port: str) -> bool:
         """Try to connect to a specific port"""
         try:
-            logger.info(f"Trying to connect to Dobot on {port}...")
+            logger.info(f"🔌 Attempting connection to {port}...")
+            
+            # Check port permissions
+            import stat
+            try:
+                port_stat = os.stat(port)
+                if not (port_stat.st_mode & stat.S_IRUSR and port_stat.st_mode & stat.S_IWUSR):
+                    logger.warning(f"⚠️ Port {port} may not have read/write permissions")
+                    logger.warning(f"💡 Try: sudo chmod 666 {port}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not check port permissions: {e}")
+            
+            # Try to create PyDobot instance
+            logger.info(f"🤖 Creating PyDobot instance on {port}...")
             self.device = PyDobot(port=port, verbose=False)
+            
+            # Test basic communication
+            logger.info(f"📡 Testing communication with Dobot on {port}...")
+            try:
+                # Try to get current pose to verify communication
+                pose = self.device.pose()
+                logger.info(f"✅ Communication test successful! Current pose: {pose}")
+            except Exception as e:
+                logger.warning(f"⚠️ Communication test failed: {e}")
+                # Still consider it connected if PyDobot instance was created
+                logger.info("🔄 Continuing despite communication test failure...")
+            
             self.connected = True
             self.actual_port = port
-            logger.info(f"✅ Connected to Dobot on {port}")
+            logger.info(f"✅ Successfully connected to Dobot on {port}")
             return True
+            
         except Exception as e:
-            logger.debug(f"Port {port} failed: {e}")
+            logger.error(f"❌ Connection to {port} failed: {e}")
+            logger.error(f"📋 Error type: {type(e).__name__}")
+            
+            # Provide specific troubleshooting based on error type
+            if "Permission denied" in str(e):
+                logger.error("💡 Permission issue - try: sudo chmod 666 /dev/ttyACM*")
+            elif "No such file or directory" in str(e):
+                logger.error("💡 Port doesn't exist - check if device is connected")
+            elif "Device or resource busy" in str(e):
+                logger.error("💡 Port is busy - another program may be using it")
+            elif "timeout" in str(e).lower():
+                logger.error("💡 Timeout - Dobot may not be responding or in wrong mode")
+            else:
+                logger.error(f"💡 Unknown error - check Dobot power and USB connection")
+                
             return False
 
     def _initialize_robot(self):

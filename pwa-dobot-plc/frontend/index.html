@@ -457,6 +457,7 @@
             <div class="card">
                 <h2>⚙️ Settings</h2>
                 <button class="btn btn-primary" onclick="openSettings()">Configure System</button>
+                <button class="btn btn-primary" onclick="debugDobot()" style="margin-top: 8px;">🔍 Debug Dobot</button>
             </div>
 
             <!-- Manual Control Card -->
@@ -1148,6 +1149,49 @@
             } catch (error) {
                 addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error restarting server: ' + error.message);
+            }
+        }
+
+        async function debugDobot() {
+            try {
+                addLog('🔍 Getting Dobot debug information...', 'info');
+                const response = await fetch('/api/dobot/debug');
+                const debug = await response.json();
+                
+                addLog('📋 Dobot Debug Information:', 'info');
+                addLog(`   pydobot available: ${debug.pydobot_available}`, debug.pydobot_available ? 'success' : 'error');
+                addLog(`   USB enabled: ${debug.use_usb}`, debug.use_usb ? 'success' : 'warning');
+                addLog(`   Configured port: ${debug.configured_port}`, 'info');
+                addLog(`   Actual port: ${debug.actual_port || 'None'}`, debug.actual_port ? 'success' : 'warning');
+                addLog(`   Connected: ${debug.connected}`, debug.connected ? 'success' : 'error');
+                addLog(`   Last error: ${debug.last_error || 'None'}`, debug.last_error ? 'error' : 'success');
+                
+                addLog(`   Available ports: ${debug.available_ports.length} found`, debug.available_ports.length > 0 ? 'success' : 'error');
+                debug.available_ports.forEach(port => {
+                    addLog(`     - ${port}`, 'info');
+                });
+                
+                debug.port_details.forEach(port => {
+                    if (port.exists) {
+                        addLog(`   Port ${port.port}: permissions=${port.permissions}, readable=${port.readable}, writable=${port.writable}`, 
+                               (port.readable && port.writable) ? 'success' : 'warning');
+                    } else {
+                        addLog(`   Port ${port.port}: ${port.error}`, 'error');
+                    }
+                });
+                
+                if (!debug.pydobot_available) {
+                    addLog('💡 To fix: pip install pydobot', 'info');
+                }
+                if (!debug.connected && debug.available_ports.length === 0) {
+                    addLog('💡 Check if Dobot is connected via USB', 'info');
+                }
+                if (!debug.connected && debug.available_ports.length > 0) {
+                    addLog('💡 Try: sudo chmod 666 /dev/ttyACM*', 'info');
+                }
+                
+            } catch (error) {
+                addLog('❌ Debug error: ' + error.message, 'error');
             }
         }
 

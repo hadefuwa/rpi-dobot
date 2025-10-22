@@ -218,13 +218,67 @@ def dobot_status():
         'last_error': dobot_client.last_error
     })
 
+@app.route('/api/dobot/debug', methods=['GET'])
+def dobot_debug():
+    """Get detailed Dobot debug information"""
+    import os
+    import glob
+    
+    # Get available USB ports
+    available_ports = dobot_client.find_dobot_ports()
+    
+    # Check if pydobot is available
+    try:
+        from pydobot import Dobot as PyDobot
+        pydobot_available = True
+    except ImportError:
+        pydobot_available = False
+    
+    # Check port permissions
+    port_info = []
+    for port in available_ports:
+        try:
+            import stat
+            port_stat = os.stat(port)
+            permissions = oct(port_stat.st_mode)[-3:]
+            port_info.append({
+                'port': port,
+                'exists': True,
+                'permissions': permissions,
+                'readable': bool(port_stat.st_mode & stat.S_IRUSR),
+                'writable': bool(port_stat.st_mode & stat.S_IWUSR)
+            })
+        except Exception as e:
+            port_info.append({
+                'port': port,
+                'exists': False,
+                'error': str(e)
+            })
+    
+    return jsonify({
+        'pydobot_available': pydobot_available,
+        'use_usb': dobot_client.use_usb,
+        'configured_port': dobot_client.usb_path,
+        'actual_port': dobot_client.actual_port,
+        'connected': dobot_client.connected,
+        'last_error': dobot_client.last_error,
+        'available_ports': available_ports,
+        'port_details': port_info
+    })
+
 @app.route('/api/dobot/connect', methods=['POST'])
 def dobot_connect():
     """Connect to Dobot"""
+    logger.info("🔌 Manual Dobot connection requested")
     success = dobot_client.connect()
+    if success:
+        logger.info("✅ Manual Dobot connection successful")
+    else:
+        logger.error(f"❌ Manual Dobot connection failed: {dobot_client.last_error}")
     return jsonify({
         'success': success,
-        'connected': dobot_client.connected
+        'connected': dobot_client.connected,
+        'error': dobot_client.last_error if not success else None
     })
 
 @app.route('/api/dobot/home', methods=['POST'])
@@ -628,7 +682,13 @@ if __name__ == '__main__':
     plc_client.connect()
 
     # Auto-connect to Dobot
-    dobot_client.connect()
+    logger.info("🤖 Attempting to connect to Dobot robot...")
+    dobot_connected = dobot_client.connect()
+    if dobot_connected:
+        logger.info("✅ Dobot connected successfully")
+    else:
+        logger.error(f"❌ Dobot connection failed: {dobot_client.last_error}")
+        logger.error("💡 Check the debug logs above for detailed troubleshooting steps")
 
     # Start polling
     start_polling_thread()
