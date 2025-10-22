@@ -252,6 +252,14 @@ class DobotClient:
         try:
             # pydobot.pose() returns tuple: (x, y, z, r, j1, j2, j3, j4)
             pose = self.device.pose()
+
+            # Check if pose is None (communication failure)
+            if pose is None:
+                logger.warning("⚠️ Dobot returned None for pose - connection may be broken")
+                self.last_error = "Communication lost - pose returned None"
+                self.connected = False
+                return {'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 0.0}
+
             return {
                 'x': float(pose[0]),
                 'y': float(pose[1]),
@@ -261,6 +269,8 @@ class DobotClient:
         except Exception as e:
             self.last_error = f"Error getting pose: {str(e)}"
             logger.error(self.last_error)
+            # Mark as disconnected on communication error
+            self.connected = False
             return {'x': 0.0, 'y': 0.0, 'z': 0.0, 'r': 0.0}
 
     def move_to(self, x: float, y: float, z: float, r: float = 0, wait: bool = True) -> bool:
