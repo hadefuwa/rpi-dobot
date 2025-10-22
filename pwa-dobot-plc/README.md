@@ -77,7 +77,7 @@ nano .env
 
 Update these values:
 - `DOBOT_USB_PATH` - Your Dobot device (usually `/dev/ttyACM1`)
-- `PLC_IP` - Your PLC IP address (usually `192.168.0.150`)
+- `PLC_IP` - Your PLC IP address (usually `192.168.1.150`)
 
 ### 6. Test the application
 ```bash
@@ -174,10 +174,10 @@ DOBOT_USB_PATH=/dev/ttyACM0  # or /dev/ttyACM1
 ### PLC not connecting
 ```bash
 # Test network connection
-ping 192.168.0.150
+ping 192.168.1.150
 
 # Check PLC IP in .env
-PLC_IP=192.168.0.150
+PLC_IP=192.168.1.150
 ```
 
 ### Port already in use

@@ -565,7 +565,7 @@
             <h3 style="color: #2563eb; margin-top: 30px;">🏭 PLC Configuration</h3>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 600; margin-bottom: 5px;">PLC IP Address:</label>
-                <input type="text" id="settingPLCIP" style="width: 100%;" placeholder="192.168.0.150">
+                <input type="text" id="settingPLCIP" style="width: 100%;" placeholder="192.168.1.150">
             </div>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;">
                 <div>
@@ -586,6 +586,7 @@
             <!-- Buttons -->
             <div style="display: flex; gap: 10px; margin-top: 30px;">
                 <button class="btn btn-success" onclick="saveSettings()" style="flex: 1;">💾 Save Settings</button>
+                <button class="btn btn-primary" onclick="restartServer()" style="flex: 1;">🔄 Restart Server</button>
                 <button class="btn btn-danger" onclick="closeSettings()" style="flex: 1;">❌ Cancel</button>
             </div>
             
@@ -1116,6 +1117,37 @@
             } catch (error) {
                 addLog('❌ Error: ' + error.message, 'error');
                 alert('❌ Error saving settings: ' + error.message);
+            }
+        }
+
+        async function restartServer() {
+            if (!confirm('🔄 Are you sure you want to restart the server?\n\nThis will disconnect all clients and restart the application.')) {
+                return;
+            }
+
+            try {
+                addLog('🔄 Restarting server...', 'info');
+                const response = await fetch('/api/restart', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('✅ ' + result.message, 'success');
+                    alert('✅ ' + result.message + '\n\nThe page will reload automatically in a few seconds.');
+                    
+                    // Close settings modal
+                    closeSettings();
+                    
+                    // Wait a moment then reload the page
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    addLog('❌ Restart failed: ' + (result.error || 'Unknown error'), 'error');
+                    alert('❌ Restart failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                addLog('❌ Error: ' + error.message, 'error');
+                alert('❌ Error restarting server: ' + error.message);
             }
         }
 

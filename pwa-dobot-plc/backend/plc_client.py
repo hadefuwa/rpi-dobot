@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class PLCClient:
     """S7 PLC Communication Client"""
 
-    def __init__(self, ip: str = '192.168.0.150', rack: int = 0, slot: int = 1):
+    def __init__(self, ip: str = '192.168.1.150', rack: int = 0, slot: int = 1):
         """
         Initialize PLC client
 

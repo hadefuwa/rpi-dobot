@@ -11,6 +11,8 @@ import os
 import time
 import threading
 import json
+import subprocess
+import sys
 from plc_client import PLCClient
 from dobot_client import DobotClient
 
@@ -53,7 +55,7 @@ def load_config():
                 "use_usb": True
             },
             "plc": {
-                "ip": "192.168.0.150",
+                "ip": "192.168.1.150",
                 "rack": 0,
                 "slot": 1,
                 "db_number": 1,
@@ -471,6 +473,50 @@ def update_settings():
         })
     except Exception as e:
         logger.error(f"Error saving settings: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/restart', methods=['POST'])
+def restart_server():
+    """Restart the server"""
+    try:
+        logger.info("🔄 Server restart requested")
+        
+        # Try PM2 restart first (if running under PM2)
+        try:
+            result = subprocess.run(['pm2', 'restart', 'pwa-dobot-plc'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                logger.info("✅ PM2 restart successful")
+                return jsonify({
+                    'success': True,
+                    'message': 'Server restarting via PM2...'
+                })
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        
+        # Fallback: try systemctl restart (if running as service)
+        try:
+            result = subprocess.run(['sudo', 'systemctl', 'restart', 'pwa-dobot-plc'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                logger.info("✅ Systemctl restart successful")
+                return jsonify({
+                    'success': True,
+                    'message': 'Server restarting via systemctl...'
+                })
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        
+        # Last resort: exit the process (will be restarted by supervisor/PM2)
+        logger.info("⚠️ No restart method available, exiting process")
+        threading.Timer(2.0, lambda: sys.exit(0)).start()
+        return jsonify({
+            'success': True,
+            'message': 'Server will restart in 2 seconds...'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error restarting server: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ==================================================

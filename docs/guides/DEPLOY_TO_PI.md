@@ -76,7 +76,7 @@ nano .env
 Set these values:
 ```bash
 DOBOT_USB_PATH=/dev/ttyACM1  # <-- Change this to your device
-PLC_IP=192.168.0.150          # Your PLC IP
+PLC_IP=192.168.1.150          # Your PLC IP
 PORT=8080                      # Web server port
 ```
 
@@ -172,7 +172,7 @@ sudo lsof -ti:8080 | xargs -r sudo kill -9
 
 ```bash
 # Test network connection
-ping 192.168.0.150
+ping 192.168.1.150
 
 # Check PLC IP in .env
 nano ~/rpi-dobot/pwa-dobot-plc/backend/.env
