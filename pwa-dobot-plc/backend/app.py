@@ -3,7 +3,7 @@ PWA Dobot-PLC Control Backend
 Flask API with WebSocket support for real-time PLC monitoring
 """
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 import logging
@@ -13,8 +13,10 @@ import threading
 import json
 import subprocess
 import sys
+import cv2
 from plc_client import PLCClient
 from dobot_client import DobotClient
+from camera_service import CameraService
 
 # Configure logging
 logging.basicConfig(
@@ -34,6 +36,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 # Initialize clients
 plc_client = None
 dobot_client = None
+camera_service = None
 
 # Polling state
 poll_thread = None
@@ -72,7 +75,7 @@ def save_config(config):
 
 def init_clients():
     """Initialize PLC and Dobot clients from config"""
-    global plc_client, dobot_client
+    global plc_client, dobot_client, camera_service
 
     config = load_config()
 
@@ -94,6 +97,20 @@ def init_clients():
     # Update home position if specified
     if 'home_position' in dobot_config:
         dobot_client.HOME_POSITION = dobot_config['home_position']
+
+    # Camera settings
+    camera_config = config.get('camera', {})
+    camera_service = CameraService(
+        camera_index=camera_config.get('index', 0),
+        width=camera_config.get('width', 640),
+        height=camera_config.get('height', 480)
+    )
+    # Initialize camera (but don't fail if camera not available)
+    try:
+        camera_service.initialize_camera()
+        logger.info("Camera service initialized")
+    except Exception as e:
+        logger.warning(f"Camera initialization failed (may not be connected): {e}")
 
     logger.info(f"Clients initialized - PLC: {plc_config['ip']}, Dobot USB: {dobot_config.get('usb_path', 'auto-detect')}")
 
@@ -673,6 +690,220 @@ def poll_loop():
         time.sleep(poll_interval)
 
     logger.info("Polling thread stopped")
+
+# ==================================================
+# Camera & Vision System Endpoints
+# ==================================================
+
+def generate_frames():
+    """Generator function for MJPEG streaming"""
+    while True:
+        if camera_service is None:
+            break
+        
+        frame_bytes = camera_service.get_frame_jpeg(quality=85)
+        if frame_bytes is None:
+            time.sleep(0.1)
+            continue
+        
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        time.sleep(0.033)  # ~30 FPS
+
+@app.route('/api/camera/stream')
+def camera_stream():
+    """MJPEG video stream endpoint"""
+    if camera_service is None:
+        return jsonify({'error': 'Camera service not initialized'}), 503
+    
+    return Response(
+        generate_frames(),
+        mimetype='multipart/x-mixed-replace; boundary=frame'
+    )
+
+@app.route('/api/camera/status', methods=['GET'])
+def camera_status():
+    """Get camera connection status"""
+    if camera_service is None:
+        return jsonify({
+            'initialized': False,
+            'connected': False,
+            'error': 'Camera service not initialized'
+        })
+    
+    try:
+        frame = camera_service.read_frame()
+        connected = frame is not None
+        
+        return jsonify({
+            'initialized': True,
+            'connected': connected,
+            'camera_index': camera_service.camera_index,
+            'resolution': {
+                'width': camera_service.width,
+                'height': camera_service.height
+            },
+            'last_frame_time': camera_service.frame_time
+        })
+    except Exception as e:
+        logger.error(f"Error checking camera status: {e}")
+        return jsonify({
+            'initialized': True,
+            'connected': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/camera/connect', methods=['POST'])
+def camera_connect():
+    """Initialize and connect to camera"""
+    global camera_service
+    
+    try:
+        data = request.json or {}
+        camera_index = data.get('index', 0)
+        width = data.get('width', 640)
+        height = data.get('height', 480)
+        
+        if camera_service is None:
+            camera_service = CameraService(
+                camera_index=camera_index,
+                width=width,
+                height=height
+            )
+        
+        success = camera_service.initialize_camera()
+        
+        if success:
+            # Update config
+            config = load_config()
+            config['camera'] = {
+                'index': camera_index,
+                'width': width,
+                'height': height
+            }
+            save_config(config)
+        
+        return jsonify({
+            'success': success,
+            'connected': success,
+            'error': None if success else 'Failed to initialize camera'
+        })
+    except Exception as e:
+        logger.error(f"Error connecting camera: {e}")
+        return jsonify({
+            'success': False,
+            'connected': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/camera/disconnect', methods=['POST'])
+def camera_disconnect():
+    """Disconnect and release camera"""
+    global camera_service
+    
+    try:
+        if camera_service is not None:
+            camera_service.release_camera()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error disconnecting camera: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/camera/capture', methods=['GET'])
+def camera_capture():
+    """Capture a single frame as JPEG"""
+    if camera_service is None:
+        return jsonify({'error': 'Camera service not initialized'}), 503
+    
+    try:
+        frame_bytes = camera_service.get_frame_jpeg(quality=95)
+        if frame_bytes is None:
+            return jsonify({'error': 'Failed to capture frame'}), 500
+        
+        return Response(
+            frame_bytes,
+            mimetype='image/jpeg',
+            headers={'Content-Disposition': 'inline; filename=capture.jpg'}
+        )
+    except Exception as e:
+        logger.error(f"Error capturing frame: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/vision/detect', methods=['POST'])
+def vision_detect():
+    """Run defect detection on current frame"""
+    if camera_service is None:
+        return jsonify({'error': 'Camera service not initialized'}), 503
+    
+    try:
+        data = request.json or {}
+        method = data.get('method', 'combined')  # 'blob', 'contour', 'edge', 'combined'
+        
+        # Read current frame
+        frame = camera_service.read_frame()
+        if frame is None:
+            return jsonify({'error': 'Failed to read frame from camera'}), 500
+        
+        # Run defect detection
+        results = camera_service.detect_defects(frame, method=method)
+        
+        # Optionally draw defects on frame
+        if data.get('annotate', False) and results['defects_found']:
+            annotated_frame = camera_service.draw_defects(frame, results['defects'])
+            # Encode annotated frame
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
+            ret, buffer = cv2.imencode('.jpg', annotated_frame, encode_param)
+            if ret:
+                results['annotated_image'] = buffer.tobytes().hex()  # Send as hex string
+        
+        return jsonify(results)
+    except Exception as e:
+        logger.error(f"Error in defect detection: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/vision/analyze', methods=['POST'])
+def vision_analyze():
+    """Analyze frame and return annotated image"""
+    if camera_service is None:
+        return jsonify({'error': 'Camera service not initialized'}), 503
+    
+    try:
+        data = request.json or {}
+        method = data.get('method', 'combined')
+        
+        # Read current frame
+        frame = camera_service.read_frame()
+        if frame is None:
+            return jsonify({'error': 'Failed to read frame from camera'}), 500
+        
+        # Run defect detection
+        results = camera_service.detect_defects(frame, method=method)
+        
+        # Draw defects on frame
+        annotated_frame = camera_service.draw_defects(frame, results['defects'])
+        
+        # Encode as JPEG
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+        ret, buffer = cv2.imencode('.jpg', annotated_frame, encode_param)
+        
+        if not ret:
+            return jsonify({'error': 'Failed to encode annotated image'}), 500
+        
+        # Return both JSON results and image
+        return Response(
+            buffer.tobytes(),
+            mimetype='image/jpeg',
+            headers={
+                'X-Defect-Count': str(results['defect_count']),
+                'X-Defects-Found': str(results['defects_found']).lower(),
+                'X-Confidence': str(results['confidence']),
+                'Content-Disposition': 'inline; filename=analyzed.jpg'
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in vision analysis: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ==================================================
 # Serve PWA Frontend
