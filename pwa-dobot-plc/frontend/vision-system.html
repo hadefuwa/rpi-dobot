@@ -465,6 +465,98 @@
             </div>
 
             <div class="content">
+                <!-- Information Panel -->
+                <div class="info-panel" style="background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                    <h3 style="color: #60a5fa; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="toggleInfoPanel()">
+                        <span id="infoToggleIcon">▼</span>
+                        <span>How the Vision System Works</span>
+                    </h3>
+                    <div id="infoContent" style="display: block;">
+                        <div style="color: #cbd5e1; line-height: 1.8; font-size: 14px;">
+                            <p style="margin-bottom: 15px;">
+                                The Vision System uses computer vision algorithms to detect defects and anomalies in captured images. 
+                                It connects to a USB camera and provides real-time analysis using OpenCV-based detection methods.
+                            </p>
+                            
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#127909; Camera Connection</h4>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li>Connect a USB camera to the Raspberry Pi</li>
+                                <li>Click "Connect Camera" to initialize the camera feed</li>
+                                <li>The system automatically detects the first available USB camera (index 0)</li>
+                                <li>Camera resolution is set to 640x480 pixels at 30 FPS</li>
+                                <li>Live stream is displayed in MJPEG format for efficient transmission</li>
+                            </ul>
+                            
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128269; Detection Methods</h4>
+                            <div style="margin-bottom: 15px;">
+                                <p style="font-weight: 600; color: #60a5fa; margin-bottom: 8px;">1. Blob Detection</p>
+                                <p style="margin-left: 20px; margin-bottom: 10px;">
+                                    Uses adaptive thresholding and morphological operations to detect small defects (10-5000 pixels). 
+                                    Best for detecting spots, holes, and small surface imperfections.
+                                </p>
+                                
+                                <p style="font-weight: 600; color: #60a5fa; margin-bottom: 8px;">2. Contour Analysis</p>
+                                <p style="margin-left: 20px; margin-bottom: 10px;">
+                                    Uses Canny edge detection and contour finding to identify larger defects (50-10000 pixels). 
+                                    Filters defects by area and aspect ratio. Best for detecting cracks, scratches, and irregular shapes.
+                                </p>
+                                
+                                <p style="font-weight: 600; color: #60a5fa; margin-bottom: 8px;">3. Edge Detection</p>
+                                <p style="margin-left: 20px; margin-bottom: 10px;">
+                                    Uses Canny edge detection and Hough line transform to detect linear defects and edge anomalies. 
+                                    Groups nearby lines to form defect regions. Best for detecting scratches, cuts, and edge defects.
+                                </p>
+                                
+                                <p style="font-weight: 600; color: #10b981; margin-bottom: 8px;">4. Combined (Recommended)</p>
+                                <p style="margin-left: 20px; margin-bottom: 10px;">
+                                    Uses all three methods simultaneously and merges nearby detections to eliminate duplicates. 
+                                    Provides the most comprehensive defect detection by combining the strengths of all methods.
+                                </p>
+                            </div>
+                            
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#9881;&#65039; How It Works</h4>
+                            <ol style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><strong>Image Capture:</strong> The system captures a frame from the USB camera</li>
+                                <li><strong>Preprocessing:</strong> Converts to grayscale and applies Gaussian blur to reduce noise</li>
+                                <li><strong>Detection:</strong> Applies the selected detection method(s) to identify potential defects</li>
+                                <li><strong>Filtering:</strong> Removes noise and merges nearby detections (if using combined method)</li>
+                                <li><strong>Analysis:</strong> Calculates defect properties (position, size, area, confidence)</li>
+                                <li><strong>Visualization:</strong> Draws bounding boxes and labels on the analyzed image</li>
+                            </ol>
+                            
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128202; Results Interpretation</h4>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><strong>Defects Found:</strong> Yes/No indicator if any defects were detected</li>
+                                <li><strong>Defect Count:</strong> Total number of unique defects found</li>
+                                <li><strong>Confidence:</strong> Detection confidence score (0-100%) based on defect coverage and count</li>
+                                <li><strong>Method:</strong> The detection method used for analysis</li>
+                                <li><strong>Defect Details:</strong> Each defect shows type, position (x, y), size (width × height), and area</li>
+                            </ul>
+                            
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128161; Tips for Best Results</h4>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li>Ensure good lighting conditions for clear image capture</li>
+                                <li>Keep the camera at a consistent distance from the object</li>
+                                <li>Use "Combined" method for general-purpose defect detection</li>
+                                <li>Use specific methods (Blob/Contour/Edge) for targeted defect types</li>
+                                <li>Enable "Auto-Analyze" for continuous monitoring (analyzes every 3 seconds)</li>
+                                <li>Use "Capture" to save images for later review or documentation</li>
+                                <li>Check the analyzed image to see visual annotations of detected defects</li>
+                            </ul>
+                            
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128295; Technical Details</h4>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li><strong>Library:</strong> OpenCV (cv2) for image processing</li>
+                                <li><strong>Frame Rate:</strong> 30 FPS for live stream</li>
+                                <li><strong>Resolution:</strong> 640×480 pixels (configurable)</li>
+                                <li><strong>Stream Format:</strong> MJPEG (Motion JPEG) for efficient web streaming</li>
+                                <li><strong>Image Format:</strong> JPEG with 85-90% quality for analysis</li>
+                                <li><strong>Processing:</strong> Real-time analysis with threading support</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="camera-section">
                     <!-- Camera Viewer -->
                     <div class="camera-viewer">
@@ -480,15 +572,15 @@
                         </div>
                         <div class="camera-controls">
                             <button class="btn btn-primary" id="connectCameraBtn" onclick="connectCamera()">
-                                <span>🔌</span>
+                                <span>&#128224;</span>
                                 <span>Connect Camera</span>
                             </button>
                             <button class="btn btn-danger" id="disconnectCameraBtn" onclick="disconnectCamera()" disabled>
-                                <span>🔴</span>
+                                <span>&#128308;</span>
                                 <span>Disconnect</span>
                             </button>
                             <button class="btn btn-success" id="captureBtn" onclick="captureFrame()" disabled>
-                                <span>📸</span>
+                                <span>&#128248;</span>
                                 <span>Capture</span>
                             </button>
                         </div>
@@ -512,7 +604,7 @@
                                 <span>Analyze Frame</span>
                             </button>
                             <button class="btn btn-success" id="autoAnalyzeBtn" onclick="toggleAutoAnalyze()" disabled>
-                                <span>⚡</span>
+                                <span>&#9889;</span>
                                 <span>Auto-Analyze</span>
                             </button>
                         </div>
@@ -723,7 +815,7 @@
                 alert('Error analyzing frame: ' + error.message);
             } finally {
                 analyzeBtn.disabled = false;
-                analyzeBtn.innerHTML = '<span>🔍</span><span>Analyze Frame</span>';
+                analyzeBtn.innerHTML = '<span>&#128269;</span><span>Analyze Frame</span>';
             }
         }
 
@@ -793,13 +885,25 @@
         function stopAutoAnalyze() {
             autoAnalyzeActive = false;
             const autoAnalyzeBtn = document.getElementById('autoAnalyzeBtn');
-            autoAnalyzeBtn.innerHTML = '<span>⚡</span><span>Auto-Analyze</span>';
+            autoAnalyzeBtn.innerHTML = '<span>&#9889;</span><span>Auto-Analyze</span>';
             autoAnalyzeBtn.classList.remove('btn-danger');
             autoAnalyzeBtn.classList.add('btn-success');
             
             if (autoAnalyzeInterval) {
                 clearInterval(autoAnalyzeInterval);
                 autoAnalyzeInterval = null;
+            }
+        }
+        
+        function toggleInfoPanel() {
+            const content = document.getElementById('infoContent');
+            const icon = document.getElementById('infoToggleIcon');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶';
             }
         }
     </script>
