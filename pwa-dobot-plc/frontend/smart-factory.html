@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Smart Factory Control">
+    <title>Smart Factory - Control System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: #e2e8f0;
+            display: flex;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 20px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar-header {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .sidebar-header h2 {
+            font-size: 24px;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+            margin-bottom: 5px;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu-item {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-menu-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #cbd5e1;
+            transition: all 0.3s;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .sidebar-menu-link:hover {
+            background: rgba(96, 165, 250, 0.1);
+            color: #60a5fa;
+            transform: translateX(4px);
+        }
+
+        .sidebar-menu-link.active {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            border-left: 3px solid #60a5fa;
+            font-weight: 600;
+        }
+
+        .sidebar-menu-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', sans-serif;
+            line-height: 1;
+            display: inline-block;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+                padding: 15px 10px;
+            }
+
+            .sidebar-header h2,
+            .sidebar-header p,
+            .sidebar-menu-link span:not(.sidebar-menu-icon) {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 70px;
+            }
+
+            .sidebar-menu-link {
+                justify-content: center;
+                padding: 12px;
+            }
+        }
+
+        .header {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            margin-bottom: 20px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        .content {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        .content h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #10b981;
+        }
+
+        .content p {
+            font-size: 18px;
+            color: #94a3b8;
+            line-height: 1.8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>🏭 Smart Factory</h2>
+            <p>Control System</p>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a href="/" class="sidebar-menu-link">
+                    <span class="sidebar-menu-icon">🏠</span>
+                    <span>Home</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="/robot-arm.html" class="sidebar-menu-link">
+                    <span class="sidebar-menu-icon">🤖</span>
+                    <span>Robot Arm</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="/smart-factory.html" class="sidebar-menu-link active">
+                    <span class="sidebar-menu-icon">🏭</span>
+                    <span>Smart Factory</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="/vision-system.html" class="sidebar-menu-link">
+                    <span class="sidebar-menu-icon">👁️</span>
+                    <span>Vision System</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="/rfid.html" class="sidebar-menu-link">
+                    <span class="sidebar-menu-icon">📡</span>
+                    <span>RFID</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <div class="header">
+                <div class="header-content">
+                    <h1>🏭 Smart Factory</h1>
+                </div>
+            </div>
+
+        <div class="content">
+            <h2>🏭</h2>
+            <h2>Smart Factory Control</h2>
+            <p>This section is under development. Factory-wide monitoring and control features will be available here.</p>
+            <p style="margin-top: 20px; font-size: 16px; color: #64748b;">Coming soon: Production statistics, system status, and factory operations management.</p>
+        </div>
+    </div>
+    </div>
+</body>
+</html>
+
