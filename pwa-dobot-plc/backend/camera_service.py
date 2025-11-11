@@ -10,6 +10,7 @@ import threading
 import time
 from typing import Optional, Dict, List, Tuple
 import io
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,10 @@ class CameraService:
         self.lock = threading.Lock()
         self.last_frame = None
         self.frame_time = 0
+        # Object detection model
+        self.object_net = None
+        self.object_classes = []
+        self.object_detection_enabled = False
         
     def initialize_camera(self) -> bool:
         """Initialize and open camera"""

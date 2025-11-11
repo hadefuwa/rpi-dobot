@@ -526,9 +526,26 @@
                     <div class="detection-panel">
                         <h3>&#128269; Defect Detection</h3>
                         <div class="method-selector">
-                            <label for="detectionMethod">Detection Method:</label>
-                            <select id="detectionMethod">
-                                <option value="combined">Combined (Recommended)</option>
+                            <div style="margin-bottom: 10px;">
+                                <label style="display: flex; align-items: center; color: #cbd5e1; font-size: 13px; cursor: pointer;">
+                                    <input type="checkbox" id="useObjectDetection" style="margin-right: 8px; cursor: pointer;" onchange="toggleObjectDetection()">
+                                    <strong>Enable Object Detection</strong> (runs before defect detection)
+                                </label>
+                            </div>
+                            <div id="objectDetectionOptions" style="display: none; margin-bottom: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
+                                <label for="objectDetectionMethod" style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Object Detection Method:</label>
+                                <select id="objectDetectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">
+                                    <option value="contour" selected>Contour Detection</option>
+                                    <option value="blob">Blob Detection</option>
+                                    <option value="combined">Combined</option>
+                                </select>
+                                <small style="color: #64748b; font-size: 10px; display: block; margin-top: 5px;">
+                                    Objects are detected first (green boxes), then defect detection runs on detected object regions
+                                </small>
+                            </div>
+                            <label for="detectionMethod" style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px; margin-top: 10px;">Defect Detection Method:</label>
+                            <select id="detectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">
+                                <option value="combined" selected>Combined (Recommended)</option>
                                 <option value="blob">Blob Detection</option>
                                 <option value="contour">Contour Analysis</option>
                                 <option value="edge">Edge Detection</option>
@@ -1108,13 +1125,31 @@
             }
         }
 
+        function toggleObjectDetection() {
+            objectDetectionEnabled = document.getElementById('useObjectDetection').checked;
+            const options = document.getElementById('objectDetectionOptions');
+            if (objectDetectionEnabled) {
+                options.style.display = 'block';
+                addSerialLog('Object detection enabled - will run before defect detection', 'info');
+            } else {
+                options.style.display = 'none';
+                addSerialLog('Object detection disabled', 'info');
+            }
+        }
+        
         async function analyzeFrame() {
             const analyzeBtn = document.getElementById('analyzeBtn');
             const method = document.getElementById('detectionMethod').value;
+            const objectMethod = document.getElementById('objectDetectionMethod').value;
             
             analyzeBtn.disabled = true;
             analyzeBtn.innerHTML = '<span class="loading"></span> Analyzing...';
-            addSerialLog(`Starting frame analysis (Method: ${method})...`, 'detection');
+            
+            if (objectDetectionEnabled) {
+                addSerialLog(`Starting analysis: Object Detection (${objectMethod}) → Defect Detection (${method})`, 'detection');
+            } else {
+                addSerialLog(`Starting frame analysis (Method: ${method})...`, 'detection');
+            }
             addSerialLog(`Using params: MinArea=${detectionParams.min_area}, MaxArea=${detectionParams.max_area}`, 'detection');
             
             try {
@@ -1124,7 +1159,10 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         method: method,
-                        params: detectionParams
+                        params: detectionParams,
+                        use_object_detection: objectDetectionEnabled,
+                        object_method: objectMethod,
+                        object_params: objectParams
                     })
                 });
                 
@@ -1142,7 +1180,10 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             method: method,
-                            params: detectionParams
+                            params: detectionParams,
+                            use_object_detection: objectDetectionEnabled,
+                            object_method: objectMethod,
+                            object_params: objectParams
                         })
                     });
                     
@@ -1196,6 +1237,16 @@
             exportBtn.disabled = false;
             saveAnalyzedBtn.disabled = false;
             clearResultsBtn.disabled = false;
+            
+            // Log object detection results if available
+            if (results.detected_objects && results.detected_objects.length > 0) {
+                addSerialLog(`Objects detected: ${results.objects_detected || results.detected_objects.length}`, 'detection');
+                results.detected_objects.forEach((obj, idx) => {
+                    addSerialLog(`  Object ${idx + 1}: ${obj.width}x${obj.height}px at (${obj.x}, ${obj.y})`, 'detection');
+                });
+            } else if (objectDetectionEnabled) {
+                addSerialLog('No objects detected', 'warning');
+            }
             
             // Log detection results
             if (results.defects_found) {
@@ -1426,6 +1477,16 @@
                 icon.textContent = '▶';
             }
         }
+        
+        // Object detection parameters
+        let objectDetectionEnabled = false;
+        let objectParams = {
+            min_object_area: 500,
+            max_object_area: 50000,
+            object_confidence: 0.5,
+            object_nms_threshold: 0.4,
+            roi_padding: 10
+        };
         
         // Detection parameters storage
         let detectionParams = {
