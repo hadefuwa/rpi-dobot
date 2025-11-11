@@ -520,6 +520,42 @@ def dobot_test():
             'error': str(e)
         }), 500
 
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Get current configuration"""
+    try:
+        config = load_config()
+        # Ensure vision config exists
+        if 'vision' not in config:
+            config['vision'] = {
+                'fault_bit_enabled': False,
+                'fault_bit_byte': 1,
+                'fault_bit_bit': 0
+            }
+        return jsonify(config)
+    except Exception as e:
+        logger.error(f"Error loading config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    """Update configuration (for vision config)"""
+    try:
+        new_config = request.json
+        current_config = load_config()
+        
+        # Update vision config if provided
+        if 'vision' in new_config:
+            current_config.setdefault('vision', {})
+            current_config['vision'].update(new_config['vision'])
+            save_config(current_config)
+            return jsonify({'success': True, 'message': 'Configuration saved'})
+        
+        return jsonify({'error': 'No vision config provided'}), 400
+    except Exception as e:
+        logger.error(f"Error saving config: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     """Get current configuration"""
@@ -549,6 +585,11 @@ def update_settings():
         current_config = load_config()
         current_config['dobot'].update(new_config['dobot'])
         current_config['plc'].update(new_config['plc'])
+        
+        # Update vision config if provided
+        if 'vision' in new_config:
+            current_config.setdefault('vision', {})
+            current_config['vision'].update(new_config['vision'])
         
         # Save to file
         save_config(current_config)
@@ -694,6 +735,40 @@ def poll_loop():
 # ==================================================
 # Camera & Vision System Endpoints
 # ==================================================
+
+def write_plc_fault_bit(defects_found: bool):
+    """Write vision fault status to PLC memory bit"""
+    try:
+        config = load_config()
+        vision_config = config.get('vision', {})
+        
+        # Check if fault bit is enabled
+        if not vision_config.get('fault_bit_enabled', False):
+            return {'written': False, 'reason': 'disabled'}
+        
+        # Get bit address
+        byte_offset = vision_config.get('fault_bit_byte', 1)
+        bit_offset = vision_config.get('fault_bit_bit', 0)
+        
+        # Ensure PLC is connected
+        if not plc_client.is_connected():
+            plc_client.connect()
+        
+        # Write fault bit (True = defects found, False = no defects)
+        if plc_client.is_connected():
+            success = plc_client.write_m_bit(byte_offset, bit_offset, defects_found)
+            if success:
+                logger.info(f"Vision fault bit M{byte_offset}.{bit_offset} set to {defects_found}")
+                return {'written': True, 'address': f'M{byte_offset}.{bit_offset}', 'value': defects_found}
+            else:
+                logger.warning(f"Failed to write vision fault bit M{byte_offset}.{bit_offset}")
+                return {'written': False, 'reason': 'write_failed', 'address': f'M{byte_offset}.{bit_offset}'}
+        else:
+            logger.warning("PLC not connected, cannot write vision fault bit")
+            return {'written': False, 'reason': 'plc_not_connected'}
+    except Exception as e:
+        logger.error(f"Error writing vision fault bit to PLC: {e}")
+        return {'written': False, 'reason': str(e)}
 
 def generate_frames():
     """Generator function for MJPEG streaming"""
@@ -848,6 +923,11 @@ def vision_detect():
         # Run defect detection
         results = camera_service.detect_defects(frame, method=method)
         
+        # Write to PLC fault bit if enabled
+        plc_write_result = write_plc_fault_bit(results.get('defects_found', False))
+        if plc_write_result:
+            results['plc_write'] = plc_write_result
+        
         # Optionally draw defects on frame
         if data.get('annotate', False) and results['defects_found']:
             annotated_frame = camera_service.draw_defects(frame, results['defects'])
@@ -879,6 +959,11 @@ def vision_analyze():
         
         # Run defect detection
         results = camera_service.detect_defects(frame, method=method)
+        
+        # Write to PLC fault bit if enabled
+        plc_write_result = write_plc_fault_bit(results.get('defects_found', False))
+        if plc_write_result:
+            results['plc_write'] = plc_write_result
         
         # Draw defects on frame
         annotated_frame = camera_service.draw_defects(frame, results['defects'])

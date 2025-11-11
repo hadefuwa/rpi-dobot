@@ -586,6 +586,47 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- PLC Fault Bit Configuration -->
+                        <div style="margin-top: 15px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(96, 165, 250, 0.3);">
+                            <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 10px; cursor: pointer;" onclick="togglePLCConfig()">
+                                <span id="plcConfigToggleIcon">▶</span> PLC Fault Bit Configuration
+                            </h4>
+                            <div id="plcConfig" style="display: none;">
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 12px; cursor: pointer;">
+                                        <input type="checkbox" id="plcFaultBitEnabled" onchange="updatePLCConfig()" style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span>Enable PLC Fault Bit Writing</span>
+                                    </label>
+                                    <p style="color: #94a3b8; font-size: 11px; margin-top: 5px; margin-left: 26px;">
+                                        When enabled, the system will write to the configured PLC memory bit when defects are detected.
+                                    </p>
+                                </div>
+                                <div id="plcBitConfig" style="display: none; margin-top: 10px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                        <div>
+                                            <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Memory Byte (M)</label>
+                                            <input type="number" id="plcFaultBitByte" min="0" max="255" value="1" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updatePLCConfig()">
+                                            <small style="color: #64748b; font-size: 10px;">Byte offset (e.g., 1 = M1.x)</small>
+                                        </div>
+                                        <div>
+                                            <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Bit Number</label>
+                                            <input type="number" id="plcFaultBitBit" min="0" max="7" value="0" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updatePLCConfig()">
+                                            <small style="color: #64748b; font-size: 10px;">Bit offset (0-7, e.g., 0 = M1.0)</small>
+                                        </div>
+                                    </div>
+                                    <div style="padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6; margin-bottom: 10px;">
+                                        <p style="color: #cbd5e1; font-size: 11px; margin: 0;">
+                                            <strong>Current Setting:</strong> <span id="plcBitAddress">M1.0</span><br>
+                                            <span style="color: #94a3b8;">Bit will be set to <strong>TRUE</strong> when defects are detected, <strong>FALSE</strong> when no defects.</span>
+                                        </p>
+                                    </div>
+                                    <button class="btn btn-primary" onclick="savePLCConfig()" style="width: 100%; font-size: 12px; padding: 6px;">
+                                        Save PLC Configuration
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         <div id="resultsDisplay" class="results-display" style="display: none;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                                 <h4 style="color: #8b5cf6; margin: 0;">Detection Results</h4>
@@ -627,6 +668,34 @@
                             </div>
                         </div>
                         <img id="analyzedImage" class="analyzed-image" src="" alt="Analyzed Image" style="display: none;">
+                    </div>
+                </div>
+                
+                <!-- Serial Monitor Log -->
+                <div style="margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.8); border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                    <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleSerialMonitor()">
+                        <span>
+                            <span id="serialMonitorToggleIcon">▶</span> Serial Monitor Log
+                        </span>
+                        <button class="btn btn-primary" onclick="clearSerialLog(event)" style="font-size: 11px; padding: 4px 8px; margin: 0;">
+                            Clear Log
+                        </button>
+                    </h4>
+                    <div id="serialMonitor" style="display: none;">
+                        <div id="serialLog" style="background: #0a0e1a; border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; padding: 12px; font-family: 'Courier New', monospace; font-size: 12px; color: #10b981; max-height: 400px; overflow-y: auto; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;">
+                            <div style="color: #64748b;">Vision System Serial Monitor - Ready</div>
+                            <div style="color: #64748b;">Waiting for camera events...</div>
+                        </div>
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; color: #cbd5e1; font-size: 11px; cursor: pointer;">
+                                <input type="checkbox" id="autoScrollLog" checked style="width: 14px; height: 14px; cursor: pointer;">
+                                <span>Auto-scroll</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; color: #cbd5e1; font-size: 11px; cursor: pointer;">
+                                <input type="checkbox" id="timestampLog" checked style="width: 14px; height: 14px; cursor: pointer;">
+                                <span>Show timestamps</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 
@@ -798,6 +867,7 @@
                 autoAnalyzeBtn.disabled = false;
                 frame.style.display = 'block';
                 placeholder.style.display = 'none';
+                addSerialLog('Camera status: CONNECTED', 'camera');
             } else {
                 indicator.classList.remove('connected');
                 statusText.textContent = 'Disconnected';
@@ -811,6 +881,7 @@
                 frame.style.display = 'none';
                 placeholder.style.display = 'flex';
                 stopStream();
+                addSerialLog('Camera status: DISCONNECTED', 'camera');
             }
         }
 
@@ -838,11 +909,14 @@
 
         async function disconnectCamera() {
             try {
+                addSerialLog('Disconnecting camera...', 'camera');
                 await fetch(`${API_BASE}/api/camera/disconnect`, { method: 'POST' });
                 updateCameraStatus(false);
                 stopAutoAnalyze();
+                addSerialLog('Camera disconnected', 'info');
             } catch (error) {
                 console.error('Error disconnecting camera:', error);
+                addSerialLog(`Camera disconnect error: ${error.message}`, 'error');
             }
         }
 
@@ -852,6 +926,7 @@
             const frame = document.getElementById('cameraFrame');
             const streamUrl = `${API_BASE}/api/camera/stream?t=${Date.now()}`;
             frame.src = streamUrl;
+            addSerialLog('Camera stream started (MJPEG)', 'camera');
             
             // Check stream health periodically
             streamInterval = setInterval(() => {
@@ -868,10 +943,12 @@
             }
             const frame = document.getElementById('cameraFrame');
             frame.src = '';
+            addSerialLog('Camera stream stopped', 'camera');
         }
 
         async function captureFrame() {
             try {
+                addSerialLog('Capturing frame...', 'camera');
                 const response = await fetch(`${API_BASE}/api/camera/capture?t=${Date.now()}`);
                 if (response.ok) {
                     const blob = await response.blob();
@@ -881,9 +958,13 @@
                     link.download = `capture-${Date.now()}.jpg`;
                     link.click();
                     URL.revokeObjectURL(url);
+                    addSerialLog('Frame captured and saved', 'success');
+                } else {
+                    addSerialLog('Frame capture failed', 'error');
                 }
             } catch (error) {
                 console.error('Error capturing frame:', error);
+                addSerialLog(`Frame capture error: ${error.message}`, 'error');
                 alert('Error capturing frame: ' + error.message);
             }
         }
@@ -894,6 +975,7 @@
             
             analyzeBtn.disabled = true;
             analyzeBtn.innerHTML = '<span class="loading"></span> Analyzing...';
+            addSerialLog(`Starting frame analysis (Method: ${method})...`, 'detection');
             
             try {
                 // Get analyzed image
@@ -909,6 +991,7 @@
                     const analyzedImg = document.getElementById('analyzedImage');
                     analyzedImg.src = url;
                     analyzedImg.style.display = 'block';
+                    addSerialLog('Frame analyzed, annotated image generated', 'detection');
                     
                     // Get detection results
                     const detectResponse = await fetch(`${API_BASE}/api/vision/detect`, {
@@ -923,10 +1006,13 @@
                     }
                 } else {
                     const error = await analyzeResponse.json();
-                    alert('Analysis failed: ' + (error.error || 'Unknown error'));
+                    const errorMsg = error.error || 'Unknown error';
+                    addSerialLog(`Analysis failed: ${errorMsg}`, 'error');
+                    alert('Analysis failed: ' + errorMsg);
                 }
             } catch (error) {
                 console.error('Error analyzing frame:', error);
+                addSerialLog(`Frame analysis error: ${error.message}`, 'error');
                 alert('Error analyzing frame: ' + error.message);
             } finally {
                 analyzeBtn.disabled = false;
@@ -965,6 +1051,29 @@
             saveAnalyzedBtn.disabled = false;
             clearResultsBtn.disabled = false;
             
+            // Log detection results
+            if (results.defects_found) {
+                addSerialLog(`⚠️ DEFECT DETECTED: ${results.defect_count} defect(s) found`, 'error');
+                addSerialLog(`   Confidence: ${results.confidence}% | Method: ${results.method}`, 'error');
+            } else {
+                addSerialLog(`✓ Quality check passed - No defects detected`, 'success');
+                addSerialLog(`   Confidence: ${results.confidence}% | Method: ${results.method}`, 'success');
+            }
+            
+            // Log PLC write status
+            if (results.plc_write) {
+                if (results.plc_write.written) {
+                    addSerialLog(`PLC Write: ${results.plc_write.address} = ${results.plc_write.value} (${results.plc_write.value ? 'FAULT' : 'OK'})`, 'plc');
+                } else {
+                    const reason = results.plc_write.reason || 'unknown';
+                    if (reason === 'disabled') {
+                        addSerialLog('PLC Write: Skipped (fault bit writing disabled)', 'plc');
+                    } else {
+                        addSerialLog(`PLC Write: Failed (${reason})`, 'error');
+                    }
+                }
+            }
+            
             // Display defects list
             defectsList.innerHTML = '';
             if (results.defects && results.defects.length > 0) {
@@ -979,6 +1088,9 @@
                         Area: ${defect.area ? defect.area.toFixed(0) : 'N/A'}px²
                     `;
                     defectsList.appendChild(defectItem);
+                    
+                    // Log each defect
+                    addSerialLog(`   Defect #${index + 1}: Type=${defect.type || 'Unknown'}, Pos=(${defect.x},${defect.y}), Size=${defect.width}x${defect.height}, Area=${defect.area?.toFixed(0) || 'N/A'}px²`, 'error');
                 });
             } else {
                 defectsList.innerHTML = '<div style="color: #10b981; text-align: center; padding: 10px;">✓ No defects detected</div>';
@@ -1016,6 +1128,8 @@
             autoAnalyzeBtn.classList.remove('btn-success');
             autoAnalyzeBtn.classList.add('btn-danger');
             
+            addSerialLog('Auto-analyze started (interval: 3 seconds)', 'detection');
+            
             // Analyze immediately
             analyzeFrame();
             
@@ -1033,6 +1147,8 @@
             autoAnalyzeBtn.innerHTML = '<span>&#9889;</span><span>Auto-Analyze</span>';
             autoAnalyzeBtn.classList.remove('btn-danger');
             autoAnalyzeBtn.classList.add('btn-success');
+            
+            addSerialLog('Auto-analyze stopped', 'detection');
             
             if (autoAnalyzeInterval) {
                 clearInterval(autoAnalyzeInterval);
@@ -1237,6 +1353,187 @@
         function clearHistory() {
             detectionHistory = [];
             updateHistoryDisplay();
+        }
+        
+        function togglePLCConfig() {
+            const config = document.getElementById('plcConfig');
+            const icon = document.getElementById('plcConfigToggleIcon');
+            if (config.style.display === 'none') {
+                config.style.display = 'block';
+                icon.textContent = '▼';
+                loadPLCConfig();
+            } else {
+                config.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+        
+        function updatePLCConfig() {
+            const enabled = document.getElementById('plcFaultBitEnabled').checked;
+            const bitConfig = document.getElementById('plcBitConfig');
+            const byteInput = document.getElementById('plcFaultBitByte');
+            const bitInput = document.getElementById('plcFaultBitBit');
+            const addressDisplay = document.getElementById('plcBitAddress');
+            
+            if (enabled) {
+                bitConfig.style.display = 'block';
+                updatePLCAddress();
+            } else {
+                bitConfig.style.display = 'none';
+            }
+        }
+        
+        function updatePLCAddress() {
+            const byte = document.getElementById('plcFaultBitByte').value;
+            const bit = document.getElementById('plcFaultBitBit').value;
+            document.getElementById('plcBitAddress').textContent = `M${byte}.${bit}`;
+        }
+        
+        async function loadPLCConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/api/config`);
+                const config = await response.json();
+                const visionConfig = config.vision || {};
+                
+                document.getElementById('plcFaultBitEnabled').checked = visionConfig.fault_bit_enabled || false;
+                document.getElementById('plcFaultBitByte').value = visionConfig.fault_bit_byte || 1;
+                document.getElementById('plcFaultBitBit').value = visionConfig.fault_bit_bit || 0;
+                
+                updatePLCConfig();
+                updatePLCAddress();
+            } catch (error) {
+                console.error('Error loading PLC config:', error);
+            }
+        }
+        
+        async function savePLCConfig() {
+            const enabled = document.getElementById('plcFaultBitEnabled').checked;
+            const byte = parseInt(document.getElementById('plcFaultBitByte').value);
+            const bit = parseInt(document.getElementById('plcFaultBitBit').value);
+            
+            if (bit < 0 || bit > 7) {
+                addSerialLog('PLC config error: Bit number must be between 0 and 7', 'error');
+                alert('Bit number must be between 0 and 7');
+                return;
+            }
+            
+            if (enabled) {
+                addSerialLog(`Saving PLC fault bit configuration: M${byte}.${bit}`, 'plc');
+            } else {
+                addSerialLog('Disabling PLC fault bit writing', 'plc');
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vision: {
+                            fault_bit_enabled: enabled,
+                            fault_bit_byte: byte,
+                            fault_bit_bit: bit
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    if (enabled) {
+                        addSerialLog(`PLC fault bit configured: M${byte}.${bit} - Will write TRUE on defect, FALSE on pass`, 'plc');
+                    } else {
+                        addSerialLog('PLC fault bit writing disabled', 'plc');
+                    }
+                    alert('PLC configuration saved successfully!');
+                } else {
+                    const error = await response.json();
+                    const errorMsg = error.error || 'Unknown error';
+                    addSerialLog(`PLC config save failed: ${errorMsg}`, 'error');
+                    alert('Failed to save configuration: ' + errorMsg);
+                }
+            } catch (error) {
+                console.error('Error saving PLC config:', error);
+                addSerialLog(`PLC config save error: ${error.message}`, 'error');
+                alert('Error saving configuration: ' + error.message);
+            }
+        }
+        
+        // Update address display when inputs change
+        document.addEventListener('DOMContentLoaded', () => {
+            const byteInput = document.getElementById('plcFaultBitByte');
+            const bitInput = document.getElementById('plcFaultBitBit');
+            if (byteInput) {
+                byteInput.addEventListener('input', updatePLCAddress);
+            }
+            if (bitInput) {
+                bitInput.addEventListener('input', updatePLCAddress);
+            }
+        });
+        
+        // Serial Monitor Functions
+        let serialLogEntries = [];
+        const MAX_LOG_ENTRIES = 500;
+        
+        function toggleSerialMonitor() {
+            const monitor = document.getElementById('serialMonitor');
+            const icon = document.getElementById('serialMonitorToggleIcon');
+            if (monitor.style.display === 'none') {
+                monitor.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                monitor.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+        
+        function addSerialLog(message, type = 'info') {
+            const now = new Date();
+            serialLogEntries.push({ message, type, timestamp: now });
+            
+            // Keep only last MAX_LOG_ENTRIES
+            if (serialLogEntries.length > MAX_LOG_ENTRIES) {
+                serialLogEntries.shift();
+            }
+            
+            // Update display
+            updateSerialLogDisplay();
+        }
+        
+        function updateSerialLogDisplay() {
+            const logDiv = document.getElementById('serialLog');
+            if (!logDiv) return;
+            
+            const timestamp = document.getElementById('timestampLog')?.checked ?? true;
+            const colors = {
+                'info': '#10b981',
+                'warning': '#f59e0b',
+                'error': '#ef4444',
+                'success': '#10b981',
+                'camera': '#60a5fa',
+                'detection': '#8b5cf6',
+                'plc': '#f97316'
+            };
+            
+            let html = '';
+            serialLogEntries.forEach(entry => {
+                const timeStr = timestamp ? `[${entry.timestamp.toLocaleTimeString()}.${String(entry.timestamp.getMilliseconds()).padStart(3, '0')}] ` : '';
+                const color = colors[entry.type] || '#cbd5e1';
+                html += `<div style="color: ${color};">${timeStr}${entry.message}</div>`;
+            });
+            
+            logDiv.innerHTML = html || '<div style="color: #64748b;">No log entries</div>';
+            
+            // Auto-scroll if enabled
+            if (document.getElementById('autoScrollLog')?.checked) {
+                setTimeout(() => {
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                }, 10);
+            }
+        }
+        
+        function clearSerialLog(event) {
+            if (event) event.stopPropagation();
+            serialLogEntries = [];
+            updateSerialLogDisplay();
+            addSerialLog('Serial monitor cleared', 'info');
         }
     </script>
 </body>
