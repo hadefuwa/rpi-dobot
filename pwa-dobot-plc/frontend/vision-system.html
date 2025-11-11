@@ -534,14 +534,71 @@
                             </div>
                             <div id="objectDetectionOptions" style="display: none; margin-bottom: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
                                 <label for="objectDetectionMethod" style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Object Detection Method:</label>
-                                <select id="objectDetectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">
-                                    <option value="contour" selected>Contour Detection</option>
+                                <select id="objectDetectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateObjectParams()">
+                                    <option value="background" selected>Background Subtraction (Conveyor Belt)</option>
+                                    <option value="contour">Contour Detection</option>
                                     <option value="blob">Blob Detection</option>
                                     <option value="combined">Combined</option>
                                 </select>
                                 <small style="color: #64748b; font-size: 10px; display: block; margin-top: 5px;">
-                                    Objects are detected first (green boxes), then defect detection runs on detected object regions
+                                    Background subtraction detects moving objects on conveyor belts. Objects are detected first (green boxes), then defect detection runs on detected object regions.
                                 </small>
+                                
+                                <!-- Object Detection Parameters -->
+                                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+                                    <h5 style="color: #60a5fa; font-size: 12px; margin-bottom: 10px;">Object Detection Parameters</h5>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                        <div>
+                                            <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Min Area (px)</label>
+                                            <input type="number" id="minObjectArea" value="2000" min="100" max="50000" step="100" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Max Area (px)</label>
+                                            <input type="number" id="maxObjectArea" value="100000" min="1000" max="500000" step="1000" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Background Subtraction Parameters -->
+                                    <div id="bgSubtractionParams" style="margin-top: 10px; padding: 10px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
+                                        <h6 style="color: #8b5cf6; font-size: 11px; margin-bottom: 8px;">Background Subtraction Settings</h6>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                                            <div>
+                                                <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">History Frames</label>
+                                                <input type="number" id="bgHistory" value="500" min="100" max="2000" step="50" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                            </div>
+                                            <div>
+                                                <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Threshold</label>
+                                                <input type="number" id="bgThreshold" value="16" min="5" max="50" step="1" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Learning Rate (0.0-1.0)</label>
+                                            <input type="number" id="bgLearningRate" value="0.001" min="0.0001" max="0.1" step="0.0001" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                        </div>
+                                        <div style="margin-top: 8px;">
+                                            <label style="display: flex; align-items: center; color: #cbd5e1; font-size: 11px; cursor: pointer;">
+                                                <input type="checkbox" id="useBgSubtraction" checked style="margin-right: 6px; cursor: pointer;" onchange="updateObjectParams()">
+                                                <span>Use Background Subtraction (recommended for conveyor belts)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                            <div>
+                                                <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Min Confidence</label>
+                                                <input type="number" id="minObjectConfidence" value="0.5" min="0.1" max="1.0" step="0.1" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                            </div>
+                                            <div>
+                                                <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Aspect Ratio Range</label>
+                                                <div style="display: flex; gap: 5px;">
+                                                    <input type="number" id="aspectRatioMin" value="0.2" min="0.1" max="2.0" step="0.1" placeholder="Min" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                                    <input type="number" id="aspectRatioMax" value="5.0" min="1.0" max="10.0" step="0.1" placeholder="Max" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <label for="detectionMethod" style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px; margin-top: 10px;">Defect Detection Method:</label>
                             <select id="detectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">
@@ -969,6 +1026,9 @@
             // Load saved detection parameters
             loadDetectionParams();
             
+            // Load object detection parameters
+            loadObjectParams();
+            
             // Enable object detection by default
             document.getElementById('useObjectDetection').checked = true;
             toggleObjectDetection();  // This will show the options and set the state
@@ -977,6 +1037,7 @@
             setTimeout(() => {
                 addSerialLog('Vision System initialized', 'info');
                 addSerialLog('Object detection enabled by default', 'info');
+                addSerialLog('Background subtraction enabled for conveyor belt detection', 'info');
                 addSerialLog('Serial monitor ready', 'info');
             }, 500);
         });
@@ -1146,6 +1207,8 @@
             const analyzeBtn = document.getElementById('analyzeBtn');
             const method = document.getElementById('detectionMethod').value;
             const objectMethod = document.getElementById('objectDetectionMethod').value;
+            // Update object params before sending
+            updateObjectParams();
             
             analyzeBtn.disabled = true;
             analyzeBtn.innerHTML = '<span class="loading"></span> Analyzing...';
@@ -1486,12 +1549,68 @@
         // Object detection parameters
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
-            min_object_area: 500,
-            max_object_area: 50000,
+            min_object_area: 2000,  // Increased for counters on conveyor
+            max_object_area: 100000,  // Increased for counters on conveyor
+            use_background_subtraction: true,  // Use background subtraction by default
+            bg_history: 500,
+            bg_threshold: 16,
+            bg_learning_rate: 0.001,
+            aspect_ratio_min: 0.2,
+            aspect_ratio_max: 5.0,
+            min_confidence: 0.5,
             object_confidence: 0.5,
             object_nms_threshold: 0.4,
             roi_padding: 10
         };
+        
+        function updateObjectParams() {
+            objectParams = {
+                min_object_area: parseInt(document.getElementById('minObjectArea').value) || 2000,
+                max_object_area: parseInt(document.getElementById('maxObjectArea').value) || 100000,
+                use_background_subtraction: document.getElementById('useBgSubtraction').checked,
+                bg_history: parseInt(document.getElementById('bgHistory').value) || 500,
+                bg_threshold: parseInt(document.getElementById('bgThreshold').value) || 16,
+                bg_learning_rate: parseFloat(document.getElementById('bgLearningRate').value) || 0.001,
+                aspect_ratio_min: parseFloat(document.getElementById('aspectRatioMin').value) || 0.2,
+                aspect_ratio_max: parseFloat(document.getElementById('aspectRatioMax').value) || 5.0,
+                min_confidence: parseFloat(document.getElementById('minObjectConfidence').value) || 0.5,
+                object_confidence: 0.5,
+                object_nms_threshold: 0.4,
+                roi_padding: 10
+            };
+            
+            // Save to localStorage
+            localStorage.setItem('objectParams', JSON.stringify(objectParams));
+            addSerialLog('Object detection parameters updated', 'info');
+        }
+        
+        function loadObjectParams() {
+            const saved = localStorage.getItem('objectParams');
+            if (saved) {
+                try {
+                    const savedParams = JSON.parse(saved);
+                    objectParams = { ...objectParams, ...savedParams };
+                    
+                    // Update UI
+                    document.getElementById('minObjectArea').value = objectParams.min_object_area || 2000;
+                    document.getElementById('maxObjectArea').value = objectParams.max_object_area || 100000;
+                    document.getElementById('bgHistory').value = objectParams.bg_history || 500;
+                    document.getElementById('bgThreshold').value = objectParams.bg_threshold || 16;
+                    document.getElementById('bgLearningRate').value = objectParams.bg_learning_rate || 0.001;
+                    document.getElementById('aspectRatioMin').value = objectParams.aspect_ratio_min || 0.2;
+                    document.getElementById('aspectRatioMax').value = objectParams.aspect_ratio_max || 5.0;
+                    document.getElementById('minObjectConfidence').value = objectParams.min_confidence || 0.5;
+                    document.getElementById('useBgSubtraction').checked = objectParams.use_background_subtraction !== false;
+                    
+                    // Update method dropdown if needed
+                    if (objectParams.use_background_subtraction) {
+                        document.getElementById('objectDetectionMethod').value = 'background';
+                    }
+                } catch (e) {
+                    console.error('Error loading object params:', e);
+                }
+            }
+        }
         
         // Detection parameters storage
         let detectionParams = {

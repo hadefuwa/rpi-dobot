@@ -38,6 +38,10 @@ class CameraService:
         self.object_net = None
         self.object_classes = []
         self.object_detection_enabled = False
+        # Background subtractor for moving object detection
+        self.bg_subtractor: Optional[cv2.BackgroundSubtractor] = None
+        self.bg_learning_frames = 0
+        self.bg_initialized = False
         
     def initialize_camera(self) -> bool:
         """Initialize and open camera"""
@@ -77,6 +81,12 @@ class CameraService:
                 self.camera.release()
                 self.camera = None
                 logger.info("Camera released")
+            # Reset background subtractor
+            if self.bg_subtractor is not None:
+                self.bg_subtractor = None
+                self.bg_initialized = False
+                self.bg_learning_frames = 0
+                logger.info("Background subtractor reset")
     
     def read_frame(self) -> Optional[np.ndarray]:
         """Read a single frame from camera"""
@@ -123,11 +133,21 @@ class CameraService:
     def detect_objects(self, frame: np.ndarray, method: str = 'contour', params: Optional[Dict] = None) -> Dict:
         """
         Detect objects in an image frame before defect detection
+        Uses background subtraction for moving objects on conveyor belts
         
         Args:
             frame: Input image frame (BGR format)
-            method: Detection method ('contour', 'blob', 'combined')
-            params: Optional detection parameters
+            method: Detection method ('contour', 'blob', 'combined', 'background')
+            params: Optional detection parameters:
+                - min_object_area: Minimum object area in pixels (default: 2000)
+                - max_object_area: Maximum object area in pixels (default: 100000)
+                - use_background_subtraction: Use background subtraction (default: True)
+                - bg_history: Background history frames (default: 500)
+                - bg_threshold: Background threshold (default: 16)
+                - bg_learning_rate: Background learning rate (default: 0.001)
+                - aspect_ratio_min: Minimum aspect ratio (default: 0.2)
+                - aspect_ratio_max: Maximum aspect ratio (default: 5.0)
+                - min_confidence: Minimum confidence for detection (default: 0.5)
             
         Returns:
             Dictionary with object detection results
@@ -143,90 +163,172 @@ class CameraService:
         if params is None:
             params = {}
         
-        # Extract parameters
-        min_object_area = params.get('min_object_area', 500)
-        max_object_area = params.get('max_object_area', 50000)
+        # Extract parameters with better defaults for conveyor belt counters
+        min_object_area = params.get('min_object_area', 2000)  # Increased from 500
+        max_object_area = params.get('max_object_area', 100000)  # Increased from 50000
+        use_bg_subtraction = params.get('use_background_subtraction', True)
+        bg_history = params.get('bg_history', 500)
+        bg_threshold = params.get('bg_threshold', 16)
+        bg_learning_rate = params.get('bg_learning_rate', 0.001)
+        aspect_ratio_min = params.get('aspect_ratio_min', 0.2)
+        aspect_ratio_max = params.get('aspect_ratio_max', 5.0)
+        min_confidence = params.get('min_confidence', 0.5)
         
         try:
             objects = []
             object_count = 0
             
-            if method == 'contour' or method == 'combined':
-                # Simple contour-based object detection
+            # Use background subtraction for moving objects on conveyor belt
+            if use_bg_subtraction or method == 'background':
+                # Initialize background subtractor if needed
+                if self.bg_subtractor is None:
+                    self.bg_subtractor = cv2.createBackgroundSubtractorMOG2(
+                        history=bg_history,
+                        varThreshold=bg_threshold,
+                        detectShadows=True
+                    )
+                    self.bg_initialized = False
+                    self.bg_learning_frames = 0
+                
+                # Convert to grayscale for background subtraction
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                
+                # Apply Gaussian blur to reduce noise
                 blurred = cv2.GaussianBlur(gray, (5, 5), 0)
                 
-                # Adaptive threshold to find objects
-                thresh = cv2.adaptiveThreshold(
-                    blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                    cv2.THRESH_BINARY_INV, 11, 2
-                )
+                # Apply background subtraction
+                fg_mask = self.bg_subtractor.apply(blurred, learningRate=bg_learning_rate)
                 
-                # Morphological operations
-                kernel = np.ones((5, 5), np.uint8)
-                thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-                thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+                # Update learning frame count
+                if not self.bg_initialized:
+                    self.bg_learning_frames += 1
+                    if self.bg_learning_frames >= 30:  # Learn background for 30 frames
+                        self.bg_initialized = True
                 
-                # Find contours
-                contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                
-                for contour in contours:
-                    area = cv2.contourArea(contour)
-                    if min_object_area < area < max_object_area:
-                        x, y, w, h = cv2.boundingRect(contour)
-                        # Calculate aspect ratio
-                        aspect_ratio = float(w) / h if h > 0 else 0
-                        if 0.3 < aspect_ratio < 3.0:  # Reasonable object shape
-                            objects.append({
-                                'type': 'object',
-                                'x': int(x),
-                                'y': int(y),
-                                'width': int(w),
-                                'height': int(h),
-                                'area': float(area),
-                                'center': (int(x + w/2), int(y + h/2)),
-                                'confidence': 0.7,  # Default confidence for contour method
-                                'method': 'contour'
-                            })
-                            object_count += 1
+                # Only detect objects after background is learned
+                if self.bg_initialized:
+                    # Morphological operations to clean up the mask
+                    kernel = np.ones((5, 5), np.uint8)
+                    fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_CLOSE, kernel)
+                    fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN, kernel)
+                    
+                    # Dilate to merge nearby regions
+                    fg_mask = cv2.dilate(fg_mask, kernel, iterations=2)
+                    
+                    # Find contours in the foreground mask
+                    contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    for contour in contours:
+                        area = cv2.contourArea(contour)
+                        if min_object_area < area < max_object_area:
+                            x, y, w, h = cv2.boundingRect(contour)
+                            
+                            # Calculate aspect ratio
+                            aspect_ratio = float(w) / h if h > 0 else 0
+                            if aspect_ratio_min < aspect_ratio < aspect_ratio_max:
+                                # Calculate solidity (how convex the shape is)
+                                hull = cv2.convexHull(contour)
+                                hull_area = cv2.contourArea(hull)
+                                solidity = float(area) / hull_area if hull_area > 0 else 0
+                                
+                                # Calculate confidence based on area and solidity
+                                area_confidence = min(area / max_object_area, 1.0)
+                                confidence = (area_confidence * 0.6 + solidity * 0.4)
+                                
+                                if confidence >= min_confidence:
+                                    objects.append({
+                                        'type': 'object',
+                                        'x': int(x),
+                                        'y': int(y),
+                                        'width': int(w),
+                                        'height': int(h),
+                                        'area': float(area),
+                                        'center': (int(x + w/2), int(y + h/2)),
+                                        'confidence': round(confidence, 2),
+                                        'method': 'background',
+                                        'aspect_ratio': round(aspect_ratio, 2),
+                                        'solidity': round(solidity, 2)
+                                    })
+                                    object_count += 1
             
-            if method == 'blob' or method == 'combined':
-                # Blob-based object detection
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                blurred = cv2.GaussianBlur(gray, (9, 9), 0)
+            # Fallback to traditional methods if background subtraction is disabled
+            if not use_bg_subtraction:
+                if method == 'contour' or method == 'combined':
+                    # Simple contour-based object detection
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+                    
+                    # Adaptive threshold to find objects
+                    thresh = cv2.adaptiveThreshold(
+                        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                        cv2.THRESH_BINARY_INV, 11, 2
+                    )
+                    
+                    # Morphological operations
+                    kernel = np.ones((5, 5), np.uint8)
+                    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+                    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+                    
+                    # Find contours
+                    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    for contour in contours:
+                        area = cv2.contourArea(contour)
+                        if min_object_area < area < max_object_area:
+                            x, y, w, h = cv2.boundingRect(contour)
+                            # Calculate aspect ratio
+                            aspect_ratio = float(w) / h if h > 0 else 0
+                            if aspect_ratio_min < aspect_ratio < aspect_ratio_max:
+                                objects.append({
+                                    'type': 'object',
+                                    'x': int(x),
+                                    'y': int(y),
+                                    'width': int(w),
+                                    'height': int(h),
+                                    'area': float(area),
+                                    'center': (int(x + w/2), int(y + h/2)),
+                                    'confidence': 0.7,
+                                    'method': 'contour'
+                                })
+                                object_count += 1
                 
-                # Simple blob detector
-                params_blob = cv2.SimpleBlobDetector_Params()
-                params_blob.filterByArea = True
-                params_blob.minArea = min_object_area
-                params_blob.maxArea = max_object_area
-                params_blob.filterByCircularity = False
-                params_blob.filterByConvexity = False
-                params_blob.filterByInertia = False
-                
-                detector = cv2.SimpleBlobDetector_create(params_blob)
-                keypoints = detector.detect(blurred)
-                
-                for kp in keypoints:
-                    x, y = int(kp.pt[0]), int(kp.pt[1])
-                    size = int(kp.size)
-                    w = h = size
-                    objects.append({
-                        'type': 'object',
-                        'x': int(x - w/2),
-                        'y': int(y - h/2),
-                        'width': w,
-                        'height': h,
-                        'area': float(np.pi * (size/2)**2),
-                        'center': (x, y),
-                        'confidence': 0.6,
-                        'method': 'blob'
-                    })
-                    object_count += 1
+                if method == 'blob' or method == 'combined':
+                    # Blob-based object detection
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    blurred = cv2.GaussianBlur(gray, (9, 9), 0)
+                    
+                    # Simple blob detector
+                    params_blob = cv2.SimpleBlobDetector_Params()
+                    params_blob.filterByArea = True
+                    params_blob.minArea = min_object_area
+                    params_blob.maxArea = max_object_area
+                    params_blob.filterByCircularity = False
+                    params_blob.filterByConvexity = False
+                    params_blob.filterByInertia = False
+                    
+                    detector = cv2.SimpleBlobDetector_create(params_blob)
+                    keypoints = detector.detect(blurred)
+                    
+                    for kp in keypoints:
+                        x, y = int(kp.pt[0]), int(kp.pt[1])
+                        size = int(kp.size)
+                        w = h = size
+                        objects.append({
+                            'type': 'object',
+                            'x': int(x - w/2),
+                            'y': int(y - h/2),
+                            'width': w,
+                            'height': h,
+                            'area': float(np.pi * (size/2)**2),
+                            'center': (x, y),
+                            'confidence': 0.6,
+                            'method': 'blob'
+                        })
+                        object_count += 1
             
             # Remove duplicates if using combined method
             if method == 'combined' and len(objects) > 0:
-                objects = self._merge_nearby_objects(objects, threshold=30)
+                objects = self._merge_nearby_objects(objects, threshold=50)  # Increased threshold
                 object_count = len(objects)
             
             return {
@@ -234,6 +336,8 @@ class CameraService:
                 'object_count': object_count,
                 'objects': objects,
                 'method': method,
+                'bg_initialized': self.bg_initialized,
+                'bg_learning_frames': self.bg_learning_frames,
                 'timestamp': time.time()
             }
             
