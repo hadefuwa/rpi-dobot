@@ -920,8 +920,11 @@ def vision_detect():
         if frame is None:
             return jsonify({'error': 'Failed to read frame from camera'}), 500
         
-        # Run defect detection
-        results = camera_service.detect_defects(frame, method=method)
+        # Extract detection parameters
+        detection_params = data.get('params', {})
+        
+        # Run defect detection with parameters
+        results = camera_service.detect_defects(frame, method=method, params=detection_params)
         
         # Write to PLC fault bit if enabled
         plc_write_result = write_plc_fault_bit(results.get('defects_found', False))
@@ -957,8 +960,11 @@ def vision_analyze():
         if frame is None:
             return jsonify({'error': 'Failed to read frame from camera'}), 500
         
-        # Run defect detection
-        results = camera_service.detect_defects(frame, method=method)
+        # Extract detection parameters
+        detection_params = data.get('params', {})
+        
+        # Run defect detection with parameters
+        results = camera_service.detect_defects(frame, method=method, params=detection_params)
         
         # Write to PLC fault bit if enabled
         plc_write_result = write_plc_fault_bit(results.get('defects_found', False))

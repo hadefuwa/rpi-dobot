@@ -115,13 +115,29 @@ class CameraService:
         
         return None
     
-    def detect_defects(self, frame: np.ndarray, method: str = 'blob') -> Dict:
+    def detect_defects(self, frame: np.ndarray, method: str = 'blob', params: Optional[Dict] = None) -> Dict:
         """
         Detect defects in an image frame
         
         Args:
             frame: Input image frame (BGR format)
             method: Detection method ('blob', 'contour', 'edge', 'combined')
+            params: Optional detection parameters dictionary:
+                - min_area: Minimum defect area in pixels (default: varies by method)
+                - max_area: Maximum defect area in pixels (default: varies by method)
+                - blob_min_area: Blob-specific min area (default: 10)
+                - blob_max_area: Blob-specific max area (default: 5000)
+                - contour_min_area: Contour-specific min area (default: 50)
+                - contour_max_area: Contour-specific max area (default: 10000)
+                - canny_low: Canny edge detection low threshold (default: 50)
+                - canny_high: Canny edge detection high threshold (default: 150)
+                - edge_canny_low: Edge detection Canny low threshold (default: 30)
+                - edge_canny_high: Edge detection Canny high threshold (default: 100)
+                - hough_threshold: Hough line transform threshold (default: 50)
+                - merge_threshold: Distance threshold for merging defects (default: 20)
+                - gaussian_blur: Gaussian blur kernel size (default: 5)
+                - adaptive_thresh_block: Adaptive threshold block size (default: 11)
+                - adaptive_thresh_c: Adaptive threshold constant (default: 2)
             
         Returns:
             Dictionary with detection results
@@ -135,37 +151,60 @@ class CameraService:
                 'error': 'No frame provided'
             }
         
+        # Default parameters
+        if params is None:
+            params = {}
+        
+        # Extract parameters with defaults
+        blob_min_area = params.get('blob_min_area', params.get('min_area', 10))
+        blob_max_area = params.get('blob_max_area', params.get('max_area', 5000))
+        contour_min_area = params.get('contour_min_area', params.get('min_area', 50))
+        contour_max_area = params.get('contour_max_area', params.get('max_area', 10000))
+        canny_low = params.get('canny_low', 50)
+        canny_high = params.get('canny_high', 150)
+        edge_canny_low = params.get('edge_canny_low', 30)
+        edge_canny_high = params.get('edge_canny_high', 100)
+        hough_threshold = params.get('hough_threshold', 50)
+        merge_threshold = params.get('merge_threshold', 20)
+        gaussian_blur = params.get('gaussian_blur', 5)
+        adaptive_thresh_block = params.get('adaptive_thresh_block', 11)
+        adaptive_thresh_c = params.get('adaptive_thresh_c', 2)
+        
         try:
             # Convert to grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             
             # Apply Gaussian blur to reduce noise
-            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+            blur_size = gaussian_blur if gaussian_blur % 2 == 1 else gaussian_blur + 1
+            blurred = cv2.GaussianBlur(gray, (blur_size, blur_size), 0)
             
             defects = []
             defect_count = 0
             
             if method == 'blob' or method == 'combined':
                 # Blob detection for small defects
-                blob_defects = self._detect_blobs(blurred)
+                blob_defects = self._detect_blobs(blurred, min_area=blob_min_area, max_area=blob_max_area,
+                                                  adaptive_block=adaptive_thresh_block, adaptive_c=adaptive_thresh_c)
                 defects.extend(blob_defects)
                 defect_count += len(blob_defects)
             
             if method == 'contour' or method == 'combined':
                 # Contour-based detection for larger defects
-                contour_defects = self._detect_contours(blurred)
+                contour_defects = self._detect_contours(blurred, min_area=contour_min_area, max_area=contour_max_area,
+                                                         canny_low=canny_low, canny_high=canny_high)
                 defects.extend(contour_defects)
                 defect_count += len(contour_defects)
             
             if method == 'edge' or method == 'combined':
                 # Edge-based detection
-                edge_defects = self._detect_edges(blurred)
+                edge_defects = self._detect_edges(blurred, canny_low=edge_canny_low, canny_high=edge_canny_high,
+                                                  hough_threshold=hough_threshold)
                 defects.extend(edge_defects)
                 defect_count += len(edge_defects)
             
             # Remove duplicates if using combined method
             if method == 'combined' and len(defects) > 0:
-                defects = self._merge_nearby_defects(defects, threshold=20)
+                defects = self._merge_nearby_defects(defects, threshold=merge_threshold)
                 defect_count = len(defects)
             
             # Calculate confidence based on defect characteristics
@@ -190,15 +229,17 @@ class CameraService:
                 'error': str(e)
             }
     
-    def _detect_blobs(self, gray: np.ndarray) -> List[Dict]:
+    def _detect_blobs(self, gray: np.ndarray, min_area: int = 10, max_area: int = 5000,
+                     adaptive_block: int = 11, adaptive_c: int = 2) -> List[Dict]:
         """Detect defects using blob detection"""
         defects = []
         
         try:
             # Apply adaptive threshold
+            block_size = adaptive_block if adaptive_block % 2 == 1 else adaptive_block + 1
             thresh = cv2.adaptiveThreshold(
                 gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                cv2.THRESH_BINARY_INV, 11, 2
+                cv2.THRESH_BINARY_INV, block_size, adaptive_c
             )
             
             # Morphological operations to clean up
@@ -211,8 +252,8 @@ class CameraService:
             
             for contour in contours:
                 area = cv2.contourArea(contour)
-                # Filter small noise
-                if 10 < area < 5000:
+                # Filter based on area parameters
+                if min_area < area < max_area:
                     x, y, w, h = cv2.boundingRect(contour)
                     defects.append({
                         'type': 'blob',
@@ -228,13 +269,14 @@ class CameraService:
         
         return defects
     
-    def _detect_contours(self, gray: np.ndarray) -> List[Dict]:
+    def _detect_contours(self, gray: np.ndarray, min_area: int = 50, max_area: int = 10000,
+                        canny_low: int = 50, canny_high: int = 150) -> List[Dict]:
         """Detect defects using contour analysis"""
         defects = []
         
         try:
             # Apply Canny edge detection
-            edges = cv2.Canny(gray, 50, 150)
+            edges = cv2.Canny(gray, canny_low, canny_high)
             
             # Dilate edges to connect nearby edges
             kernel = np.ones((3, 3), np.uint8)
@@ -245,8 +287,8 @@ class CameraService:
             
             for contour in contours:
                 area = cv2.contourArea(contour)
-                # Filter based on area
-                if 50 < area < 10000:
+                # Filter based on area parameters
+                if min_area < area < max_area:
                     x, y, w, h = cv2.boundingRect(contour)
                     # Calculate aspect ratio to filter elongated defects
                     aspect_ratio = float(w) / h if h > 0 else 0
@@ -266,16 +308,17 @@ class CameraService:
         
         return defects
     
-    def _detect_edges(self, gray: np.ndarray) -> List[Dict]:
+    def _detect_edges(self, gray: np.ndarray, canny_low: int = 30, canny_high: int = 100,
+                     hough_threshold: int = 50) -> List[Dict]:
         """Detect defects using edge detection"""
         defects = []
         
         try:
             # Apply Canny edge detection with different thresholds
-            edges = cv2.Canny(gray, 30, 100)
+            edges = cv2.Canny(gray, canny_low, canny_high)
             
             # Find lines using HoughLinesP
-            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50, 
+            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold, 
                                    minLineLength=30, maxLineGap=10)
             
             if lines is not None:
