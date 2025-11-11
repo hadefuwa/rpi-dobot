@@ -634,7 +634,7 @@
                                         <input type="number" id="contourMaxArea" min="1" max="100000" value="10000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                     </div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                                     <div>
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Canny Low Threshold</label>
                                         <input type="number" id="cannyLow" min="1" max="255" value="50" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
@@ -644,6 +644,30 @@
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Canny High Threshold</label>
                                         <input type="number" id="cannyHigh" min="1" max="255" value="150" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                         <small style="color: #64748b; font-size: 10px;">Higher = fewer edges detected</small>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Aspect Ratio Min</label>
+                                        <input type="number" id="aspectRatioMin" min="0.1" max="2.0" step="0.1" value="0.2" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Min width/height ratio</small>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Aspect Ratio Max</label>
+                                        <input type="number" id="aspectRatioMax" min="1.0" max="10.0" step="0.1" value="5.0" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Max width/height ratio</small>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Dilation Iterations</label>
+                                        <input type="number" id="dilationIterations" min="1" max="5" value="1" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Edge connection iterations</small>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Morphological Kernel Size</label>
+                                        <input type="number" id="morphologicalKernelSize" min="3" max="15" value="3" step="2" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Kernel size for morphology (odd)</small>
                                     </div>
                                 </div>
                                 
@@ -659,10 +683,41 @@
                                         <input type="number" id="edgeCannyHigh" min="1" max="255" value="100" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                     </div>
                                 </div>
-                                <div style="margin-bottom: 15px;">
-                                    <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Hough Line Threshold</label>
-                                    <input type="number" id="houghThreshold" min="1" max="200" value="50" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
-                                    <small style="color: #64748b; font-size: 10px;">Higher = fewer lines detected (less sensitive)</small>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Hough Line Threshold</label>
+                                        <input type="number" id="houghThreshold" min="1" max="200" value="50" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Higher = fewer lines detected</small>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Min Line Length</label>
+                                        <input type="number" id="minLineLength" min="1" max="200" value="30" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Minimum line length to detect</small>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Max Line Gap</label>
+                                        <input type="number" id="maxLineGap" min="1" max="50" value="10" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Max gap between line segments</small>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Line Grouping Distance</label>
+                                        <input type="number" id="lineGroupingDistance" min="1" max="100" value="30" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Distance to group nearby lines</small>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Min Lines Per Defect</label>
+                                        <input type="number" id="minLinesPerDefect" min="1" max="10" value="2" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Minimum lines to form defect</small>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Min Edge Defect Size (px)</label>
+                                        <input type="number" id="minEdgeDefectSize" min="1" max="100" value="10" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Minimum defect width/height</small>
+                                    </div>
                                 </div>
                                 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px;">
@@ -1388,7 +1443,18 @@
             merge_threshold: 20,
             gaussian_blur: 5,
             adaptive_thresh_block: 11,
-            adaptive_thresh_c: 2
+            adaptive_thresh_c: 2,
+            // Edge detection additional parameters
+            min_line_length: 30,
+            max_line_gap: 10,
+            line_grouping_distance: 30,
+            min_lines_per_defect: 2,
+            min_edge_defect_size: 10,
+            // Contour detection additional parameters
+            aspect_ratio_min: 0.2,
+            aspect_ratio_max: 5.0,
+            dilation_iterations: 1,
+            morphological_kernel_size: 3
         };
         
         function updateDetectionParams() {
@@ -1408,7 +1474,18 @@
                 merge_threshold: parseInt(document.getElementById('mergeThreshold').value) || 20,
                 gaussian_blur: parseInt(document.getElementById('gaussianBlur').value) || 5,
                 adaptive_thresh_block: parseInt(document.getElementById('adaptiveThreshBlock').value) || 11,
-                adaptive_thresh_c: parseInt(document.getElementById('adaptiveThreshC').value) || 2
+                adaptive_thresh_c: parseInt(document.getElementById('adaptiveThreshC').value) || 2,
+                // Edge detection additional parameters
+                min_line_length: parseInt(document.getElementById('minLineLength').value) || 30,
+                max_line_gap: parseInt(document.getElementById('maxLineGap').value) || 10,
+                line_grouping_distance: parseInt(document.getElementById('lineGroupingDistance').value) || 30,
+                min_lines_per_defect: parseInt(document.getElementById('minLinesPerDefect').value) || 2,
+                min_edge_defect_size: parseInt(document.getElementById('minEdgeDefectSize').value) || 10,
+                // Contour detection additional parameters
+                aspect_ratio_min: parseFloat(document.getElementById('aspectRatioMin').value) || 0.2,
+                aspect_ratio_max: parseFloat(document.getElementById('aspectRatioMax').value) || 5.0,
+                dilation_iterations: parseInt(document.getElementById('dilationIterations').value) || 1,
+                morphological_kernel_size: parseInt(document.getElementById('morphologicalKernelSize').value) || 3
             };
             
             // Save to localStorage
@@ -1421,22 +1498,34 @@
             if (saved) {
                 try {
                     detectionParams = JSON.parse(saved);
-                    // Update UI
+                    // Update UI - General
                     document.getElementById('minDefectArea').value = detectionParams.min_area || 50;
                     document.getElementById('maxDefectArea').value = detectionParams.max_area || 10000;
+                    document.getElementById('gaussianBlur').value = detectionParams.gaussian_blur || 5;
+                    document.getElementById('mergeThreshold').value = detectionParams.merge_threshold || 20;
+                    // Blob detection
                     document.getElementById('blobMinArea').value = detectionParams.blob_min_area || 50;
                     document.getElementById('blobMaxArea').value = detectionParams.blob_max_area || 5000;
+                    document.getElementById('adaptiveThreshBlock').value = detectionParams.adaptive_thresh_block || 11;
+                    document.getElementById('adaptiveThreshC').value = detectionParams.adaptive_thresh_c || 2;
+                    // Contour detection
                     document.getElementById('contourMinArea').value = detectionParams.contour_min_area || 100;
                     document.getElementById('contourMaxArea').value = detectionParams.contour_max_area || 10000;
                     document.getElementById('cannyLow').value = detectionParams.canny_low || 50;
                     document.getElementById('cannyHigh').value = detectionParams.canny_high || 150;
+                    document.getElementById('aspectRatioMin').value = detectionParams.aspect_ratio_min || 0.2;
+                    document.getElementById('aspectRatioMax').value = detectionParams.aspect_ratio_max || 5.0;
+                    document.getElementById('dilationIterations').value = detectionParams.dilation_iterations || 1;
+                    document.getElementById('morphologicalKernelSize').value = detectionParams.morphological_kernel_size || 3;
+                    // Edge detection
                     document.getElementById('edgeCannyLow').value = detectionParams.edge_canny_low || 30;
                     document.getElementById('edgeCannyHigh').value = detectionParams.edge_canny_high || 100;
                     document.getElementById('houghThreshold').value = detectionParams.hough_threshold || 50;
-                    document.getElementById('mergeThreshold').value = detectionParams.merge_threshold || 20;
-                    document.getElementById('gaussianBlur').value = detectionParams.gaussian_blur || 5;
-                    document.getElementById('adaptiveThreshBlock').value = detectionParams.adaptive_thresh_block || 11;
-                    document.getElementById('adaptiveThreshC').value = detectionParams.adaptive_thresh_c || 2;
+                    document.getElementById('minLineLength').value = detectionParams.min_line_length || 30;
+                    document.getElementById('maxLineGap').value = detectionParams.max_line_gap || 10;
+                    document.getElementById('lineGroupingDistance').value = detectionParams.line_grouping_distance || 30;
+                    document.getElementById('minLinesPerDefect').value = detectionParams.min_lines_per_defect || 2;
+                    document.getElementById('minEdgeDefectSize').value = detectionParams.min_edge_defect_size || 10;
                 } catch (e) {
                     console.error('Error loading detection params:', e);
                 }
@@ -1450,22 +1539,34 @@
         }
         
         function resetAdvancedSettings() {
-            // Reset to defaults
+            // Reset to defaults - General
             document.getElementById('minDefectArea').value = 50;
             document.getElementById('maxDefectArea').value = 10000;
+            document.getElementById('gaussianBlur').value = 5;
+            document.getElementById('mergeThreshold').value = 20;
+            // Blob detection
             document.getElementById('blobMinArea').value = 50;
             document.getElementById('blobMaxArea').value = 5000;
+            document.getElementById('adaptiveThreshBlock').value = 11;
+            document.getElementById('adaptiveThreshC').value = 2;
+            // Contour detection
             document.getElementById('contourMinArea').value = 100;
             document.getElementById('contourMaxArea').value = 10000;
             document.getElementById('cannyLow').value = 50;
             document.getElementById('cannyHigh').value = 150;
+            document.getElementById('aspectRatioMin').value = 0.2;
+            document.getElementById('aspectRatioMax').value = 5.0;
+            document.getElementById('dilationIterations').value = 1;
+            document.getElementById('morphologicalKernelSize').value = 3;
+            // Edge detection
             document.getElementById('edgeCannyLow').value = 30;
             document.getElementById('edgeCannyHigh').value = 100;
             document.getElementById('houghThreshold').value = 50;
-            document.getElementById('mergeThreshold').value = 20;
-            document.getElementById('gaussianBlur').value = 5;
-            document.getElementById('adaptiveThreshBlock').value = 11;
-            document.getElementById('adaptiveThreshC').value = 2;
+            document.getElementById('minLineLength').value = 30;
+            document.getElementById('maxLineGap').value = 10;
+            document.getElementById('lineGroupingDistance').value = 30;
+            document.getElementById('minLinesPerDefect').value = 2;
+            document.getElementById('minEdgeDefectSize').value = 10;
             
             updateDetectionParams();
             localStorage.removeItem('detectionParams');

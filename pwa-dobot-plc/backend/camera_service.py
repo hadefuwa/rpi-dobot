@@ -169,6 +169,17 @@ class CameraService:
         gaussian_blur = params.get('gaussian_blur', 5)
         adaptive_thresh_block = params.get('adaptive_thresh_block', 11)
         adaptive_thresh_c = params.get('adaptive_thresh_c', 2)
+        # Edge detection additional parameters
+        min_line_length = params.get('min_line_length', 30)
+        max_line_gap = params.get('max_line_gap', 10)
+        line_grouping_distance = params.get('line_grouping_distance', 30)
+        min_lines_per_defect = params.get('min_lines_per_defect', 2)
+        min_edge_defect_size = params.get('min_edge_defect_size', 10)
+        # Contour detection additional parameters
+        aspect_ratio_min = params.get('aspect_ratio_min', 0.2)
+        aspect_ratio_max = params.get('aspect_ratio_max', 5.0)
+        dilation_iterations = params.get('dilation_iterations', 1)
+        morphological_kernel_size = params.get('morphological_kernel_size', 3)
         
         try:
             # Convert to grayscale
@@ -184,21 +195,26 @@ class CameraService:
             if method == 'blob' or method == 'combined':
                 # Blob detection for small defects
                 blob_defects = self._detect_blobs(blurred, min_area=blob_min_area, max_area=blob_max_area,
-                                                  adaptive_block=adaptive_thresh_block, adaptive_c=adaptive_thresh_c)
+                                                  adaptive_block=adaptive_thresh_block, adaptive_c=adaptive_thresh_c,
+                                                  kernel_size=morphological_kernel_size)
                 defects.extend(blob_defects)
                 defect_count += len(blob_defects)
             
             if method == 'contour' or method == 'combined':
                 # Contour-based detection for larger defects
                 contour_defects = self._detect_contours(blurred, min_area=contour_min_area, max_area=contour_max_area,
-                                                         canny_low=canny_low, canny_high=canny_high)
+                                                         canny_low=canny_low, canny_high=canny_high,
+                                                         aspect_ratio_min=aspect_ratio_min, aspect_ratio_max=aspect_ratio_max,
+                                                         dilation_iterations=dilation_iterations, kernel_size=morphological_kernel_size)
                 defects.extend(contour_defects)
                 defect_count += len(contour_defects)
             
             if method == 'edge' or method == 'combined':
                 # Edge-based detection
                 edge_defects = self._detect_edges(blurred, canny_low=edge_canny_low, canny_high=edge_canny_high,
-                                                  hough_threshold=hough_threshold)
+                                                  hough_threshold=hough_threshold, min_line_length=min_line_length,
+                                                  max_line_gap=max_line_gap, line_grouping_distance=line_grouping_distance,
+                                                  min_lines_per_defect=min_lines_per_defect, min_defect_size=min_edge_defect_size)
                 defects.extend(edge_defects)
                 defect_count += len(edge_defects)
             
@@ -230,7 +246,7 @@ class CameraService:
             }
     
     def _detect_blobs(self, gray: np.ndarray, min_area: int = 10, max_area: int = 5000,
-                     adaptive_block: int = 11, adaptive_c: int = 2) -> List[Dict]:
+                     adaptive_block: int = 11, adaptive_c: int = 2, kernel_size: int = 3) -> List[Dict]:
         """Detect defects using blob detection"""
         defects = []
         
@@ -243,7 +259,7 @@ class CameraService:
             )
             
             # Morphological operations to clean up
-            kernel = np.ones((3, 3), np.uint8)
+            kernel = np.ones((kernel_size, kernel_size), np.uint8)
             thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
             thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
             
@@ -270,7 +286,8 @@ class CameraService:
         return defects
     
     def _detect_contours(self, gray: np.ndarray, min_area: int = 50, max_area: int = 10000,
-                        canny_low: int = 50, canny_high: int = 150) -> List[Dict]:
+                        canny_low: int = 50, canny_high: int = 150, aspect_ratio_min: float = 0.2,
+                        aspect_ratio_max: float = 5.0, dilation_iterations: int = 1, kernel_size: int = 3) -> List[Dict]:
         """Detect defects using contour analysis"""
         defects = []
         
@@ -279,8 +296,8 @@ class CameraService:
             edges = cv2.Canny(gray, canny_low, canny_high)
             
             # Dilate edges to connect nearby edges
-            kernel = np.ones((3, 3), np.uint8)
-            dilated = cv2.dilate(edges, kernel, iterations=1)
+            kernel = np.ones((kernel_size, kernel_size), np.uint8)
+            dilated = cv2.dilate(edges, kernel, iterations=dilation_iterations)
             
             # Find contours
             contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -292,7 +309,7 @@ class CameraService:
                     x, y, w, h = cv2.boundingRect(contour)
                     # Calculate aspect ratio to filter elongated defects
                     aspect_ratio = float(w) / h if h > 0 else 0
-                    if 0.2 < aspect_ratio < 5.0:  # Reasonable aspect ratio
+                    if aspect_ratio_min < aspect_ratio < aspect_ratio_max:
                         defects.append({
                             'type': 'contour',
                             'x': int(x),
@@ -309,7 +326,8 @@ class CameraService:
         return defects
     
     def _detect_edges(self, gray: np.ndarray, canny_low: int = 30, canny_high: int = 100,
-                     hough_threshold: int = 50) -> List[Dict]:
+                     hough_threshold: int = 50, min_line_length: int = 30, max_line_gap: int = 10,
+                     line_grouping_distance: int = 30, min_lines_per_defect: int = 2, min_defect_size: int = 10) -> List[Dict]:
         """Detect defects using edge detection"""
         defects = []
         
@@ -319,7 +337,7 @@ class CameraService:
             
             # Find lines using HoughLinesP
             lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold, 
-                                   minLineLength=30, maxLineGap=10)
+                                   minLineLength=min_line_length, maxLineGap=max_line_gap)
             
             if lines is not None:
                 # Group nearby lines
@@ -336,7 +354,7 @@ class CameraService:
                                 np.sqrt((x2-gx1)**2 + (y2-gy1)**2),
                                 np.sqrt((x2-gx2)**2 + (y2-gy2)**2)
                             )
-                            if dist < 30:
+                            if dist < line_grouping_distance:
                                 group.append((x1, y1, x2, y2))
                                 grouped = True
                                 break
@@ -348,13 +366,13 @@ class CameraService:
                 
                 # Convert line groups to defect regions
                 for group in line_groups:
-                    if len(group) >= 2:  # At least 2 lines to form a defect
+                    if len(group) >= min_lines_per_defect:  # Configurable minimum lines
                         xs = [x for line in group for x in [line[0], line[2]]]
                         ys = [y for line in group for y in [line[1], line[3]]]
                         x, y = min(xs), min(ys)
                         w, h = max(xs) - x, max(ys) - y
                         
-                        if w > 10 and h > 10:
+                        if w > min_defect_size and h > min_defect_size:
                             defects.append({
                                 'type': 'edge',
                                 'x': int(x),
