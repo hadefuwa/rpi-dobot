@@ -468,37 +468,37 @@
     <!-- Sidebar Navigation -->
     <nav class="sidebar">
         <div class="sidebar-header">
-            <h2>🏭 Smart Factory</h2>
+            <h2>&#127981; Smart Factory</h2>
             <p>Control System</p>
         </div>
         <ul class="sidebar-menu">
             <li class="sidebar-menu-item">
                 <a href="/" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">🏠</span>
+                    <span class="sidebar-menu-icon">&#127968;</span>
                     <span>Home</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/robot-arm.html" class="sidebar-menu-link active">
-                    <span class="sidebar-menu-icon">🤖</span>
+                    <span class="sidebar-menu-icon">&#129302;</span>
                     <span>Robot Arm</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/smart-factory.html" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">🏭</span>
+                    <span class="sidebar-menu-icon">&#127981;</span>
                     <span>Smart Factory</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/vision-system.html" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">👁️</span>
+                    <span class="sidebar-menu-icon">&#128065;</span>
                     <span>Vision System</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/rfid.html" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">📡</span>
+                    <span class="sidebar-menu-icon">&#128225;</span>
                     <span>RFID</span>
                 </a>
             </li>
@@ -508,13 +508,13 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="offline-banner" id="offlineBanner">
-            ⚠️ You are currently offline. Some features may be limited.
+            &#9888;&#65039; You are currently offline. Some features may be limited.
         </div>
 
         <div class="container">
             <div class="header">
                 <div class="header-content">
-                    <h1>🤖 Robot Arm</h1>
+                    <h1>&#129302; Robot Arm</h1>
                 <div class="connection-status">
                     <div class="status-item">
                         <div class="status-dot" id="plcDot"></div>
@@ -573,10 +573,10 @@
 
             <!-- Control Bits Card -->
             <div class="card">
-                <h2>🎛️ Control Bits (M0.x)</h2>
+                <h2>&#127910;&#65039; Control Bits (M0.x)</h2>
                 <div class="data-row">
                     <span class="data-label">M0.0 Start:</span>
-                    <span class="data-value" id="bitStart">❌</span>
+                    <span class="data-value" id="bitStart">&#10060;</span>
                 </div>
                 <div class="data-row">
                     <span class="data-label">M0.1 Stop:</span>
@@ -610,20 +610,20 @@
 
             <!-- Settings Card -->
             <div class="card">
-                <h2>⚙️ Settings</h2>
+                <h2>&#9881;&#65039; Settings</h2>
                 <button class="btn btn-primary" onclick="openSettings()">Configure System</button>
-                <button class="btn btn-primary" onclick="debugDobot()" style="margin-top: 8px;">🔍 Debug Dobot</button>
+                <button class="btn btn-primary" onclick="debugDobot()" style="margin-top: 8px;">&#128269; Debug Dobot</button>
             </div>
 
             <!-- Manual Control Card -->
             <div class="card">
-                <h2>🕹️ Manual Control</h2>
+                <h2>&#127918;&#65039; Manual Control</h2>
                 <div class="control-grid">
-                    <button class="btn btn-success" onclick="homeRobot()">🏠 Home</button>
-                    <button class="btn btn-primary" onclick="moveToTarget()">▶️ Move to Target</button>
-                    <button class="btn btn-primary" onclick="testRobot()">🧪 Test Robot</button>
+                    <button class="btn btn-success" onclick="homeRobot()">&#127968; Home</button>
+                    <button class="btn btn-primary" onclick="moveToTarget()">&#9654;&#65039; Move to Target</button>
+                    <button class="btn btn-primary" onclick="testRobot()">&#129514; Test Robot</button>
                     <button class="btn btn-danger emergency-stop" onclick="emergencyStop()">
-                        🛑 EMERGENCY STOP
+                        &#128721; EMERGENCY STOP
                     </button>
                 </div>
             </div>
@@ -650,8 +650,8 @@
                         <input type="number" id="manualR" placeholder="0" step="0.1" value="0" style="width: 100%;">
                     </div>
                 </div>
-                <button class="btn btn-primary" onclick="moveToManual()" style="width: 100%; margin-bottom: 8px;">▶️ Move to Position</button>
-                <button class="btn btn-success" onclick="useCurrentPosition()" style="width: 100%;">📍 Use Current Position</button>
+                <button class="btn btn-primary" onclick="moveToManual()" style="width: 100%; margin-bottom: 8px;">&#9654;&#65039; Move to Position</button>
+                <button class="btn btn-success" onclick="useCurrentPosition()" style="width: 100%;">&#128205; Use Current Position</button>
                 <small style="color: #6b7280; display: block; margin-top: 10px;">
                     Enter X, Y, Z coordinates in millimeters and R (rotation) in degrees
                 </small>
@@ -659,23 +659,23 @@
 
             <!-- Suction & Gripper Control Card -->
             <div class="card">
-                <h2>🤏 End Effector Control</h2>
+                <h2>&#129295; End Effector Control</h2>
                 <div class="control-grid">
-                    <button class="btn btn-success" onclick="suctionOn()">💨 Pump ON</button>
-                    <button class="btn btn-danger" onclick="suctionOff()">🚫 Pump OFF</button>
-                    <button class="btn btn-primary" onclick="gripperOpen()">✋ Gripper OPEN</button>
-                    <button class="btn btn-primary" onclick="gripperClose()">👊 Gripper CLOSE</button>
+                    <button class="btn btn-success" onclick="suctionOn()">&#128168; Pump ON</button>
+                    <button class="btn btn-danger" onclick="suctionOff()">&#128683; Pump OFF</button>
+                    <button class="btn btn-primary" onclick="gripperOpen()">&#9995; Gripper OPEN</button>
+                    <button class="btn btn-primary" onclick="gripperClose()">&#129304; Gripper CLOSE</button>
                 </div>
             </div>
 
             <!-- Position Presets Card -->
             <div class="card">
-                <h2>📍 Position Presets</h2>
+                <h2>&#128205; Position Presets</h2>
                 <div class="control-grid">
-                    <button class="btn btn-primary" onclick="moveToPreset('safe')">🛡️ Safe Position</button>
-                    <button class="btn btn-primary" onclick="moveToPreset('pickup')">📦 Pickup Position</button>
-                    <button class="btn btn-primary" onclick="moveToPreset('dropoff')">📍 Dropoff Position</button>
-                    <button class="btn btn-primary" onclick="moveToPreset('inspect')">🔍 Inspect Position</button>
+                    <button class="btn btn-primary" onclick="moveToPreset('safe')">&#128737;&#65039; Safe Position</button>
+                    <button class="btn btn-primary" onclick="moveToPreset('pickup')">&#128230; Pickup Position</button>
+                    <button class="btn btn-primary" onclick="moveToPreset('dropoff')">&#128205; Dropoff Position</button>
+                    <button class="btn btn-primary" onclick="moveToPreset('inspect')">&#128269; Inspect Position</button>
                 </div>
                 <small style="color: #6b7280; display: block; margin-top: 10px;">
                     Configure preset positions in Settings
@@ -696,10 +696,10 @@
     <!-- Settings Modal -->
     <div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; overflow-y: auto;">
         <div style="max-width: 800px; margin: 50px auto; background: white; border-radius: 12px; padding: 30px;">
-            <h2 style="color: #2563eb; margin-bottom: 20px;">⚙️ System Settings</h2>
+            <h2 style="color: #2563eb; margin-bottom: 20px;">&#9881;&#65039; System Settings</h2>
             
             <!-- Dobot Settings -->
-            <h3 style="color: #2563eb; margin-top: 20px;">🤖 Dobot Configuration</h3>
+            <h3 style="color: #2563eb; margin-top: 20px;">&#129302; Dobot Configuration</h3>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 600; margin-bottom: 5px;">USB Device Path:</label>
                 <select id="settingDobotUSB" style="width: 100%;">
@@ -718,7 +718,7 @@
             </div>
 
             <!-- PLC Settings -->
-            <h3 style="color: #2563eb; margin-top: 30px;">🏭 PLC Configuration</h3>
+            <h3 style="color: #2563eb; margin-top: 30px;">&#127981; PLC Configuration</h3>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; font-weight: 600; margin-bottom: 5px;">PLC IP Address:</label>
                 <input type="text" id="settingPLCIP" style="width: 100%;" placeholder="192.168.1.150">
@@ -741,13 +741,13 @@
 
             <!-- Buttons -->
             <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn btn-success" onclick="saveSettings()" style="flex: 1;">💾 Save Settings</button>
-                <button class="btn btn-primary" onclick="restartServer()" style="flex: 1;">🔄 Restart Server</button>
-                <button class="btn btn-danger" onclick="closeSettings()" style="flex: 1;">❌ Cancel</button>
+                <button class="btn btn-success" onclick="saveSettings()" style="flex: 1;">&#128190; Save Settings</button>
+                <button class="btn btn-primary" onclick="restartServer()" style="flex: 1;">&#128259; Restart Server</button>
+                <button class="btn btn-danger" onclick="closeSettings()" style="flex: 1;">&#10060; Cancel</button>
             </div>
             
             <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; color: #92400e;">
-                ⚠️ Note: Server restart required for changes to take effect. Click "Save Settings" then restart the app.
+                &#9888;&#65039; Note: Server restart required for changes to take effect. Click "Save Settings" then restart the app.
             </div>
         </div>
     </div>
@@ -940,7 +940,7 @@
         // Control functions
         async function homeRobot() {
             try {
-                addLog('🏠 Sending home command...', 'info');
+                addLog('&#127968; Sending home command...', 'info');
                 const response = await fetch('/api/dobot/home', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
