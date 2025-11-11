@@ -120,6 +120,208 @@ class CameraService:
         
         return None
     
+    def detect_objects(self, frame: np.ndarray, method: str = 'contour', params: Optional[Dict] = None) -> Dict:
+        """
+        Detect objects in an image frame before defect detection
+        
+        Args:
+            frame: Input image frame (BGR format)
+            method: Detection method ('contour', 'blob', 'combined')
+            params: Optional detection parameters
+            
+        Returns:
+            Dictionary with object detection results
+        """
+        if frame is None:
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'error': 'No frame provided'
+            }
+        
+        if params is None:
+            params = {}
+        
+        # Extract parameters
+        min_object_area = params.get('min_object_area', 500)
+        max_object_area = params.get('max_object_area', 50000)
+        
+        try:
+            objects = []
+            object_count = 0
+            
+            if method == 'contour' or method == 'combined':
+                # Simple contour-based object detection
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+                
+                # Adaptive threshold to find objects
+                thresh = cv2.adaptiveThreshold(
+                    blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                    cv2.THRESH_BINARY_INV, 11, 2
+                )
+                
+                # Morphological operations
+                kernel = np.ones((5, 5), np.uint8)
+                thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+                thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+                
+                # Find contours
+                contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                
+                for contour in contours:
+                    area = cv2.contourArea(contour)
+                    if min_object_area < area < max_object_area:
+                        x, y, w, h = cv2.boundingRect(contour)
+                        # Calculate aspect ratio
+                        aspect_ratio = float(w) / h if h > 0 else 0
+                        if 0.3 < aspect_ratio < 3.0:  # Reasonable object shape
+                            objects.append({
+                                'type': 'object',
+                                'x': int(x),
+                                'y': int(y),
+                                'width': int(w),
+                                'height': int(h),
+                                'area': float(area),
+                                'center': (int(x + w/2), int(y + h/2)),
+                                'confidence': 0.7,  # Default confidence for contour method
+                                'method': 'contour'
+                            })
+                            object_count += 1
+            
+            if method == 'blob' or method == 'combined':
+                # Blob-based object detection
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                blurred = cv2.GaussianBlur(gray, (9, 9), 0)
+                
+                # Simple blob detector
+                params_blob = cv2.SimpleBlobDetector_Params()
+                params_blob.filterByArea = True
+                params_blob.minArea = min_object_area
+                params_blob.maxArea = max_object_area
+                params_blob.filterByCircularity = False
+                params_blob.filterByConvexity = False
+                params_blob.filterByInertia = False
+                
+                detector = cv2.SimpleBlobDetector_create(params_blob)
+                keypoints = detector.detect(blurred)
+                
+                for kp in keypoints:
+                    x, y = int(kp.pt[0]), int(kp.pt[1])
+                    size = int(kp.size)
+                    w = h = size
+                    objects.append({
+                        'type': 'object',
+                        'x': int(x - w/2),
+                        'y': int(y - h/2),
+                        'width': w,
+                        'height': h,
+                        'area': float(np.pi * (size/2)**2),
+                        'center': (x, y),
+                        'confidence': 0.6,
+                        'method': 'blob'
+                    })
+                    object_count += 1
+            
+            # Remove duplicates if using combined method
+            if method == 'combined' and len(objects) > 0:
+                objects = self._merge_nearby_objects(objects, threshold=30)
+                object_count = len(objects)
+            
+            return {
+                'objects_found': object_count > 0,
+                'object_count': object_count,
+                'objects': objects,
+                'method': method,
+                'timestamp': time.time()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in object detection: {e}")
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'error': str(e)
+            }
+    
+    def _merge_nearby_objects(self, objects: List[Dict], threshold: int = 30) -> List[Dict]:
+        """Merge objects that are close to each other"""
+        if len(objects) == 0:
+            return []
+        
+        merged = []
+        used = set()
+        
+        for i, obj in enumerate(objects):
+            if i in used:
+                continue
+            
+            center = obj['center']
+            group = [obj]
+            used.add(i)
+            
+            for j, other_obj in enumerate(objects):
+                if j in used or j == i:
+                    continue
+                
+                other_center = other_obj['center']
+                dist = np.sqrt((center[0] - other_center[0])**2 + (center[1] - other_center[1])**2)
+                
+                if dist < threshold:
+                    group.append(other_obj)
+                    used.add(j)
+            
+            # Merge group into single object
+            if len(group) > 1:
+                xs = [o['x'] for o in group]
+                ys = [o['y'] for o in group]
+                ws = [o['width'] for o in group]
+                hs = [o['height'] for o in group]
+                
+                x, y = min(xs), min(ys)
+                w = max(x + w for x, w in zip(xs, ws)) - x
+                h = max(y + h for y, h in zip(ys, hs)) - y
+                
+                merged.append({
+                    'type': 'object',
+                    'x': x,
+                    'y': y,
+                    'width': w,
+                    'height': h,
+                    'area': sum(o['area'] for o in group),
+                    'center': (x + w//2, y + h//2),
+                    'confidence': max(o['confidence'] for o in group),
+                    'method': 'merged'
+                })
+            else:
+                merged.append(obj)
+        
+        return merged
+    
+    def draw_objects(self, frame: np.ndarray, objects: List[Dict], color: Tuple[int, int, int] = (0, 255, 0)) -> np.ndarray:
+        """Draw detected objects on frame"""
+        annotated = frame.copy()
+        
+        for obj in objects:
+            x, y = obj['x'], obj['y']
+            w, h = obj['width'], obj['height']
+            
+            # Draw bounding box
+            cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+            
+            # Draw center point
+            center = obj['center']
+            cv2.circle(annotated, center, 5, color, -1)
+            
+            # Draw label
+            label = f"Object {obj.get('confidence', 0):.2f}"
+            cv2.putText(annotated, label, (x, y - 10),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        
+        return annotated
+    
     def detect_defects(self, frame: np.ndarray, method: str = 'blob', params: Optional[Dict] = None) -> Dict:
         """
         Detect defects in an image frame

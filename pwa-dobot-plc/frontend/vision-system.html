@@ -969,9 +969,14 @@
             // Load saved detection parameters
             loadDetectionParams();
             
+            // Enable object detection by default
+            document.getElementById('useObjectDetection').checked = true;
+            toggleObjectDetection();  // This will show the options and set the state
+            
             // Initialize serial monitor
             setTimeout(() => {
                 addSerialLog('Vision System initialized', 'info');
+                addSerialLog('Object detection enabled by default', 'info');
                 addSerialLog('Serial monitor ready', 'info');
             }, 500);
         });
@@ -1479,7 +1484,7 @@
         }
         
         // Object detection parameters
-        let objectDetectionEnabled = false;
+        let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
             min_object_area: 500,
             max_object_area: 50000,
