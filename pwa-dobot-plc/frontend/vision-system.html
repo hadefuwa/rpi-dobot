@@ -465,13 +465,178 @@
             </div>
 
             <div class="content">
+                <div class="camera-section">
+                    <!-- Camera Viewer -->
+                    <div class="camera-viewer">
+                        <h3>&#128247; Camera Feed</h3>
+                        <div class="camera-status">
+                            <span class="status-indicator" id="cameraStatusIndicator"></span>
+                            <span id="cameraStatusText">Disconnected</span>
+                        </div>
+                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;">
+                        <div id="cameraPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: #64748b; flex-direction: column; gap: 10px;">
+                            <div style="font-size: 48px;">&#128247;</div>
+                            <div>Camera not connected</div>
+                        </div>
+                        <div class="camera-controls">
+                            <button class="btn btn-primary" id="connectCameraBtn" onclick="connectCamera()">
+                                <span>&#128224;</span>
+                                <span>Connect Camera</span>
+                            </button>
+                            <button class="btn btn-danger" id="disconnectCameraBtn" onclick="disconnectCamera()" disabled>
+                                <span>&#128308;</span>
+                                <span>Disconnect</span>
+                            </button>
+                            <button class="btn btn-success" id="captureBtn" onclick="captureFrame()" disabled>
+                                <span>&#128248;</span>
+                                <span>Capture</span>
+                            </button>
+                            <button class="btn btn-primary" id="fullscreenBtn" onclick="toggleFullscreen()" disabled>
+                                <span>&#9974;</span>
+                                <span>Fullscreen</span>
+                            </button>
+                            <button class="btn btn-primary" id="settingsBtn" onclick="openCameraSettings()" disabled>
+                                <span>&#9881;&#65039;</span>
+                                <span>Settings</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Image Adjustment Controls -->
+                        <div id="imageAdjustments" style="margin-top: 15px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; display: none;">
+                            <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 10px;">Image Adjustments</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Brightness</label>
+                                    <input type="range" id="brightnessSlider" min="-100" max="100" value="0" style="width: 100%;" oninput="updateImageAdjustments()">
+                                    <span id="brightnessValue" style="color: #94a3b8; font-size: 11px;">0</span>
+                                </div>
+                                <div>
+                                    <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Contrast</label>
+                                    <input type="range" id="contrastSlider" min="-100" max="100" value="0" style="width: 100%;" oninput="updateImageAdjustments()">
+                                    <span id="contrastValue" style="color: #94a3b8; font-size: 11px;">0</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="resetImageAdjustments()" style="margin-top: 10px; width: 100%; font-size: 12px; padding: 6px;">
+                                Reset Adjustments
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Defect Detection Panel -->
+                    <div class="detection-panel">
+                        <h3>&#128269; Defect Detection</h3>
+                        <div class="method-selector">
+                            <label for="detectionMethod">Detection Method:</label>
+                            <select id="detectionMethod">
+                                <option value="combined">Combined (Recommended)</option>
+                                <option value="blob">Blob Detection</option>
+                                <option value="contour">Contour Analysis</option>
+                                <option value="edge">Edge Detection</option>
+                            </select>
+                        </div>
+                        <div class="camera-controls">
+                            <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeFrame()" disabled>
+                                <span>&#128269;</span>
+                                <span>Analyze Frame</span>
+                            </button>
+                            <button class="btn btn-success" id="autoAnalyzeBtn" onclick="toggleAutoAnalyze()" disabled>
+                                <span>&#9889;</span>
+                                <span>Auto-Analyze</span>
+                            </button>
+                            <button class="btn btn-primary" id="exportResultsBtn" onclick="exportResults()" disabled>
+                                <span>&#128190;</span>
+                                <span>Export Results</span>
+                            </button>
+                            <button class="btn btn-primary" id="saveAnalyzedBtn" onclick="saveAnalyzedImage()" disabled>
+                                <span>&#128393;</span>
+                                <span>Save Analyzed</span>
+                            </button>
+                            <button class="btn btn-primary" id="clearResultsBtn" onclick="clearResults()" disabled>
+                                <span>&#10060;</span>
+                                <span>Clear Results</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Advanced Options -->
+                        <div style="margin-top: 15px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
+                            <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 10px; cursor: pointer;" onclick="toggleAdvancedOptions()">
+                                <span id="advancedToggleIcon">▶</span> Advanced Options
+                            </h4>
+                            <div id="advancedOptions" style="display: none;">
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Detection Sensitivity</label>
+                                    <input type="range" id="sensitivitySlider" min="1" max="10" value="5" style="width: 100%;" oninput="updateSensitivity()">
+                                    <span id="sensitivityValue" style="color: #94a3b8; font-size: 11px;">5 (Medium)</span>
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Min Defect Size (pixels)</label>
+                                    <input type="number" id="minDefectSize" min="1" max="1000" value="10" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Max Defect Size (pixels)</label>
+                                    <input type="number" id="maxDefectSize" min="1" max="10000" value="5000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+                                    <button class="btn btn-primary" onclick="applyAdvancedSettings()" style="font-size: 12px; padding: 6px;">
+                                        Apply Settings
+                                    </button>
+                                    <button class="btn btn-primary" onclick="resetAdvancedSettings()" style="font-size: 12px; padding: 6px;">
+                                        Reset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="resultsDisplay" class="results-display" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h4 style="color: #8b5cf6; margin: 0;">Detection Results</h4>
+                                <button class="btn btn-primary" onclick="toggleHistory()" style="font-size: 12px; padding: 6px 12px;">
+                                    <span id="historyToggleIcon">▶</span> History
+                                </button>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Defects Found:</span>
+                                <span class="result-value" id="defectsFound">-</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Defect Count:</span>
+                                <span class="result-value" id="defectCount">0</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Confidence:</span>
+                                <span class="result-value" id="confidence">0%</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Method:</span>
+                                <span class="result-value" id="methodUsed">-</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Timestamp:</span>
+                                <span class="result-value" id="timestamp">-</span>
+                            </div>
+                            <div id="defectsList" class="defects-list"></div>
+                            
+                            <!-- Detection History -->
+                            <div id="detectionHistory" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.1);">
+                                <h5 style="color: #60a5fa; font-size: 13px; margin-bottom: 10px;">Recent Detections</h5>
+                                <div id="historyList" style="max-height: 200px; overflow-y: auto;">
+                                    <p style="color: #64748b; font-size: 12px; text-align: center; padding: 10px;">No history yet</p>
+                                </div>
+                                <button class="btn btn-primary" onclick="clearHistory()" style="margin-top: 10px; width: 100%; font-size: 12px; padding: 6px;">
+                                    Clear History
+                                </button>
+                            </div>
+                        </div>
+                        <img id="analyzedImage" class="analyzed-image" src="" alt="Analyzed Image" style="display: none;">
+                    </div>
+                </div>
+                
                 <!-- Information Panel -->
-                <div class="info-panel" style="background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                <div class="info-panel" style="background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 20px; margin-top: 20px; border: 1px solid rgba(148, 163, 184, 0.1);">
                     <h3 style="color: #60a5fa; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="toggleInfoPanel()">
-                        <span id="infoToggleIcon">▼</span>
+                        <span id="infoToggleIcon">▶</span>
                         <span>How the Vision System Works</span>
                     </h3>
-                    <div id="infoContent" style="display: block;">
+                    <div id="infoContent" style="display: none;">
                         <div style="color: #cbd5e1; line-height: 1.8; font-size: 14px;">
                             <p style="margin-bottom: 15px;">
                                 The Vision System uses computer vision algorithms to detect defects and anomalies in captured images. 
@@ -556,80 +721,6 @@
                         </div>
                     </div>
                 </div>
-                
-                <div class="camera-section">
-                    <!-- Camera Viewer -->
-                    <div class="camera-viewer">
-                        <h3>&#128247; Camera Feed</h3>
-                        <div class="camera-status">
-                            <span class="status-indicator" id="cameraStatusIndicator"></span>
-                            <span id="cameraStatusText">Disconnected</span>
-                        </div>
-                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;">
-                        <div id="cameraPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: #64748b; flex-direction: column; gap: 10px;">
-                            <div style="font-size: 48px;">&#128247;</div>
-                            <div>Camera not connected</div>
-                        </div>
-                        <div class="camera-controls">
-                            <button class="btn btn-primary" id="connectCameraBtn" onclick="connectCamera()">
-                                <span>&#128224;</span>
-                                <span>Connect Camera</span>
-                            </button>
-                            <button class="btn btn-danger" id="disconnectCameraBtn" onclick="disconnectCamera()" disabled>
-                                <span>&#128308;</span>
-                                <span>Disconnect</span>
-                            </button>
-                            <button class="btn btn-success" id="captureBtn" onclick="captureFrame()" disabled>
-                                <span>&#128248;</span>
-                                <span>Capture</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Defect Detection Panel -->
-                    <div class="detection-panel">
-                        <h3>&#128269; Defect Detection</h3>
-                        <div class="method-selector">
-                            <label for="detectionMethod">Detection Method:</label>
-                            <select id="detectionMethod">
-                                <option value="combined">Combined (Recommended)</option>
-                                <option value="blob">Blob Detection</option>
-                                <option value="contour">Contour Analysis</option>
-                                <option value="edge">Edge Detection</option>
-                            </select>
-                        </div>
-                        <div class="camera-controls">
-                            <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeFrame()" disabled>
-                                <span>&#128269;</span>
-                                <span>Analyze Frame</span>
-                            </button>
-                            <button class="btn btn-success" id="autoAnalyzeBtn" onclick="toggleAutoAnalyze()" disabled>
-                                <span>&#9889;</span>
-                                <span>Auto-Analyze</span>
-                            </button>
-                        </div>
-                        <div id="resultsDisplay" class="results-display" style="display: none;">
-                            <div class="result-item">
-                                <span class="result-label">Defects Found:</span>
-                                <span class="result-value" id="defectsFound">-</span>
-                            </div>
-                            <div class="result-item">
-                                <span class="result-label">Defect Count:</span>
-                                <span class="result-value" id="defectCount">0</span>
-                            </div>
-                            <div class="result-item">
-                                <span class="result-label">Confidence:</span>
-                                <span class="result-value" id="confidence">0%</span>
-                            </div>
-                            <div class="result-item">
-                                <span class="result-label">Method:</span>
-                                <span class="result-value" id="methodUsed">-</span>
-                            </div>
-                            <div id="defectsList" class="defects-list"></div>
-                        </div>
-                        <img id="analyzedImage" class="analyzed-image" src="" alt="Analyzed Image" style="display: none;">
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -641,9 +732,23 @@
         let autoAnalyzeInterval = null;
         let autoAnalyzeActive = false;
 
-        // Check camera status on load
+        // Check camera status and load settings on page load
         window.addEventListener('load', () => {
             checkCameraStatus();
+            
+            // Load saved settings
+            const savedSettings = localStorage.getItem('visionSettings');
+            if (savedSettings) {
+                try {
+                    const settings = JSON.parse(savedSettings);
+                    document.getElementById('sensitivitySlider').value = settings.sensitivity || 5;
+                    document.getElementById('minDefectSize').value = settings.minDefectSize || 10;
+                    document.getElementById('maxDefectSize').value = settings.maxDefectSize || 5000;
+                    updateSensitivity();
+                } catch (e) {
+                    console.error('Error loading settings:', e);
+                }
+            }
         });
 
         async function checkCameraStatus() {
@@ -663,6 +768,10 @@
             }
         }
 
+        // Detection history storage
+        let detectionHistory = [];
+        let currentResults = null;
+
         function updateCameraStatus(connected) {
             cameraConnected = connected;
             const indicator = document.getElementById('cameraStatusIndicator');
@@ -670,6 +779,8 @@
             const connectBtn = document.getElementById('connectCameraBtn');
             const disconnectBtn = document.getElementById('disconnectCameraBtn');
             const captureBtn = document.getElementById('captureBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const settingsBtn = document.getElementById('settingsBtn');
             const analyzeBtn = document.getElementById('analyzeBtn');
             const autoAnalyzeBtn = document.getElementById('autoAnalyzeBtn');
             const frame = document.getElementById('cameraFrame');
@@ -681,6 +792,8 @@
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
                 captureBtn.disabled = false;
+                fullscreenBtn.disabled = false;
+                settingsBtn.disabled = false;
                 analyzeBtn.disabled = false;
                 autoAnalyzeBtn.disabled = false;
                 frame.style.display = 'block';
@@ -691,6 +804,8 @@
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
                 captureBtn.disabled = true;
+                fullscreenBtn.disabled = true;
+                settingsBtn.disabled = true;
                 analyzeBtn.disabled = true;
                 autoAnalyzeBtn.disabled = true;
                 frame.style.display = 'none';
@@ -820,12 +935,17 @@
         }
 
         function displayResults(results) {
+            currentResults = results;
             const resultsDisplay = document.getElementById('resultsDisplay');
             const defectsFound = document.getElementById('defectsFound');
             const defectCount = document.getElementById('defectCount');
             const confidence = document.getElementById('confidence');
             const methodUsed = document.getElementById('methodUsed');
+            const timestamp = document.getElementById('timestamp');
             const defectsList = document.getElementById('defectsList');
+            const exportBtn = document.getElementById('exportResultsBtn');
+            const saveAnalyzedBtn = document.getElementById('saveAnalyzedBtn');
+            const clearResultsBtn = document.getElementById('clearResultsBtn');
             
             resultsDisplay.style.display = 'block';
             
@@ -835,6 +955,15 @@
             defectCount.textContent = results.defect_count;
             confidence.textContent = results.confidence + '%';
             methodUsed.textContent = results.method || 'N/A';
+            
+            // Add timestamp
+            const now = new Date();
+            timestamp.textContent = now.toLocaleString();
+            
+            // Enable export and save buttons
+            exportBtn.disabled = false;
+            saveAnalyzedBtn.disabled = false;
+            clearResultsBtn.disabled = false;
             
             // Display defects list
             defectsList.innerHTML = '';
@@ -854,6 +983,22 @@
             } else {
                 defectsList.innerHTML = '<div style="color: #10b981; text-align: center; padding: 10px;">✓ No defects detected</div>';
             }
+            
+            // Add to history
+            detectionHistory.unshift({
+                timestamp: now.toISOString(),
+                defects_found: results.defects_found,
+                defect_count: results.defect_count,
+                confidence: results.confidence,
+                method: results.method || 'N/A'
+            });
+            
+            // Keep only last 20 entries
+            if (detectionHistory.length > 20) {
+                detectionHistory = detectionHistory.slice(0, 20);
+            }
+            
+            updateHistoryDisplay();
         }
 
         function toggleAutoAnalyze() {
@@ -905,6 +1050,193 @@
                 content.style.display = 'none';
                 icon.textContent = '▶';
             }
+        }
+        
+        function toggleFullscreen() {
+            const frame = document.getElementById('cameraFrame');
+            if (!frame.src) return;
+            
+            if (!document.fullscreenElement) {
+                frame.requestFullscreen().catch(err => {
+                    alert('Error entering fullscreen: ' + err.message);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        function openCameraSettings() {
+            const adjustments = document.getElementById('imageAdjustments');
+            if (adjustments.style.display === 'none') {
+                adjustments.style.display = 'block';
+            } else {
+                adjustments.style.display = 'none';
+            }
+        }
+        
+        function updateImageAdjustments() {
+            const brightness = document.getElementById('brightnessSlider').value;
+            const contrast = document.getElementById('contrastSlider').value;
+            const frame = document.getElementById('cameraFrame');
+            
+            document.getElementById('brightnessValue').textContent = brightness;
+            document.getElementById('contrastValue').textContent = contrast;
+            
+            // Apply CSS filters
+            const brightnessValue = parseFloat(brightness) / 100;
+            const contrastValue = (parseFloat(contrast) + 100) / 100;
+            
+            frame.style.filter = `brightness(${1 + brightnessValue}) contrast(${contrastValue})`;
+        }
+        
+        function resetImageAdjustments() {
+            document.getElementById('brightnessSlider').value = 0;
+            document.getElementById('contrastSlider').value = 0;
+            document.getElementById('brightnessValue').textContent = '0';
+            document.getElementById('contrastValue').textContent = '0';
+            
+            const frame = document.getElementById('cameraFrame');
+            frame.style.filter = 'none';
+        }
+        
+        function exportResults() {
+            if (!currentResults) {
+                alert('No results to export');
+                return;
+            }
+            
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                defects_found: currentResults.defects_found,
+                defect_count: currentResults.defect_count,
+                confidence: currentResults.confidence,
+                method: currentResults.method,
+                defects: currentResults.defects || []
+            };
+            
+            const jsonStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `detection-results-${Date.now()}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function saveAnalyzedImage() {
+            const analyzedImg = document.getElementById('analyzedImage');
+            if (!analyzedImg.src) {
+                alert('No analyzed image to save');
+                return;
+            }
+            
+            const link = document.createElement('a');
+            link.href = analyzedImg.src;
+            link.download = `analyzed-image-${Date.now()}.jpg`;
+            link.click();
+        }
+        
+        function clearResults() {
+            const resultsDisplay = document.getElementById('resultsDisplay');
+            const analyzedImg = document.getElementById('analyzedImage');
+            const exportBtn = document.getElementById('exportResultsBtn');
+            const saveAnalyzedBtn = document.getElementById('saveAnalyzedBtn');
+            const clearResultsBtn = document.getElementById('clearResultsBtn');
+            
+            resultsDisplay.style.display = 'none';
+            analyzedImg.style.display = 'none';
+            analyzedImg.src = '';
+            exportBtn.disabled = true;
+            saveAnalyzedBtn.disabled = true;
+            clearResultsBtn.disabled = true;
+            currentResults = null;
+        }
+        
+        function toggleAdvancedOptions() {
+            const options = document.getElementById('advancedOptions');
+            const icon = document.getElementById('advancedToggleIcon');
+            if (options.style.display === 'none') {
+                options.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                options.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+        
+        function updateSensitivity() {
+            const sensitivity = document.getElementById('sensitivitySlider').value;
+            const labels = ['Very Low', 'Low', 'Low-Medium', 'Medium-Low', 'Medium', 'Medium-High', 'High-Medium', 'High', 'Very High', 'Maximum'];
+            const label = labels[parseInt(sensitivity) - 1] || 'Medium';
+            document.getElementById('sensitivityValue').textContent = `${sensitivity} (${label})`;
+        }
+        
+        function applyAdvancedSettings() {
+            const sensitivity = document.getElementById('sensitivitySlider').value;
+            const minSize = document.getElementById('minDefectSize').value;
+            const maxSize = document.getElementById('maxDefectSize').value;
+            
+            // Store settings (could be sent to backend in future)
+            localStorage.setItem('visionSettings', JSON.stringify({
+                sensitivity: sensitivity,
+                minDefectSize: minSize,
+                maxDefectSize: maxSize
+            }));
+            
+            alert('Settings saved! Note: These settings will be applied in future updates.');
+        }
+        
+        function resetAdvancedSettings() {
+            document.getElementById('sensitivitySlider').value = 5;
+            document.getElementById('minDefectSize').value = 10;
+            document.getElementById('maxDefectSize').value = 5000;
+            updateSensitivity();
+            localStorage.removeItem('visionSettings');
+        }
+        
+        function toggleHistory() {
+            const history = document.getElementById('detectionHistory');
+            const icon = document.getElementById('historyToggleIcon');
+            if (history.style.display === 'none') {
+                history.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                history.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+        
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+            
+            if (detectionHistory.length === 0) {
+                historyList.innerHTML = '<p style="color: #64748b; font-size: 12px; text-align: center; padding: 10px;">No history yet</p>';
+                return;
+            }
+            
+            historyList.innerHTML = '';
+            detectionHistory.forEach((entry, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.style.cssText = 'padding: 8px; margin-bottom: 6px; background: rgba(30, 41, 59, 0.6); border-radius: 6px; border-left: 3px solid ' + (entry.defects_found ? '#ef4444' : '#10b981') + '; font-size: 11px;';
+                
+                const date = new Date(entry.timestamp);
+                historyItem.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong style="color: #60a5fa;">#${index + 1}</strong>
+                        <span style="color: #94a3b8;">${date.toLocaleTimeString()}</span>
+                    </div>
+                    <div style="color: #cbd5e1;">
+                        Defects: ${entry.defect_count} | Confidence: ${entry.confidence}% | Method: ${entry.method}
+                    </div>
+                `;
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        function clearHistory() {
+            detectionHistory = [];
+            updateHistoryDisplay();
         }
     </script>
 </body>
