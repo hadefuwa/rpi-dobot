@@ -464,6 +464,24 @@
                 </div>
             </div>
 
+            <!-- Top-Level Detection Settings -->
+            <div style="background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); padding: 15px 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 15px; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox" id="topLevelObjectDetection" checked style="width: 18px; height: 18px; cursor: pointer;" onchange="toggleTopLevelObjectDetection()">
+                            <span>&#128269; Object Detection</span>
+                        </label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 15px; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox" id="topLevelDefectDetection" checked style="width: 18px; height: 18px; cursor: pointer;" onchange="toggleTopLevelDefectDetection()">
+                            <span>&#9888;&#65039; Defect Detection</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <div class="content">
                 <div class="camera-section">
                     <!-- Camera Viewer -->
@@ -1029,9 +1047,15 @@
             // Load object detection parameters
             loadObjectParams();
             
-            // Enable object detection by default
+            // Enable object detection by default (both top-level and panel checkbox)
+            document.getElementById('topLevelObjectDetection').checked = true;
             document.getElementById('useObjectDetection').checked = true;
+            topLevelObjectDetectionEnabled = true;
             toggleObjectDetection();  // This will show the options and set the state
+            
+            // Enable defect detection by default
+            document.getElementById('topLevelDefectDetection').checked = true;
+            topLevelDefectDetectionEnabled = true;
             
             // Initialize serial monitor
             setTimeout(() => {
@@ -1204,16 +1228,26 @@
         }
         
         async function analyzeFrame() {
+            // Check if defect detection is enabled at top level
+            if (!topLevelDefectDetectionEnabled) {
+                addSerialLog('Defect Detection is disabled. Enable it in the top-level settings to analyze frames.', 'error');
+                return;
+            }
+            
             const analyzeBtn = document.getElementById('analyzeBtn');
             const method = document.getElementById('detectionMethod').value;
             const objectMethod = document.getElementById('objectDetectionMethod').value;
+            
+            // Use top-level object detection setting
+            const useObjectDetection = topLevelObjectDetectionEnabled && objectDetectionEnabled;
+            
             // Update object params before sending
             updateObjectParams();
             
             analyzeBtn.disabled = true;
             analyzeBtn.innerHTML = '<span class="loading"></span> Analyzing...';
             
-            if (objectDetectionEnabled) {
+            if (useObjectDetection) {
                 addSerialLog(`Starting analysis: Object Detection (${objectMethod}) → Defect Detection (${method})`, 'detection');
             } else {
                 addSerialLog(`Starting frame analysis (Method: ${method})...`, 'detection');
@@ -1228,7 +1262,7 @@
                     body: JSON.stringify({ 
                         method: method,
                         params: detectionParams,
-                        use_object_detection: objectDetectionEnabled,
+                        use_object_detection: useObjectDetection,
                         object_method: objectMethod,
                         object_params: objectParams
                     })
@@ -1400,7 +1434,7 @@
             
             // Then analyze every 3 seconds
             autoAnalyzeInterval = setInterval(() => {
-                if (autoAnalyzeActive && cameraConnected) {
+                if (autoAnalyzeActive && cameraConnected && topLevelDefectDetectionEnabled) {
                     analyzeFrame();
                 }
             }, 3000);
@@ -1546,6 +1580,45 @@
             }
         }
         
+        // Top-level detection settings
+        let topLevelObjectDetectionEnabled = true;  // Enabled by default
+        let topLevelDefectDetectionEnabled = true;  // Enabled by default
+
+        function toggleTopLevelObjectDetection() {
+            topLevelObjectDetectionEnabled = document.getElementById('topLevelObjectDetection').checked;
+            const useObjectDetectionCheckbox = document.getElementById('useObjectDetection');
+            
+            // Update the checkbox in the defect detection panel
+            useObjectDetectionCheckbox.checked = topLevelObjectDetectionEnabled;
+            
+            // Call the existing toggle function to update the UI
+            toggleObjectDetection();
+            
+            if (topLevelObjectDetectionEnabled) {
+                addSerialLog('Object Detection: ENABLED (top-level setting)', 'info');
+            } else {
+                addSerialLog('Object Detection: DISABLED (top-level setting)', 'info');
+            }
+        }
+
+        function toggleTopLevelDefectDetection() {
+            topLevelDefectDetectionEnabled = document.getElementById('topLevelDefectDetection').checked;
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const autoAnalyzeBtn = document.getElementById('autoAnalyzeBtn');
+            
+            // Enable or disable analyze buttons based on defect detection setting
+            if (topLevelDefectDetectionEnabled) {
+                analyzeBtn.disabled = false;
+                autoAnalyzeBtn.disabled = false;
+                addSerialLog('Defect Detection: ENABLED (top-level setting)', 'info');
+            } else {
+                analyzeBtn.disabled = true;
+                autoAnalyzeBtn.disabled = true;
+                stopAutoAnalyze();  // Stop auto-analyze if it's running
+                addSerialLog('Defect Detection: DISABLED (top-level setting)', 'info');
+            }
+        }
+
         // Object detection parameters
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
