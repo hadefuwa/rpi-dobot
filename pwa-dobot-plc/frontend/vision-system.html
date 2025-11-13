@@ -1293,10 +1293,10 @@
                 addSerialLog('Serial monitor ready', 'info');
             }, 500);
 
-            // Start auto-analysis after camera has time to connect
+            // Start object detection after camera has time to connect
             setTimeout(() => {
-                if (cameraConnected && !autoAnalyzeActive) {
-                    startAutoAnalyze();
+                if (cameraConnected && !objectDetectionActive) {
+                    startObjectDetection();
                 }
             }, 2000);
         });
@@ -1310,10 +1310,10 @@
                     updateCameraStatus(true);
                     startStream();
 
-                    // Auto-start analysis if not already active
+                    // Auto-start object detection if not already active
                     setTimeout(() => {
-                        if (!autoAnalyzeActive) {
-                            startAutoAnalyze();
+                        if (!objectDetectionActive) {
+                            startObjectDetection();
                         }
                     }, 1000);
                 } else {
@@ -1411,7 +1411,9 @@
                 addSerialLog('Disconnecting camera...', 'camera');
                 await fetch(`${API_BASE}/api/camera/disconnect`, { method: 'POST' });
                 updateCameraStatus(false);
-                stopAutoAnalyze();
+                // Stop all detection modes
+                if (objectDetectionActive) stopObjectDetection();
+                if (fullAnalysisActive) stopFullAnalysis();
                 addSerialLog('Camera disconnected', 'info');
             } catch (error) {
                 console.error('Error disconnecting camera:', error);
@@ -1704,48 +1706,7 @@
             updateHistoryDisplay();
         }
 
-        function toggleAutoAnalyze() {
-            if (autoAnalyzeActive) {
-                stopAutoAnalyze();
-            } else {
-                startAutoAnalyze();
-            }
-        }
-
-        function startAutoAnalyze() {
-            autoAnalyzeActive = true;
-            const autoAnalyzeBtn = document.getElementById('autoAnalyzeBtn');
-            autoAnalyzeBtn.innerHTML = '<span>&#9208;&#65039;</span><span>Stop Auto-Analyze</span>';
-            autoAnalyzeBtn.classList.remove('btn-success');
-            autoAnalyzeBtn.classList.add('btn-danger');
-            
-            addSerialLog('Auto-analyze started (interval: 3 seconds)', 'detection');
-            
-            // Analyze immediately
-            analyzeFrame();
-            
-            // Then analyze every 3 seconds
-            autoAnalyzeInterval = setInterval(() => {
-                if (autoAnalyzeActive && cameraConnected && topLevelDefectDetectionEnabled) {
-                    analyzeFrame();
-                }
-            }, 3000);
-        }
-
-        function stopAutoAnalyze() {
-            autoAnalyzeActive = false;
-            const autoAnalyzeBtn = document.getElementById('autoAnalyzeBtn');
-            autoAnalyzeBtn.innerHTML = '<span>&#9889;</span><span>Auto-Analyze</span>';
-            autoAnalyzeBtn.classList.remove('btn-danger');
-            autoAnalyzeBtn.classList.add('btn-success');
-
-            addSerialLog('Auto-analyze stopped', 'detection');
-
-            if (autoAnalyzeInterval) {
-                clearInterval(autoAnalyzeInterval);
-                autoAnalyzeInterval = null;
-            }
-        }
+        // Legacy auto-analyze functions removed - now using startObjectDetection() and startFullAnalysis()
 
         // Slider value update function
         function updateSliderValue(sliderId, valueId, isDecimal = false) {
@@ -2140,17 +2101,15 @@
         function toggleTopLevelDefectDetection() {
             topLevelDefectDetectionEnabled = document.getElementById('topLevelDefectDetection').checked;
             const analyzeBtn = document.getElementById('analyzeBtn');
-            const autoAnalyzeBtn = document.getElementById('autoAnalyzeBtn');
-            
+
             // Enable or disable analyze buttons based on defect detection setting
             if (topLevelDefectDetectionEnabled) {
-                analyzeBtn.disabled = false;
-                autoAnalyzeBtn.disabled = false;
+                if (analyzeBtn) analyzeBtn.disabled = false;
                 addSerialLog('Defect Detection: ENABLED (top-level setting)', 'info');
             } else {
-                analyzeBtn.disabled = true;
-                autoAnalyzeBtn.disabled = true;
-                stopAutoAnalyze();  // Stop auto-analyze if it's running
+                if (analyzeBtn) analyzeBtn.disabled = true;
+                // Stop full analysis if it's running (defect detection disabled)
+                if (fullAnalysisActive) stopFullAnalysis();
                 addSerialLog('Defect Detection: DISABLED (top-level setting)', 'info');
             }
         }
