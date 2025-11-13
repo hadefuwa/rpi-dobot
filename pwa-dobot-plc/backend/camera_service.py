@@ -164,15 +164,15 @@ class CameraService:
             params = {}
         
         # Extract parameters with better defaults for conveyor belt counters
-        min_object_area = params.get('min_object_area', 2000)  # Increased from 500
+        min_object_area = params.get('min_object_area', 5000)  # Increased to detect only larger objects
         max_object_area = params.get('max_object_area', 100000)  # Increased from 50000
         use_bg_subtraction = params.get('use_background_subtraction', True)
         bg_history = params.get('bg_history', 500)
-        bg_threshold = params.get('bg_threshold', 16)
+        bg_threshold = params.get('bg_threshold', 32)  # Increased from 16 to reduce noise
         bg_learning_rate = params.get('bg_learning_rate', 0.001)
         aspect_ratio_min = params.get('aspect_ratio_min', 0.2)
         aspect_ratio_max = params.get('aspect_ratio_max', 5.0)
-        min_confidence = params.get('min_confidence', 0.5)
+        min_confidence = params.get('min_confidence', 0.7)  # Increased from 0.5
         
         try:
             objects = []
@@ -208,12 +208,12 @@ class CameraService:
                 # Only detect objects after background is learned
                 if self.bg_initialized:
                     # Morphological operations to clean up the mask
-                    kernel = np.ones((5, 5), np.uint8)
+                    kernel = np.ones((7, 7), np.uint8)  # Larger kernel to merge small regions
                     fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_CLOSE, kernel)
                     fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN, kernel)
-                    
-                    # Dilate to merge nearby regions
-                    fg_mask = cv2.dilate(fg_mask, kernel, iterations=2)
+
+                    # Dilate to merge nearby regions (reduced iterations)
+                    fg_mask = cv2.dilate(fg_mask, kernel, iterations=1)  # Reduced from 2 to 1
                     
                     # Find contours in the foreground mask
                     contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -330,7 +330,13 @@ class CameraService:
             if method == 'combined' and len(objects) > 0:
                 objects = self._merge_nearby_objects(objects, threshold=50)  # Increased threshold
                 object_count = len(objects)
-            
+
+            # Keep only the most confident detection (since we expect 1 object at a time)
+            if len(objects) > 1:
+                objects = sorted(objects, key=lambda x: x.get('confidence', 0), reverse=True)
+                objects = [objects[0]]  # Keep only the best one
+                object_count = 1
+
             return {
                 'objects_found': object_count > 0,
                 'object_count': object_count,

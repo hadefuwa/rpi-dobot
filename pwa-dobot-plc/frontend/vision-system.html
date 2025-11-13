@@ -568,11 +568,11 @@
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                                         <div>
                                             <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Min Area (px)</label>
-                                            <input type="number" id="minObjectArea" value="2000" min="100" max="50000" step="100" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                            <input type="number" id="minObjectArea" value="10000" min="1000" max="100000" step="1000" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
                                         </div>
                                         <div>
                                             <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Max Area (px)</label>
-                                            <input type="number" id="maxObjectArea" value="100000" min="1000" max="500000" step="1000" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                            <input type="number" id="maxObjectArea" value="200000" min="10000" max="500000" step="10000" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
                                         </div>
                                     </div>
                                     
@@ -586,7 +586,7 @@
                                             </div>
                                             <div>
                                                 <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Threshold</label>
-                                                <input type="number" id="bgThreshold" value="16" min="5" max="50" step="1" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
+                                                <input type="number" id="bgThreshold" value="25" min="10" max="50" step="1" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;" onchange="updateObjectParams()">
                                             </div>
                                         </div>
                                         <div>
@@ -666,12 +666,12 @@
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                                     <div>
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Min Defect Area (px²)</label>
-                                        <input type="number" id="minDefectArea" min="1" max="10000" value="50" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
-                                        <small style="color: #64748b; font-size: 10px;">Minimum area to consider a defect</small>
+                                        <input type="number" id="minDefectArea" min="100" max="10000" value="500" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <small style="color: #64748b; font-size: 10px;">Minimum area to consider a defect (higher = less sensitive)</small>
                                     </div>
                                     <div>
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Max Defect Area (px²)</label>
-                                        <input type="number" id="maxDefectArea" min="1" max="100000" value="10000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <input type="number" id="maxDefectArea" min="1000" max="200000" value="50000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                         <small style="color: #64748b; font-size: 10px;">Maximum area to consider a defect</small>
                                     </div>
                                 </div>
@@ -694,11 +694,11 @@
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                                     <div>
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Blob Min Area (px²)</label>
-                                        <input type="number" id="blobMinArea" min="1" max="10000" value="50" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <input type="number" id="blobMinArea" min="100" max="10000" value="500" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                     </div>
                                     <div>
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Blob Max Area (px²)</label>
-                                        <input type="number" id="blobMaxArea" min="1" max="100000" value="5000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <input type="number" id="blobMaxArea" min="1000" max="200000" value="20000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                     </div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
@@ -719,11 +719,11 @@
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                                     <div>
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Contour Min Area (px²)</label>
-                                        <input type="number" id="contourMinArea" min="1" max="10000" value="100" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <input type="number" id="contourMinArea" min="100" max="10000" value="1000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                     </div>
                                     <div>
                                         <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Contour Max Area (px²)</label>
-                                        <input type="number" id="contourMaxArea" min="1" max="100000" value="10000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
+                                        <input type="number" id="contourMaxArea" min="1000" max="200000" value="50000" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateDetectionParams()">
                                     </div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
@@ -1619,30 +1619,30 @@
             }
         }
 
-        // Object detection parameters
+        // Object detection parameters - Less sensitive defaults
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
-            min_object_area: 2000,  // Increased for counters on conveyor
-            max_object_area: 100000,  // Increased for counters on conveyor
+            min_object_area: 10000,  // Much larger minimum to filter out small noise
+            max_object_area: 200000,  // Increased max for larger objects
             use_background_subtraction: true,  // Use background subtraction by default
             bg_history: 500,
-            bg_threshold: 16,
+            bg_threshold: 25,  // Increased threshold to reduce false positives
             bg_learning_rate: 0.001,
-            aspect_ratio_min: 0.2,
-            aspect_ratio_max: 5.0,
-            min_confidence: 0.5,
-            object_confidence: 0.5,
-            object_nms_threshold: 0.4,
+            aspect_ratio_min: 0.3,  // Tighter aspect ratio
+            aspect_ratio_max: 3.0,
+            min_confidence: 0.7,  // Higher confidence required
+            object_confidence: 0.7,
+            object_nms_threshold: 0.5,  // More aggressive merging
             roi_padding: 10
         };
         
         function updateObjectParams() {
             objectParams = {
-                min_object_area: parseInt(document.getElementById('minObjectArea').value) || 2000,
-                max_object_area: parseInt(document.getElementById('maxObjectArea').value) || 100000,
+                min_object_area: parseInt(document.getElementById('minObjectArea').value) || 10000,
+                max_object_area: parseInt(document.getElementById('maxObjectArea').value) || 200000,
                 use_background_subtraction: document.getElementById('useBgSubtraction').checked,
                 bg_history: parseInt(document.getElementById('bgHistory').value) || 500,
-                bg_threshold: parseInt(document.getElementById('bgThreshold').value) || 16,
+                bg_threshold: parseInt(document.getElementById('bgThreshold').value) || 25,
                 bg_learning_rate: parseFloat(document.getElementById('bgLearningRate').value) || 0.001,
                 aspect_ratio_min: parseFloat(document.getElementById('aspectRatioMin').value) || 0.2,
                 aspect_ratio_max: parseFloat(document.getElementById('aspectRatioMax').value) || 5.0,
@@ -1665,10 +1665,10 @@
                     objectParams = { ...objectParams, ...savedParams };
                     
                     // Update UI
-                    document.getElementById('minObjectArea').value = objectParams.min_object_area || 2000;
-                    document.getElementById('maxObjectArea').value = objectParams.max_object_area || 100000;
+                    document.getElementById('minObjectArea').value = objectParams.min_object_area || 10000;
+                    document.getElementById('maxObjectArea').value = objectParams.max_object_area || 200000;
                     document.getElementById('bgHistory').value = objectParams.bg_history || 500;
-                    document.getElementById('bgThreshold').value = objectParams.bg_threshold || 16;
+                    document.getElementById('bgThreshold').value = objectParams.bg_threshold || 25;
                     document.getElementById('bgLearningRate').value = objectParams.bg_learning_rate || 0.001;
                     document.getElementById('aspectRatioMin').value = objectParams.aspect_ratio_min || 0.2;
                     document.getElementById('aspectRatioMax').value = objectParams.aspect_ratio_max || 5.0;
@@ -1685,32 +1685,32 @@
             }
         }
         
-        // Detection parameters storage
+        // Detection parameters storage - Less sensitive defaults
         let detectionParams = {
-            min_area: 50,
-            max_area: 10000,
-            blob_min_area: 50,
-            blob_max_area: 5000,
-            contour_min_area: 100,
-            contour_max_area: 10000,
-            canny_low: 50,
-            canny_high: 150,
-            edge_canny_low: 30,
-            edge_canny_high: 100,
-            hough_threshold: 50,
-            merge_threshold: 20,
-            gaussian_blur: 5,
-            adaptive_thresh_block: 11,
-            adaptive_thresh_c: 2,
+            min_area: 500,  // Much larger minimum to filter out tiny noise
+            max_area: 50000,  // Increased max for larger defects
+            blob_min_area: 500,  // Increased from 50
+            blob_max_area: 20000,  // Increased from 5000
+            contour_min_area: 1000,  // Increased from 100
+            contour_max_area: 50000,  // Increased from 10000
+            canny_low: 80,  // Increased thresholds for less sensitivity
+            canny_high: 200,
+            edge_canny_low: 60,  // Increased from 30
+            edge_canny_high: 150,  // Increased from 100
+            hough_threshold: 80,  // Increased from 50
+            merge_threshold: 50,  // Increased from 20 to merge more nearby detections
+            gaussian_blur: 7,  // Increased blur to reduce noise
+            adaptive_thresh_block: 15,  // Increased from 11
+            adaptive_thresh_c: 5,  // Increased from 2
             // Edge detection additional parameters
-            min_line_length: 30,
-            max_line_gap: 10,
-            line_grouping_distance: 30,
-            min_lines_per_defect: 2,
-            min_edge_defect_size: 10,
+            min_line_length: 50,  // Increased from 30
+            max_line_gap: 20,  // Increased from 10
+            line_grouping_distance: 50,  // Increased from 30
+            min_lines_per_defect: 3,  // Increased from 2
+            min_edge_defect_size: 30,  // Increased from 10
             // Contour detection additional parameters
-            aspect_ratio_min: 0.2,
-            aspect_ratio_max: 5.0,
+            aspect_ratio_min: 0.3,  // Tighter aspect ratio
+            aspect_ratio_max: 3.0,  // Tighter aspect ratio
             dilation_iterations: 1,
             morphological_kernel_size: 3
         };
@@ -1718,12 +1718,12 @@
         function updateDetectionParams() {
             // Update detection parameters object
             detectionParams = {
-                min_area: parseInt(document.getElementById('minDefectArea').value) || 50,
-                max_area: parseInt(document.getElementById('maxDefectArea').value) || 10000,
-                blob_min_area: parseInt(document.getElementById('blobMinArea').value) || 50,
-                blob_max_area: parseInt(document.getElementById('blobMaxArea').value) || 5000,
-                contour_min_area: parseInt(document.getElementById('contourMinArea').value) || 100,
-                contour_max_area: parseInt(document.getElementById('contourMaxArea').value) || 10000,
+                min_area: parseInt(document.getElementById('minDefectArea').value) || 500,
+                max_area: parseInt(document.getElementById('maxDefectArea').value) || 50000,
+                blob_min_area: parseInt(document.getElementById('blobMinArea').value) || 500,
+                blob_max_area: parseInt(document.getElementById('blobMaxArea').value) || 20000,
+                contour_min_area: parseInt(document.getElementById('contourMinArea').value) || 1000,
+                contour_max_area: parseInt(document.getElementById('contourMaxArea').value) || 50000,
                 canny_low: parseInt(document.getElementById('cannyLow').value) || 50,
                 canny_high: parseInt(document.getElementById('cannyHigh').value) || 150,
                 edge_canny_low: parseInt(document.getElementById('edgeCannyLow').value) || 30,
@@ -1757,18 +1757,18 @@
                 try {
                     detectionParams = JSON.parse(saved);
                     // Update UI - General
-                    document.getElementById('minDefectArea').value = detectionParams.min_area || 50;
-                    document.getElementById('maxDefectArea').value = detectionParams.max_area || 10000;
+                    document.getElementById('minDefectArea').value = detectionParams.min_area || 500;
+                    document.getElementById('maxDefectArea').value = detectionParams.max_area || 50000;
                     document.getElementById('gaussianBlur').value = detectionParams.gaussian_blur || 5;
                     document.getElementById('mergeThreshold').value = detectionParams.merge_threshold || 20;
                     // Blob detection
-                    document.getElementById('blobMinArea').value = detectionParams.blob_min_area || 50;
-                    document.getElementById('blobMaxArea').value = detectionParams.blob_max_area || 5000;
+                    document.getElementById('blobMinArea').value = detectionParams.blob_min_area || 500;
+                    document.getElementById('blobMaxArea').value = detectionParams.blob_max_area || 20000;
                     document.getElementById('adaptiveThreshBlock').value = detectionParams.adaptive_thresh_block || 11;
                     document.getElementById('adaptiveThreshC').value = detectionParams.adaptive_thresh_c || 2;
                     // Contour detection
-                    document.getElementById('contourMinArea').value = detectionParams.contour_min_area || 100;
-                    document.getElementById('contourMaxArea').value = detectionParams.contour_max_area || 10000;
+                    document.getElementById('contourMinArea').value = detectionParams.contour_min_area || 1000;
+                    document.getElementById('contourMaxArea').value = detectionParams.contour_max_area || 50000;
                     document.getElementById('cannyLow').value = detectionParams.canny_low || 50;
                     document.getElementById('cannyHigh').value = detectionParams.canny_high || 150;
                     document.getElementById('aspectRatioMin').value = detectionParams.aspect_ratio_min || 0.2;
@@ -1797,34 +1797,34 @@
         }
         
         function resetAdvancedSettings() {
-            // Reset to defaults - General
-            document.getElementById('minDefectArea').value = 50;
-            document.getElementById('maxDefectArea').value = 10000;
-            document.getElementById('gaussianBlur').value = 5;
-            document.getElementById('mergeThreshold').value = 20;
+            // Reset to defaults - Less sensitive defaults
+            document.getElementById('minDefectArea').value = 500;
+            document.getElementById('maxDefectArea').value = 50000;
+            document.getElementById('gaussianBlur').value = 7;
+            document.getElementById('mergeThreshold').value = 50;
             // Blob detection
-            document.getElementById('blobMinArea').value = 50;
-            document.getElementById('blobMaxArea').value = 5000;
-            document.getElementById('adaptiveThreshBlock').value = 11;
-            document.getElementById('adaptiveThreshC').value = 2;
+            document.getElementById('blobMinArea').value = 500;
+            document.getElementById('blobMaxArea').value = 20000;
+            document.getElementById('adaptiveThreshBlock').value = 15;
+            document.getElementById('adaptiveThreshC').value = 5;
             // Contour detection
-            document.getElementById('contourMinArea').value = 100;
-            document.getElementById('contourMaxArea').value = 10000;
-            document.getElementById('cannyLow').value = 50;
-            document.getElementById('cannyHigh').value = 150;
-            document.getElementById('aspectRatioMin').value = 0.2;
-            document.getElementById('aspectRatioMax').value = 5.0;
+            document.getElementById('contourMinArea').value = 1000;
+            document.getElementById('contourMaxArea').value = 50000;
+            document.getElementById('cannyLow').value = 80;
+            document.getElementById('cannyHigh').value = 200;
+            document.getElementById('aspectRatioMin').value = 0.3;
+            document.getElementById('aspectRatioMax').value = 3.0;
             document.getElementById('dilationIterations').value = 1;
             document.getElementById('morphologicalKernelSize').value = 3;
             // Edge detection
-            document.getElementById('edgeCannyLow').value = 30;
-            document.getElementById('edgeCannyHigh').value = 100;
-            document.getElementById('houghThreshold').value = 50;
-            document.getElementById('minLineLength').value = 30;
-            document.getElementById('maxLineGap').value = 10;
-            document.getElementById('lineGroupingDistance').value = 30;
-            document.getElementById('minLinesPerDefect').value = 2;
-            document.getElementById('minEdgeDefectSize').value = 10;
+            document.getElementById('edgeCannyLow').value = 60;
+            document.getElementById('edgeCannyHigh').value = 150;
+            document.getElementById('houghThreshold').value = 80;
+            document.getElementById('minLineLength').value = 50;
+            document.getElementById('maxLineGap').value = 20;
+            document.getElementById('lineGroupingDistance').value = 50;
+            document.getElementById('minLinesPerDefect').value = 3;
+            document.getElementById('minEdgeDefectSize').value = 30;
             
             updateDetectionParams();
             localStorage.removeItem('detectionParams');
