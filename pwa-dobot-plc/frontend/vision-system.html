@@ -1451,14 +1451,23 @@
         function startStreamImmediately() {
             const frame = document.getElementById('cameraFrame');
             const streamUrl = `${API_BASE}/api/camera/stream?t=${Date.now()}`;
+            console.log('Starting stream with URL:', streamUrl);
             frame.src = streamUrl;
             frame.style.display = 'block';
 
             // Hide placeholder optimistically
             const placeholder = document.getElementById('cameraPlaceholder');
-            placeholder.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'none';
 
-            addSerialLog('Attempting to start camera stream immediately...', 'camera');
+            addSerialLog(`Starting camera stream: ${streamUrl}`, 'camera');
+
+            // Force reload after short delay if still not loaded
+            setTimeout(() => {
+                if (!frame.complete || frame.naturalWidth === 0) {
+                    console.log('Stream not loaded, retrying...');
+                    frame.src = `${API_BASE}/api/camera/stream?t=${Date.now()}`;
+                }
+            }, 2000);
         }
 
         // Handle stream errors with automatic retry
