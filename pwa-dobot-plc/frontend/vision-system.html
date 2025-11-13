@@ -1742,6 +1742,14 @@
             }
         }
 
+        // Update object detection params from UI (called when method changes)
+        function updateObjectParams() {
+            // This function is called when detection method changes
+            // Just save current selection, actual params are read in applyObjectDetectionSettings
+            const method = document.getElementById('objectDetectionMethod').value;
+            addSerialLog(`Object detection method changed to: ${method}`, 'info');
+        }
+
         // Apply object detection settings
         function applyObjectDetectionSettings() {
             const minArea = parseInt(document.getElementById('minObjectArea').value);
