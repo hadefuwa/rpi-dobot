@@ -1339,43 +1339,46 @@
             const fullscreenBtn = document.getElementById('fullscreenBtn');
             const settingsBtn = document.getElementById('settingsBtn');
             const analyzeBtn = document.getElementById('analyzeBtn');
-            const autoAnalyzeBtn = document.getElementById('autoAnalyzeBtn');
             const frame = document.getElementById('cameraFrame');
             const placeholder = document.getElementById('cameraPlaceholder');
 
             if (connected) {
                 indicator.classList.add('connected');
                 statusText.textContent = 'Connected';
-                connectBtn.disabled = true;
-                disconnectBtn.disabled = false;
-                captureBtn.disabled = false;
-                fullscreenBtn.disabled = false;
-                settingsBtn.disabled = false;
-                analyzeBtn.disabled = false;
-                autoAnalyzeBtn.disabled = false;
+                if (connectBtn) connectBtn.disabled = true;
+                if (disconnectBtn) disconnectBtn.disabled = false;
+                if (captureBtn) captureBtn.disabled = false;
+                if (fullscreenBtn) fullscreenBtn.disabled = false;
+                if (settingsBtn) settingsBtn.disabled = false;
+                if (analyzeBtn) analyzeBtn.disabled = false;
                 // Enable new detection buttons
-                document.getElementById('startObjectDetectionBtn').disabled = false;
-                document.getElementById('startFullAnalysisBtn').disabled = false;
-                frame.style.display = 'block';
-                placeholder.style.display = 'none';
+                const startObjBtn = document.getElementById('startObjectDetectionBtn');
+                const startFullBtn = document.getElementById('startFullAnalysisBtn');
+                if (startObjBtn) startObjBtn.disabled = false;
+                if (startFullBtn) startFullBtn.disabled = false;
+                if (frame) frame.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
                 addSerialLog('Camera status: CONNECTED', 'camera');
             } else {
                 indicator.classList.remove('connected');
                 statusText.textContent = 'Disconnected';
-                connectBtn.disabled = false;
-                disconnectBtn.disabled = true;
-                captureBtn.disabled = true;
-                fullscreenBtn.disabled = true;
-                settingsBtn.disabled = true;
-                analyzeBtn.disabled = true;
-                autoAnalyzeBtn.disabled = true;
+                if (connectBtn) connectBtn.disabled = false;
+                if (disconnectBtn) disconnectBtn.disabled = true;
+                if (captureBtn) captureBtn.disabled = true;
+                if (fullscreenBtn) fullscreenBtn.disabled = true;
+                if (settingsBtn) settingsBtn.disabled = true;
+                if (analyzeBtn) analyzeBtn.disabled = true;
                 // Disable new detection buttons
-                document.getElementById('startObjectDetectionBtn').disabled = true;
-                document.getElementById('stopObjectDetectionBtn').disabled = true;
-                document.getElementById('startFullAnalysisBtn').disabled = true;
-                document.getElementById('stopFullAnalysisBtn').disabled = true;
-                frame.style.display = 'none';
-                placeholder.style.display = 'flex';
+                const startObjBtn = document.getElementById('startObjectDetectionBtn');
+                const stopObjBtn = document.getElementById('stopObjectDetectionBtn');
+                const startFullBtn = document.getElementById('startFullAnalysisBtn');
+                const stopFullBtn = document.getElementById('stopFullAnalysisBtn');
+                if (startObjBtn) startObjBtn.disabled = true;
+                if (stopObjBtn) stopObjBtn.disabled = true;
+                if (startFullBtn) startFullBtn.disabled = true;
+                if (stopFullBtn) stopFullBtn.disabled = true;
+                if (frame) frame.style.display = 'none';
+                if (placeholder) placeholder.style.display = 'flex';
                 stopStream();
                 addSerialLog('Camera status: DISCONNECTED', 'camera');
             }
