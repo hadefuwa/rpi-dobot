@@ -1860,9 +1860,9 @@
                     analyzedImg.style.display = 'block';
                     analyzedPlaceholder.style.display = 'none';
 
-                    // Get object detection results using vision/analyze endpoint
+                    // Get object detection results using vision/detect endpoint (returns JSON)
                     const objectMethod = document.getElementById('objectDetectionMethod').value;
-                    const detectResponse = await fetch(`${API_BASE}/api/vision/analyze`, {
+                    const detectResponse = await fetch(`${API_BASE}/api/vision/detect`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

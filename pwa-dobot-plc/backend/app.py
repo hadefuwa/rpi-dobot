@@ -1137,6 +1137,92 @@ def vision_analyze():
         logger.error(f"Error in vision analysis: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/vision/detect', methods=['POST'])
+def vision_detect():
+    """Detect objects/defects and return JSON results (no image)"""
+    if camera_service is None:
+        return jsonify({'error': 'Camera service not initialized'}), 503
+
+    try:
+        data = request.json or {}
+        object_detection_enabled = data.get('object_detection_enabled', True)
+        defect_detection_enabled = data.get('defect_detection_enabled', False)
+        object_method = data.get('object_method', 'circle')
+        defect_method = data.get('method', 'combined')
+
+        # Read current frame
+        frame = camera_service.read_frame()
+        if frame is None:
+            return jsonify({'error': 'Failed to read frame from camera'}), 500
+
+        # Extract detection parameters
+        detection_params = data.get('params', {})
+        object_params = data.get('object_params', {})
+
+        results = {
+            'object_detection_enabled': object_detection_enabled,
+            'defect_detection_enabled': defect_detection_enabled,
+            'timestamp': time.time()
+        }
+
+        detected_objects = []
+
+        # Run object detection if enabled
+        if object_detection_enabled:
+            object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
+            detected_objects = object_results.get('objects', [])
+            results['object_count'] = len(detected_objects)
+            results['objects'] = detected_objects
+            results['objects_found'] = len(detected_objects) > 0
+            results['object_method'] = object_method
+
+        # Run defect detection if enabled
+        if defect_detection_enabled:
+            if detected_objects:
+                # Detect defects only in object regions
+                all_defects = []
+                for obj in detected_objects:
+                    x, y = obj['x'], obj['y']
+                    w, h = obj['width'], obj['height']
+                    padding = object_params.get('roi_padding', 10)
+                    x1 = max(0, x - padding)
+                    y1 = max(0, y - padding)
+                    x2 = min(frame.shape[1], x + w + padding)
+                    y2 = min(frame.shape[0], y + h + padding)
+
+                    roi = frame[y1:y2, x1:x2]
+                    if roi.size > 0:
+                        roi_results = camera_service.detect_defects(roi, method=defect_method, params=detection_params)
+                        for defect in roi_results.get('defects', []):
+                            defect['x'] += x1
+                            defect['y'] += y1
+                            all_defects.append(defect)
+
+                results['defects_found'] = len(all_defects) > 0
+                results['defect_count'] = len(all_defects)
+                results['defects'] = all_defects
+                results['confidence'] = camera_service._calculate_confidence(all_defects, frame.shape) if hasattr(camera_service, '_calculate_confidence') else 0.0
+            else:
+                # Detect defects in whole frame
+                defect_results = camera_service.detect_defects(frame, method=defect_method, params=detection_params)
+                results['defects_found'] = defect_results.get('defects_found', False)
+                results['defect_count'] = defect_results.get('defect_count', 0)
+                results['defects'] = defect_results.get('defects', [])
+                results['confidence'] = defect_results.get('confidence', 0.0)
+
+            results['defect_method'] = defect_method
+
+            # Write to PLC fault bit if enabled
+            plc_write_result = write_plc_fault_bit(results.get('defects_found', False))
+            if plc_write_result:
+                results['plc_write'] = plc_write_result
+
+        return jsonify(results)
+
+    except Exception as e:
+        logger.error(f"Error in vision detection: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # ==================================================
 # Serve PWA Frontend
 # ==================================================
