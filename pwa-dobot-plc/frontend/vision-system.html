@@ -1860,32 +1860,45 @@
                     analyzedImg.style.display = 'block';
                     analyzedPlaceholder.style.display = 'none';
 
-                    // Get object detection results
-                    const detectResponse = await fetch(`${API_BASE}/api/camera/detect_objects`, {
+                    // Get object detection results using vision/analyze endpoint
+                    const objectMethod = document.getElementById('objectDetectionMethod').value;
+                    const detectResponse = await fetch(`${API_BASE}/api/vision/analyze`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
+                            object_detection_enabled: true,
+                            defect_detection_enabled: false,
+                            object_method: objectMethod,
                             object_params: objectParams
                         })
                     });
 
                     if (detectResponse.ok) {
                         const results = await detectResponse.json();
-                        const objectCount = results.detected_objects ? results.detected_objects.length : 0;
+                        const objectCount = results.object_count || 0;
 
                         // Update stats
-                        document.getElementById('currentObjectCount').textContent = objectCount;
-                        document.getElementById('lastDetectionTime').textContent = new Date().toLocaleTimeString();
+                        const statsDiv = document.getElementById('objectDetectionStats');
+                        if (statsDiv) statsDiv.style.display = 'block';
+
+                        const countElement = document.getElementById('currentObjectCount');
+                        const timeElement = document.getElementById('lastDetectionTime');
+
+                        if (countElement) countElement.textContent = objectCount;
+                        if (timeElement) timeElement.textContent = new Date().toLocaleTimeString();
 
                         // Update stats color based on target count (4 counters)
-                        const countSpan = document.getElementById('currentObjectCount');
-                        if (objectCount === 4) {
-                            countSpan.style.color = '#10b981'; // Green - perfect
-                        } else if (objectCount > 4) {
-                            countSpan.style.color = '#f59e0b'; // Orange - too many
-                        } else {
-                            countSpan.style.color = '#ef4444'; // Red - too few
+                        if (countElement) {
+                            if (objectCount === 4) {
+                                countElement.style.color = '#10b981'; // Green - perfect
+                            } else if (objectCount > 4) {
+                                countElement.style.color = '#f59e0b'; // Orange - too many
+                            } else {
+                                countElement.style.color = '#ef4444'; // Red - too few
+                            }
                         }
+
+                        addSerialLog(`Object detection: Found ${objectCount} objects (target: 4)`, objectCount === 4 ? 'info' : 'detection');
                     }
                 }
             } catch (error) {
