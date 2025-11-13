@@ -545,17 +545,28 @@
                         </div>
                     </div>
 
+                    <!-- Analyzed Image Viewer -->
+                    <div class="camera-viewer">
+                        <h3>&#128269; Analyzed Image</h3>
+                        <div class="camera-status">
+                            <span class="status-indicator" id="analyzedStatusIndicator"></span>
+                            <span id="analyzedStatusText">No analysis yet</span>
+                        </div>
+                        <img id="analyzedImage" class="camera-frame" src="" alt="Analyzed Image" style="display: none;">
+                        <div id="analyzedPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: #64748b; flex-direction: column; gap: 10px;">
+                            <div style="font-size: 48px;">&#128269;</div>
+                            <div>Analysis results will appear here</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection Results and Settings Section -->
+                <div style="margin-top: 20px;">
                     <!-- Defect Detection Panel -->
                     <div class="detection-panel">
                         <h3>&#128269; Defect Detection</h3>
                         <div class="method-selector">
-                            <div style="margin-bottom: 10px;">
-                                <label style="display: flex; align-items: center; color: #cbd5e1; font-size: 13px; cursor: pointer;">
-                                    <input type="checkbox" id="useObjectDetection" style="margin-right: 8px; cursor: pointer;" onchange="toggleObjectDetection()">
-                                    <strong>Enable Object Detection</strong> (runs before defect detection)
-                                </label>
-                            </div>
-                            <div id="objectDetectionOptions" style="display: none; margin-bottom: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
+                            <div id="objectDetectionOptions" style="display: block; margin-bottom: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
                                 <label for="objectDetectionMethod" style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Object Detection Method:</label>
                                 <select id="objectDetectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateObjectParams()">
                                     <option value="background" selected>Background Subtraction (Conveyor Belt)</option>
@@ -566,10 +577,13 @@
                                 <small style="color: #64748b; font-size: 10px; display: block; margin-top: 5px;">
                                     Background subtraction detects moving objects on conveyor belts. Objects are detected first (green boxes), then defect detection runs on detected object regions.
                                 </small>
-                                
+
                                 <!-- Object Detection Parameters -->
                                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
-                                    <h5 style="color: #60a5fa; font-size: 12px; margin-bottom: 10px;">Object Detection Parameters</h5>
+                                    <h5 style="color: #60a5fa; font-size: 12px; margin-bottom: 10px; cursor: pointer;" onclick="toggleObjectDetectionParams()">
+                                        <span id="objectParamsToggleIcon">▶</span> Object Detection Parameters
+                                    </h5>
+                                    <div id="objectDetectionParams" style="display: none;">
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                                         <div>
                                             <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Min Area (px)</label>
@@ -620,6 +634,7 @@
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -908,10 +923,9 @@
                                 </button>
                             </div>
                         </div>
-                        <img id="analyzedImage" class="analyzed-image" src="" alt="Analyzed Image" style="display: none;">
                     </div>
                 </div>
-                
+
                 <!-- Serial Monitor Log -->
                 <div style="margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.8); border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.1);">
                     <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleSerialMonitor()">
@@ -1053,9 +1067,8 @@
             // Load object detection parameters
             loadObjectParams();
 
-            // Enable object detection by default (both top-level and panel checkbox)
+            // Enable object detection by default
             document.getElementById('topLevelObjectDetection').checked = true;
-            document.getElementById('useObjectDetection').checked = true;
             topLevelObjectDetectionEnabled = true;
             toggleObjectDetection();  // This will show the options and set the state
 
@@ -1272,7 +1285,8 @@
         }
 
         function toggleObjectDetection() {
-            objectDetectionEnabled = document.getElementById('useObjectDetection').checked;
+            // This function is now controlled by the top-level object detection checkbox
+            objectDetectionEnabled = topLevelObjectDetectionEnabled;
             const options = document.getElementById('objectDetectionOptions');
             if (objectDetectionEnabled) {
                 options.style.display = 'block';
@@ -1328,8 +1342,15 @@
                     const blob = await analyzeResponse.blob();
                     const url = URL.createObjectURL(blob);
                     const analyzedImg = document.getElementById('analyzedImage');
+                    const analyzedPlaceholder = document.getElementById('analyzedPlaceholder');
+                    const analyzedStatusIndicator = document.getElementById('analyzedStatusIndicator');
+                    const analyzedStatusText = document.getElementById('analyzedStatusText');
+
                     analyzedImg.src = url;
                     analyzedImg.style.display = 'block';
+                    analyzedPlaceholder.style.display = 'none';
+                    analyzedStatusIndicator.classList.add('connected');
+                    analyzedStatusText.textContent = 'Analysis Complete';
                     addSerialLog('Frame analyzed, annotated image generated', 'detection');
                     
                     // Get detection results
@@ -1611,19 +1632,37 @@
         function clearResults() {
             const resultsDisplay = document.getElementById('resultsDisplay');
             const analyzedImg = document.getElementById('analyzedImage');
+            const analyzedPlaceholder = document.getElementById('analyzedPlaceholder');
+            const analyzedStatusIndicator = document.getElementById('analyzedStatusIndicator');
+            const analyzedStatusText = document.getElementById('analyzedStatusText');
             const exportBtn = document.getElementById('exportResultsBtn');
             const saveAnalyzedBtn = document.getElementById('saveAnalyzedBtn');
             const clearResultsBtn = document.getElementById('clearResultsBtn');
-            
+
             resultsDisplay.style.display = 'none';
             analyzedImg.style.display = 'none';
             analyzedImg.src = '';
+            analyzedPlaceholder.style.display = 'flex';
+            analyzedStatusIndicator.classList.remove('connected');
+            analyzedStatusText.textContent = 'No analysis yet';
             exportBtn.disabled = true;
             saveAnalyzedBtn.disabled = true;
             clearResultsBtn.disabled = true;
             currentResults = null;
         }
         
+        function toggleObjectDetectionParams() {
+            const params = document.getElementById('objectDetectionParams');
+            const icon = document.getElementById('objectParamsToggleIcon');
+            if (params.style.display === 'none') {
+                params.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                params.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+
         function toggleAdvancedOptions() {
             const options = document.getElementById('advancedOptions');
             const icon = document.getElementById('advancedToggleIcon');
@@ -1642,14 +1681,10 @@
 
         function toggleTopLevelObjectDetection() {
             topLevelObjectDetectionEnabled = document.getElementById('topLevelObjectDetection').checked;
-            const useObjectDetectionCheckbox = document.getElementById('useObjectDetection');
-            
-            // Update the checkbox in the defect detection panel
-            useObjectDetectionCheckbox.checked = topLevelObjectDetectionEnabled;
-            
+
             // Call the existing toggle function to update the UI
             toggleObjectDetection();
-            
+
             if (topLevelObjectDetectionEnabled) {
                 addSerialLog('Object Detection: ENABLED (top-level setting)', 'info');
             } else {
