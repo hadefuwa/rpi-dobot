@@ -135,10 +135,10 @@ class CameraService:
         """
         Detect objects in an image frame before defect detection
         Uses background subtraction for moving objects on conveyor belts
-        
+
         Args:
             frame: Input image frame (BGR format)
-            method: Detection method ('contour', 'blob', 'combined', 'background')
+            method: Detection method ('contour', 'blob', 'combined', 'background', 'circle')
             params: Optional detection parameters:
                 - min_object_area: Minimum object area in pixels (default: 2000)
                 - max_object_area: Maximum object area in pixels (default: 100000)
@@ -326,7 +326,81 @@ class CameraService:
                             'method': 'blob'
                         })
                         object_count += 1
-            
+
+            # Circle detection for circular objects (counters) on colored backgrounds
+            if method == 'circle':
+                # Optimized for detecting large circles on blue background
+                # Convert to HSV to isolate blue background
+                hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+                # Get HSV parameters (tunable via frontend sliders)
+                hsv_hue_min = params.get('hsv_hue_min', 90)
+                hsv_hue_max = params.get('hsv_hue_max', 130)
+
+                # Define blue color range (adjust these for your specific blue)
+                lower_blue = np.array([hsv_hue_min, 50, 50])  # Lower bound of blue in HSV
+                upper_blue = np.array([hsv_hue_max, 255, 255])  # Upper bound of blue in HSV
+
+                # Create mask for blue background
+                blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+
+                # Invert to get objects (non-blue regions)
+                object_mask = cv2.bitwise_not(blue_mask)
+
+                # Apply morphological operations to clean up
+                kernel_size = params.get('morphological_kernel_size', 7)
+                kernel = np.ones((kernel_size, kernel_size), np.uint8)
+                object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_CLOSE, kernel)
+                object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_OPEN, kernel)
+
+                # Find contours
+                contours, _ = cv2.findContours(object_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                for contour in contours:
+                    area = cv2.contourArea(contour)
+                    if min_object_area < area < max_object_area:
+                        # Fit a circle to the contour
+                        (x, y), radius = cv2.minEnclosingCircle(contour)
+
+                        # Calculate circularity (how close to a perfect circle)
+                        perimeter = cv2.arcLength(contour, True)
+                        if perimeter > 0:
+                            circularity = 4 * np.pi * area / (perimeter ** 2)
+                        else:
+                            circularity = 0
+
+                        # Only accept circular objects (circularity close to 1.0)
+                        min_circularity = params.get('min_circularity', 0.6)
+                        if circularity >= min_circularity:
+                            # Get bounding box
+                            x_int, y_int, w, h = cv2.boundingRect(contour)
+
+                            # Calculate aspect ratio
+                            aspect_ratio = float(w) / h if h > 0 else 0
+
+                            # Check if aspect ratio is close to 1 (circular)
+                            if 0.7 < aspect_ratio < 1.3:  # Allow some tolerance
+                                # Calculate confidence based on circularity and size
+                                size_confidence = min(area / max_object_area, 1.0)
+                                confidence = (circularity * 0.7 + size_confidence * 0.3)
+
+                                if confidence >= min_confidence:
+                                    objects.append({
+                                        'type': 'circle',
+                                        'x': int(x_int),
+                                        'y': int(y_int),
+                                        'width': int(w),
+                                        'height': int(h),
+                                        'area': float(area),
+                                        'center': (int(x), int(y)),
+                                        'radius': int(radius),
+                                        'circularity': round(circularity, 2),
+                                        'confidence': round(confidence, 2),
+                                        'method': 'circle',
+                                        'aspect_ratio': round(aspect_ratio, 2)
+                                    })
+                                    object_count += 1
+
             # Remove duplicates if using combined method
             if method == 'combined' and len(objects) > 0:
                 objects = self._merge_nearby_objects(objects, threshold=50)  # Increased threshold
