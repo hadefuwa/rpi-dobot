@@ -187,6 +187,11 @@
             }
         }
 
+        /* Settings panels will be displayed below the camera section */
+        .settings-section {
+            margin-top: 20px;
+        }
+
         .camera-viewer {
             background: rgba(15, 23, 42, 0.8);
             border-radius: 12px;
@@ -491,7 +496,7 @@
                             <span class="status-indicator" id="cameraStatusIndicator"></span>
                             <span id="cameraStatusText">Disconnected</span>
                         </div>
-                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;">
+                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;" onerror="handleStreamError(this)">
                         <div id="cameraPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: #64748b; flex-direction: column; gap: 10px;">
                             <div style="font-size: 48px;">&#128247;</div>
                             <div>Camera not connected</div>
@@ -1039,41 +1044,61 @@
 
         // Check camera status and load settings on page load
         window.addEventListener('load', () => {
-            checkCameraStatus();
-            
+            // Start camera stream immediately (don't wait for checkCameraStatus)
+            startStreamImmediately();
+
             // Load saved detection parameters
             loadDetectionParams();
-            
+
             // Load object detection parameters
             loadObjectParams();
-            
+
             // Enable object detection by default (both top-level and panel checkbox)
             document.getElementById('topLevelObjectDetection').checked = true;
             document.getElementById('useObjectDetection').checked = true;
             topLevelObjectDetectionEnabled = true;
             toggleObjectDetection();  // This will show the options and set the state
-            
+
             // Enable defect detection by default
             document.getElementById('topLevelDefectDetection').checked = true;
             topLevelDefectDetectionEnabled = true;
-            
+
+            // Check camera status in background
+            checkCameraStatus();
+
             // Initialize serial monitor
             setTimeout(() => {
                 addSerialLog('Vision System initialized', 'info');
+                addSerialLog('Camera stream starting immediately', 'info');
                 addSerialLog('Object detection enabled by default', 'info');
                 addSerialLog('Background subtraction enabled for conveyor belt detection', 'info');
+                addSerialLog('Auto-analysis will start automatically when camera connects', 'info');
                 addSerialLog('Serial monitor ready', 'info');
             }, 500);
+
+            // Start auto-analysis after camera has time to connect
+            setTimeout(() => {
+                if (cameraConnected && !autoAnalyzeActive) {
+                    startAutoAnalyze();
+                }
+            }, 2000);
         });
 
         async function checkCameraStatus() {
             try {
                 const response = await fetch(`${API_BASE}/api/camera/status`);
                 const data = await response.json();
-                
+
                 if (data.connected) {
                     updateCameraStatus(true);
                     startStream();
+
+                    // Auto-start analysis if not already active
+                    setTimeout(() => {
+                        if (!autoAnalyzeActive) {
+                            startAutoAnalyze();
+                        }
+                    }, 1000);
                 } else {
                     updateCameraStatus(false);
                 }
@@ -1190,6 +1215,37 @@
             const frame = document.getElementById('cameraFrame');
             frame.src = '';
             addSerialLog('Camera stream stopped', 'camera');
+        }
+
+        // Start stream immediately on page load (with error recovery)
+        function startStreamImmediately() {
+            const frame = document.getElementById('cameraFrame');
+            const streamUrl = `${API_BASE}/api/camera/stream?t=${Date.now()}`;
+            frame.src = streamUrl;
+            frame.style.display = 'block';
+
+            // Hide placeholder optimistically
+            const placeholder = document.getElementById('cameraPlaceholder');
+            placeholder.style.display = 'none';
+
+            addSerialLog('Attempting to start camera stream immediately...', 'camera');
+        }
+
+        // Handle stream errors with automatic retry
+        function handleStreamError(imgElement) {
+            if (!cameraConnected) {
+                // Show placeholder again if stream fails
+                const placeholder = document.getElementById('cameraPlaceholder');
+                placeholder.style.display = 'flex';
+                imgElement.style.display = 'none';
+            }
+
+            // Retry after 1 second
+            setTimeout(() => {
+                if (imgElement.src) {
+                    imgElement.src = `${API_BASE}/api/camera/stream?t=${Date.now()}`;
+                }
+            }, 1000);
         }
 
         async function captureFrame() {

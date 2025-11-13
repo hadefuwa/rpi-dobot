@@ -60,9 +60,10 @@ class CameraService:
                 self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
                 self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
                 self.camera.set(cv2.CAP_PROP_FPS, 30)
-                
-                # Warm up camera
-                for _ in range(5):
+                self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer for faster response
+
+                # Quick warm up camera (reduced from 5 to 2 frames)
+                for _ in range(2):
                     ret, _ = self.camera.read()
                     if not ret:
                         break
