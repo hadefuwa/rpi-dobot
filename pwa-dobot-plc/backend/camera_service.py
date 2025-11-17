@@ -540,9 +540,9 @@ class CameraService:
         
         # HoughCircles parameters - optimized for ultra-reliable circle detection
         dp = 1  # Inverse ratio of accumulator resolution
-        min_dist = params.get('min_dist_between_circles', 30)  # Lower default to detect circles closer together
+        min_dist = params.get('min_dist_between_circles', 50)
         param1 = 100  # Upper threshold for edge detection (higher = better edge detection)
-        param2 = params.get('hough_circle_threshold', 25)  # Lower default = more sensitive, detects more circles
+        param2 = params.get('hough_circle_threshold', 30)  # Higher = fewer false positives, more reliable
         min_radius = max(5, int(np.sqrt(min_object_area / np.pi)))  # Ensure minimum radius is at least 5 pixels
         max_radius = int(np.sqrt(max_object_area / np.pi))
         

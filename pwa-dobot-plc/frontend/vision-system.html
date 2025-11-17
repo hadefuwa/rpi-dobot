@@ -607,12 +607,12 @@
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
                                     Min Object Area (px²)
-                                            </label>
-                                <input type="number" id="minObjectArea" value="2000" min="500" max="50000" step="500" 
+                                </label>
+                                <input type="number" id="minObjectArea" value="5000" min="1000" max="50000" step="500" 
                                        style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
                                        onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Minimum size to detect (lower = detect smaller circles)</div>
-                                        </div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Minimum size to detect</div>
+                            </div>
                                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
                                     Max Object Area (px²)
@@ -631,23 +631,14 @@
                                        onchange="updateObjectParams()">
                                 <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Higher = fewer false positives</div>
                                             </div>
-                                            <div>
+                            <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
                                     Circle Sensitivity
                                 </label>
-                                <input type="number" id="houghCircleThreshold" value="25" min="10" max="50" step="5" 
+                                <input type="number" id="houghCircleThreshold" value="30" min="10" max="50" step="5" 
                                        style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
                                        onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Lower = more sensitive, detects more circles (10-50)</div>
-                            </div>
-                            <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
-                                    Min Distance Between Circles (px)
-                                </label>
-                                <input type="number" id="minDistBetweenCircles" value="30" min="10" max="100" step="5" 
-                                       style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
-                                       onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Lower = detect circles closer together</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Lower = more sensitive (10-50)</div>
                             </div>
                                 </div>
                         <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
@@ -1223,8 +1214,8 @@
                 objectParams.min_circularity = parseFloat(document.getElementById('minCircularity')?.value || '0.6');
                 objectParams.hsv_hue_min = parseInt(document.getElementById('hsvHueMin')?.value || '90');
                 objectParams.hsv_hue_max = parseInt(document.getElementById('hsvHueMax')?.value || '130');
-                objectParams.hough_circle_threshold = parseInt(document.getElementById('houghCircleThreshold')?.value || '25');
-                objectParams.min_dist_between_circles = parseInt(document.getElementById('minDistBetweenCircles')?.value || '30');
+                objectParams.hough_circle_threshold = parseInt(document.getElementById('houghCircleThreshold')?.value || '30');
+                objectParams.min_dist_between_circles = parseInt(document.getElementById('minDistBetweenCircles')?.value || '50');
             }
             
             addSerialLog(`Object params updated: Method=${method}, MinArea=${minArea}, MaxArea=${maxArea}, Confidence=${minConfidence.toFixed(2)}`, 'info');
@@ -1616,7 +1607,7 @@
         // Object detection parameters - Tunable via sliders
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
-            min_object_area: 2000,  // Lower default to detect smaller circles
+            min_object_area: 5000,  // Default from slider
             max_object_area: 100000,  // Default from slider
             use_background_subtraction: true,  // Use background subtraction by default
             bg_history: 500,
