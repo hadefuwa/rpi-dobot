@@ -512,23 +512,6 @@
             </div>
 
             <!-- Top-Level Detection Settings -->
-            <div style="background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); padding: 15px 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; gap: 30px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 15px; font-weight: 600; cursor: pointer;">
-                            <input type="checkbox" id="topLevelObjectDetection" checked style="width: 18px; height: 18px; cursor: pointer;" onchange="toggleTopLevelObjectDetection()">
-                            <span>&#128269; Object Detection</span>
-                        </label>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 15px; font-weight: 600; cursor: pointer;">
-                            <input type="checkbox" id="topLevelDefectDetection" checked style="width: 18px; height: 18px; cursor: pointer;" onchange="toggleTopLevelDefectDetection()">
-                            <span>&#9888;&#65039; Defect Detection</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
             <div class="content">
                 <div class="camera-section">
                     <!-- Camera Viewer -->
@@ -759,13 +742,11 @@
             // Load object detection parameters
             loadObjectParams();
 
-            // Enable object detection by default
-            document.getElementById('topLevelObjectDetection').checked = true;
+            // Object detection is always enabled (no checkbox needed)
             topLevelObjectDetectionEnabled = true;
-            toggleObjectDetection();  // This will show the options and set the state
+            objectDetectionEnabled = true;
 
-            // Enable defect detection by default
-            document.getElementById('topLevelDefectDetection').checked = true;
+            // Defect detection is always enabled (no checkbox needed)
             topLevelDefectDetectionEnabled = true;
 
             // Check camera status in background
@@ -1242,13 +1223,16 @@
             const stopBtn = document.getElementById('stopObjectDetectionBtn');
             const statsDiv = document.getElementById('objectDetectionStats');
 
-            startBtn.style.display = 'none';
-            stopBtn.style.display = 'inline-flex';
-            statsDiv.style.display = 'block';
+            // Only update UI if elements exist
+            if (startBtn) startBtn.style.display = 'none';
+            if (stopBtn) stopBtn.style.display = 'inline-flex';
+            if (statsDiv) statsDiv.style.display = 'block';
 
             addSerialLog('Object detection started (continuous mode)', 'detection');
 
-            const continuous = document.getElementById('continuousObjectDetection').checked;
+            // Check if continuous detection checkbox exists, otherwise default to true
+            const continuousCheckbox = document.getElementById('continuousObjectDetection');
+            const continuous = continuousCheckbox ? continuousCheckbox.checked : true;
 
             // Run detection immediately
             await detectObjectsOnly();
@@ -1268,8 +1252,9 @@
             const startBtn = document.getElementById('startObjectDetectionBtn');
             const stopBtn = document.getElementById('stopObjectDetectionBtn');
 
-            startBtn.style.display = 'inline-flex';
-            stopBtn.style.display = 'none';
+            // Only update UI if elements exist
+            if (startBtn) startBtn.style.display = 'inline-flex';
+            if (stopBtn) stopBtn.style.display = 'none';
 
             addSerialLog('Object detection stopped', 'detection');
 
@@ -1281,8 +1266,9 @@
 
         async function detectObjectsOnly() {
             try {
-                // Get the selected object detection method from UI
-                const objectMethod = document.getElementById('objectDetectionMethod').value;
+                // Get the selected object detection method from UI (defaults to 'circle')
+                const objectMethodElement = document.getElementById('objectDetectionMethod');
+                const objectMethod = objectMethodElement ? objectMethodElement.value : 'circle';
                 
                 // Update object params before sending
                 updateObjectParams();
@@ -1544,27 +1530,14 @@
         let topLevelDefectDetectionEnabled = true;  // Enabled by default
 
         function toggleTopLevelObjectDetection() {
-            topLevelObjectDetectionEnabled = document.getElementById('topLevelObjectDetection').checked;
-
-            // Call the existing toggle function to update the UI
-            toggleObjectDetection();
-
-            if (topLevelObjectDetectionEnabled) {
-                addSerialLog('Object Detection: ENABLED (top-level setting)', 'info');
-            } else {
-                addSerialLog('Object Detection: DISABLED (top-level setting)', 'info');
-            }
+            // Checkbox removed - object detection is always enabled
+            topLevelObjectDetectionEnabled = true;
+            objectDetectionEnabled = true;
         }
 
         function toggleTopLevelDefectDetection() {
-            topLevelDefectDetectionEnabled = document.getElementById('topLevelDefectDetection').checked;
-            if (topLevelDefectDetectionEnabled) {
-                addSerialLog('Defect Detection: ENABLED (top-level setting)', 'info');
-            } else {
-                // Stop full analysis if it's running (defect detection disabled)
-                if (fullAnalysisActive) stopFullAnalysis();
-                addSerialLog('Defect Detection: DISABLED (top-level setting)', 'info');
-            }
+            // Checkbox removed - defect detection is always enabled
+            topLevelDefectDetectionEnabled = true;
         }
 
         // Object detection parameters - Tunable via sliders
