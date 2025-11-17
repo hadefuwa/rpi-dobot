@@ -543,8 +543,11 @@ class CameraService:
         min_dist = params.get('min_dist_between_circles', 50)
         param1 = 100  # Upper threshold for edge detection (higher = better edge detection)
         param2 = params.get('hough_circle_threshold', 30)  # Increased from 20 - higher = fewer false positives, more reliable
-        min_radius = int(np.sqrt(min_object_area / np.pi))
+        min_radius = max(5, int(np.sqrt(min_object_area / np.pi)))  # Ensure minimum radius is at least 5 pixels
         max_radius = int(np.sqrt(max_object_area / np.pi))
+        
+        logger.info(f"Circle detection params: min_area={min_object_area}, max_area={max_object_area}, "
+                   f"min_radius={min_radius}, max_radius={max_radius}, param2={param2}")
         
         # Detect circles using HoughCircles
         circles = cv2.HoughCircles(
@@ -560,71 +563,40 @@ class CameraService:
         
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
+            logger.info(f"HoughCircles found {len(circles)} potential circles")
             
             for (x, y, r) in circles:
                 # Calculate area
                 area = np.pi * r * r
                 
-                # STRICT filtering: Only accept circles within the exact size range
-                if area < min_object_area or area > max_object_area:
-                    continue  # Skip circles outside size range
+                logger.debug(f"Circle candidate: center=({x},{y}), radius={r}, area={area:.0f}")
                 
-                # Validate circle is actually circular by checking the ROI
-                # Extract a small region around the circle
-                y1 = max(0, y - r - 5)  # Add padding
-                y2 = min(frame.shape[0], y + r + 5)
-                x1 = max(0, x - r - 5)
-                x2 = min(frame.shape[1], x + r + 5)
-                
-                if y2 - y1 < 20 or x2 - x1 < 20:
-                    continue  # Skip if ROI is too small
-                
-                roi_gray = gray[y1:y2, x1:x2]
-                if roi_gray.size == 0:
+                # Basic area filtering: Only accept circles within the size range
+                if area < min_object_area:
+                    logger.debug(f"  Rejected: area {area:.0f} < min {min_object_area}")
+                    continue
+                if area > max_object_area:
+                    logger.debug(f"  Rejected: area {area:.0f} > max {max_object_area}")
                     continue
                 
-                # Apply adaptive threshold to find edges
-                roi_thresh = cv2.adaptiveThreshold(roi_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                                   cv2.THRESH_BINARY_INV, 11, 2)
-                
-                # Create a mask for the expected circle
-                mask = np.zeros(roi_thresh.shape, dtype=np.uint8)
-                center_x = x - x1
-                center_y = y - y1
-                cv2.circle(mask, (center_x, center_y), r, 255, -1)
-                
-                # Find contours in the masked thresholded region
-                masked_roi = cv2.bitwise_and(roi_thresh, mask)
-                contours, _ = cv2.findContours(masked_roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                
-                if len(contours) > 0:
-                    # Get the largest contour
-                    largest_contour = max(contours, key=cv2.contourArea)
-                    contour_area = cv2.contourArea(largest_contour)
-                    
-                    # Calculate circularity: 4*pi*area / perimeter^2
-                    perimeter = cv2.arcLength(largest_contour, True)
-                    if perimeter > 0:
-                        circularity = 4 * np.pi * contour_area / (perimeter ** 2)
-                        
-                        # Only accept if circularity is high (close to 1.0 for perfect circle)
-                        if circularity < 0.65:  # Require at least 65% circularity
-                            continue
-                
-                # Calculate confidence based on size (normalized to max area)
-                # Higher confidence for circles closer to expected size
-                size_ratio = area / max_object_area
-                size_confidence = min(size_ratio, 1.0)
-                
-                # Boost confidence for circles in the middle of the size range
-                normalized_area = (area - min_object_area) / (max_object_area - min_object_area)
-                # Higher confidence for circles in the middle range
-                confidence = 0.6 + (normalized_area * 0.4)  # Range: 0.6 to 1.0
+                # Simple confidence calculation based on size
+                # Normalize area to 0-1 range within min/max bounds
+                if max_object_area > min_object_area:
+                    normalized_area = (area - min_object_area) / (max_object_area - min_object_area)
+                    # Higher confidence for circles in the middle range
+                    confidence = 0.5 + (normalized_area * 0.5)  # Range: 0.5 to 1.0
+                else:
+                    confidence = 0.7  # Default confidence
                 
                 # Only add if meets confidence threshold
                 if confidence >= min_confidence:
+                    logger.info(f"  Accepted circle: center=({x},{y}), radius={r}, area={area:.0f}, confidence={confidence:.2f}")
                     obj = self._create_circle_object(x, y, r, area, confidence)
                     objects.append(obj)
+                else:
+                    logger.debug(f"  Rejected: confidence {confidence:.2f} < min {min_confidence}")
+        
+        logger.info(f"Total circles detected after filtering: {len(objects)}")
         
         return objects
     

@@ -1385,10 +1385,11 @@
                         addSerialLog(`Detection results: ${objectCount} counters found`, 'detection');
                         if (objects.length > 0) {
                             objects.forEach((obj, idx) => {
-                                addSerialLog(`  Counter ${idx + 1}: area=${obj.area?.toFixed(0) || 'N/A'}px², confidence=${(obj.confidence * 100).toFixed(0) || 'N/A'}%`, 'detection');
+                                addSerialLog(`  Counter ${idx + 1}: center=(${obj.center[0]},${obj.center[1]}), radius=${obj.radius || 'N/A'}px, area=${obj.area?.toFixed(0) || 'N/A'}px², confidence=${(obj.confidence * 100).toFixed(0) || 'N/A'}%`, 'detection');
                             });
                         } else {
-                            addSerialLog('  No counters detected', 'warning');
+                            addSerialLog('  No counters detected - check detection parameters', 'warning');
+                            addSerialLog(`  Current settings: MinArea=${objectParams.min_object_area}, MaxArea=${objectParams.max_object_area}, Confidence=${objectParams.min_confidence}, Sensitivity=${objectParams.hough_circle_threshold || 30}`, 'info');
                         }
 
                         // Update stats
