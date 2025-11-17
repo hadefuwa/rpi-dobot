@@ -593,13 +593,13 @@
                         <div style="display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
                             <span style="color: #cbd5e1; font-size: 14px; font-weight: 500;">Objects Detected:</span>
                             <span id="currentObjectCount" style="color: #10b981; font-weight: 700; font-size: 18px;">0</span>
-                        </div>
+                                    </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
-                            <span style="color: #cbd5e1; font-size: 11px;">Last Updated:</span>
+                                            <span style="color: #cbd5e1; font-size: 11px;">Last Updated:</span>
                             <span id="lastDetectionTime" style="color: #94a3b8; font-size: 11px;">Never</span>
-                        </div>
-                    </div>
-                    
+                                        </div>
+                                    </div>
+
                     <!-- Detection Settings -->
                     <div style="margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
                         <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 15px;">⚙️ Detection Settings</h4>
@@ -607,13 +607,13 @@
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
                                     Min Object Area (px²)
-                                </label>
-                                <input type="number" id="minObjectArea" value="5000" min="1000" max="50000" step="500" 
+                                            </label>
+                                <input type="number" id="minObjectArea" value="2000" min="500" max="50000" step="500" 
                                        style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
                                        onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Minimum size to detect</div>
-                            </div>
-                            <div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Minimum size to detect (lower = detect smaller circles)</div>
+                                        </div>
+                                            <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
                                     Max Object Area (px²)
                                 </label>
@@ -621,8 +621,8 @@
                                        style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
                                        onchange="updateObjectParams()">
                                 <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Maximum size to detect</div>
-                            </div>
-                            <div>
+                                            </div>
+                                            <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
                                     Min Confidence (%)
                                 </label>
@@ -630,25 +630,34 @@
                                        style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
                                        onchange="updateObjectParams()">
                                 <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Higher = fewer false positives</div>
-                            </div>
-                            <div>
+                                            </div>
+                                            <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
                                     Circle Sensitivity
                                 </label>
-                                <input type="number" id="houghCircleThreshold" value="30" min="10" max="50" step="5" 
+                                <input type="number" id="houghCircleThreshold" value="25" min="10" max="50" step="5" 
                                        style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
                                        onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Lower = more sensitive (10-50)</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Lower = more sensitive, detects more circles (10-50)</div>
                             </div>
-                        </div>
+                            <div>
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
+                                    Min Distance Between Circles (px)
+                                </label>
+                                <input type="number" id="minDistBetweenCircles" value="30" min="10" max="100" step="5" 
+                                       style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
+                                       onchange="updateObjectParams()">
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Lower = detect circles closer together</div>
+                            </div>
+                                </div>
                         <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
                             <button onclick="updateObjectParams(); addSerialLog('Settings updated - detection will use new parameters', 'info');" 
                                     style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">
-                                Apply Settings
-                            </button>
+                                        Apply Settings
+                                    </button>
+                            </div>
                         </div>
-                    </div>
-                    
+                        
                     <!-- Hidden inputs for other values -->
                     <input type="hidden" id="objectDetectionMethod" value="circle">
                     <input type="hidden" id="minCircularity" value="0.60">
@@ -658,7 +667,7 @@
                     <input type="hidden" id="useBgSubtraction" value="false">
                     <input type="hidden" id="continuousObjectDetection" value="true">
                 </div>
-                
+
                 <!-- Serial Monitor Log -->
                 <div style="margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.8); border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.1);">
                     <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleSerialMonitor()">
@@ -784,7 +793,7 @@
 
             // Load object detection parameters
             loadObjectParams();
-            
+
             // Initialize object params from UI elements on page load
             updateObjectParams();
 
@@ -1180,7 +1189,7 @@
                     formattedValue = Math.round(value).toLocaleString() + ' px²';
                 } else if (sliderId === 'minObjectConfidence' || sliderId === 'minCircularity') {
                     formattedValue = Math.round(value * 100) + '%';
-                } else {
+            } else {
                     formattedValue = isDecimal ? value.toFixed(2) : Math.round(value);
                 }
                 
@@ -1214,8 +1223,8 @@
                 objectParams.min_circularity = parseFloat(document.getElementById('minCircularity')?.value || '0.6');
                 objectParams.hsv_hue_min = parseInt(document.getElementById('hsvHueMin')?.value || '90');
                 objectParams.hsv_hue_max = parseInt(document.getElementById('hsvHueMax')?.value || '130');
-                objectParams.hough_circle_threshold = parseInt(document.getElementById('houghCircleThreshold')?.value || '30');
-                objectParams.min_dist_between_circles = parseInt(document.getElementById('minDistBetweenCircles')?.value || '50');
+                objectParams.hough_circle_threshold = parseInt(document.getElementById('houghCircleThreshold')?.value || '25');
+                objectParams.min_dist_between_circles = parseInt(document.getElementById('minDistBetweenCircles')?.value || '30');
             }
             
             addSerialLog(`Object params updated: Method=${method}, MinArea=${minArea}, MaxArea=${maxArea}, Confidence=${minConfidence.toFixed(2)}`, 'info');
