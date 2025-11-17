@@ -604,138 +604,142 @@
 
                 <!-- Detection Results and Settings Section -->
                 <div style="margin-top: 20px;">
-                    <!-- Defect Detection Panel -->
+                    <!-- Object Detection Settings Panel -->
                     <div class="detection-panel">
-                        <h3>&#128269; Defect Detection</h3>
+                        <h3>&#128269; Object Detection Settings</h3>
                         <div class="method-selector">
-                            <div id="objectDetectionOptions" style="display: block; margin-bottom: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
-                                <label for="objectDetectionMethod" style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">Object Detection Method:</label>
-                                <select id="objectDetectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;" onchange="updateObjectParams(); toggleCircleParams();">
-                                    <option value="circle" selected>Circle Detection (Counters on Blue Background)</option>
-                                    <option value="background">Background Subtraction (Conveyor Belt)</option>
-                                    <option value="contour">Contour Detection</option>
-                                    <option value="blob">Blob Detection</option>
-                                    <option value="combined">Combined</option>
-                                </select>
-                                <small style="color: #64748b; font-size: 10px; display: block; margin-top: 5px;">
-                                    <span id="methodDescription">Circle detection finds circular objects (counters) on colored backgrounds using HSV color filtering.</span>
-                                </small>
+                            <div id="objectDetectionOptions" style="display: block; margin-bottom: 15px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
+                                <!-- Detection Method Selection -->
+                                <div style="margin-bottom: 15px;">
+                                    <label for="objectDetectionMethod" style="display: block; color: #cbd5e1; font-size: 13px; font-weight: 600; margin-bottom: 8px;">
+                                        Detection Method
+                                    </label>
+                                    <select id="objectDetectionMethod" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 13px;" onchange="updateObjectParams(); toggleCircleParams();">
+                                        <option value="circle" selected>Circle Detection - For circular counters on colored backgrounds</option>
+                                        <option value="background">Background Subtraction - For moving objects on conveyor belts</option>
+                                        <option value="contour">Contour Detection - For objects with clear edges</option>
+                                        <option value="blob">Blob Detection - For simple blob-like objects</option>
+                                        <option value="combined">Combined - Uses multiple methods together</option>
+                                    </select>
+                                    <small style="color: #64748b; font-size: 11px; display: block; margin-top: 6px; line-height: 1.4;">
+                                        <span id="methodDescription">Selects how the system finds objects in the camera image. Circle detection works best for round counters on blue backgrounds.</span>
+                                    </small>
+                                </div>
 
                                 <!-- Object Detection Parameters -->
                                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
-                                    <h5 style="color: #60a5fa; font-size: 12px; margin-bottom: 10px; cursor: pointer;" onclick="toggleObjectDetectionParams()">
-                                        <span id="objectParamsToggleIcon">▼</span> Object Detection Tuning
+                                    <h5 style="color: #60a5fa; font-size: 13px; font-weight: 600; margin-bottom: 12px; cursor: pointer;" onclick="toggleObjectDetectionParams()">
+                                        <span id="objectParamsToggleIcon">▼</span> Detection Tuning Parameters
                                     </h5>
                                     <div id="objectDetectionParams" style="display: block;">
-                                    <div style="margin-bottom: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
-                                        <p style="color: #cbd5e1; font-size: 11px; margin: 0;">
-                                            <strong>Tip:</strong> Use sliders to tune detection in real-time. Adjust parameters to detect exactly 4 counters.
+                                    <div style="margin-bottom: 15px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
+                                        <p style="color: #cbd5e1; font-size: 11px; margin: 0; line-height: 1.5;">
+                                            <strong>💡 Tip:</strong> Adjust these settings to fine-tune detection. Use sliders to find the best values for your objects.
                                         </p>
                                     </div>
 
-                                    <div style="margin-bottom: 10px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                            <label style="color: #cbd5e1; font-size: 11px;">Min Object Area (px)</label>
-                                            <span id="minObjectAreaValue" style="color: #60a5fa; font-weight: 600; font-size: 11px;">5000</span>
+                                    <!-- Min Object Area -->
+                                    <div style="margin-bottom: 15px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <label style="color: #cbd5e1; font-size: 12px; font-weight: 500;">Minimum Object Size</label>
+                                            <span id="minObjectAreaValue" style="color: #60a5fa; font-weight: 600; font-size: 12px;">5000 px²</span>
                                         </div>
                                         <input type="range" id="minObjectArea" value="5000" min="1000" max="50000" step="500" style="width: 100%;" oninput="updateSliderValue('minObjectArea', 'minObjectAreaValue')">
+                                        <small style="color: #64748b; font-size: 10px; display: block; margin-top: 4px;">Smallest object size to detect. Increase to ignore small objects.</small>
                                         <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
                                             <span>1000</span>
                                             <span>50000</span>
                                         </div>
                                     </div>
 
-                                    <div style="margin-bottom: 10px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                            <label style="color: #cbd5e1; font-size: 11px;">Max Object Area (px)</label>
-                                            <span id="maxObjectAreaValue" style="color: #60a5fa; font-weight: 600; font-size: 11px;">100000</span>
+                                    <!-- Max Object Area -->
+                                    <div style="margin-bottom: 15px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <label style="color: #cbd5e1; font-size: 12px; font-weight: 500;">Maximum Object Size</label>
+                                            <span id="maxObjectAreaValue" style="color: #60a5fa; font-weight: 600; font-size: 12px;">100000 px²</span>
                                         </div>
                                         <input type="range" id="maxObjectArea" value="100000" min="10000" max="200000" step="5000" style="width: 100%;" oninput="updateSliderValue('maxObjectArea', 'maxObjectAreaValue')">
+                                        <small style="color: #64748b; font-size: 10px; display: block; margin-top: 4px;">Largest object size to detect. Decrease to ignore large background areas.</small>
                                         <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
                                             <span>10000</span>
                                             <span>200000</span>
                                         </div>
                                     </div>
 
-                                    <div style="margin-bottom: 10px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                            <label style="color: #cbd5e1; font-size: 11px;">Background Threshold</label>
-                                            <span id="bgThresholdValue" style="color: #60a5fa; font-weight: 600; font-size: 11px;">32</span>
+                                    <!-- Background Threshold -->
+                                    <div style="margin-bottom: 15px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <label style="color: #cbd5e1; font-size: 12px; font-weight: 500;">Background Sensitivity</label>
+                                            <span id="bgThresholdValue" style="color: #60a5fa; font-weight: 600; font-size: 12px;">32</span>
                                         </div>
                                         <input type="range" id="bgThreshold" value="32" min="10" max="100" step="1" style="width: 100%;" oninput="updateSliderValue('bgThreshold', 'bgThresholdValue')">
+                                        <small style="color: #64748b; font-size: 10px; display: block; margin-top: 4px;">How sensitive background subtraction is. Higher = less sensitive, fewer false detections.</small>
                                         <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
-                                            <span>10</span>
-                                            <span>100</span>
+                                            <span>10 (sensitive)</span>
+                                            <span>100 (strict)</span>
                                         </div>
                                     </div>
 
-                                    <div style="margin-bottom: 10px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                            <label style="color: #cbd5e1; font-size: 11px;">Min Confidence</label>
-                                            <span id="minObjectConfidenceValue" style="color: #60a5fa; font-weight: 600; font-size: 11px;">0.70</span>
+                                    <!-- Min Confidence -->
+                                    <div style="margin-bottom: 15px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <label style="color: #cbd5e1; font-size: 12px; font-weight: 500;">Detection Confidence</label>
+                                            <span id="minObjectConfidenceValue" style="color: #60a5fa; font-weight: 600; font-size: 12px;">70%</span>
                                         </div>
                                         <input type="range" id="minObjectConfidence" value="0.70" min="0.1" max="1.0" step="0.05" style="width: 100%;" oninput="updateSliderValue('minObjectConfidence', 'minObjectConfidenceValue', true)">
+                                        <small style="color: #64748b; font-size: 10px; display: block; margin-top: 4px;">Minimum confidence level to accept a detection. Higher = more strict, fewer false positives.</small>
                                         <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
-                                            <span>0.1</span>
-                                            <span>1.0</span>
-                                        </div>
-                                    </div>
-
-                                    <div style="margin-bottom: 10px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                            <label style="color: #cbd5e1; font-size: 11px;">Morphological Kernel Size</label>
-                                            <span id="morphKernelValue" style="color: #60a5fa; font-weight: 600; font-size: 11px;">7</span>
-                                        </div>
-                                        <input type="range" id="morphKernel" value="7" min="3" max="15" step="2" style="width: 100%;" oninput="updateSliderValue('morphKernel', 'morphKernelValue')">
-                                        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
-                                            <span>3</span>
-                                            <span>15</span>
+                                            <span>10%</span>
+                                            <span>100%</span>
                                         </div>
                                     </div>
 
                                     <!-- Circle Detection Parameters (HSV Color Tuning) -->
-                                    <div id="circleDetectionParams" style="display: block; margin-top: 15px; padding: 10px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6;">
-                                        <h6 style="color: #8b5cf6; font-size: 11px; margin-bottom: 10px;">🎨 HSV Color Tuning (Blue Background)</h6>
+                                    <div id="circleDetectionParams" style="display: block; margin-top: 20px; padding: 15px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6;">
+                                        <h6 style="color: #8b5cf6; font-size: 12px; font-weight: 600; margin-bottom: 12px;">🎨 Circle Detection Settings (For Blue Background)</h6>
+                                        <small style="color: #64748b; font-size: 10px; display: block; margin-bottom: 12px;">These settings only apply when using Circle Detection method.</small>
 
-                                        <div style="margin-bottom: 10px;">
-                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                                <label style="color: #cbd5e1; font-size: 11px;">Min Circularity</label>
-                                                <span id="minCircularityValue" style="color: #8b5cf6; font-weight: 600; font-size: 11px;">0.60</span>
+                                        <!-- Min Circularity -->
+                                        <div style="margin-bottom: 15px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <label style="color: #cbd5e1; font-size: 12px; font-weight: 500;">Shape Roundness</label>
+                                                <span id="minCircularityValue" style="color: #8b5cf6; font-weight: 600; font-size: 12px;">60%</span>
                                             </div>
                                             <input type="range" id="minCircularity" value="0.60" min="0.1" max="1.0" step="0.05" style="width: 100%;" oninput="updateSliderValue('minCircularity', 'minCircularityValue', true)">
+                                            <small style="color: #64748b; font-size: 10px; display: block; margin-top: 4px;">How round objects must be. Higher = only perfect circles, lower = accepts oval shapes.</small>
                                             <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
-                                                <span>0.1 (loose)</span>
-                                                <span>1.0 (perfect circle)</span>
+                                                <span>10% (any shape)</span>
+                                                <span>100% (perfect circle)</span>
                                             </div>
                                         </div>
 
-                                        <div style="margin-bottom: 10px;">
-                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                                <label style="color: #cbd5e1; font-size: 11px;">HSV Hue Min (Blue)</label>
-                                                <span id="hsvHueMinValue" style="color: #8b5cf6; font-weight: 600; font-size: 11px;">90</span>
+                                        <!-- HSV Hue Min -->
+                                        <div style="margin-bottom: 15px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <label style="color: #cbd5e1; font-size: 12px; font-weight: 500;">Background Color Min</label>
+                                                <span id="hsvHueMinValue" style="color: #8b5cf6; font-weight: 600; font-size: 12px;">90</span>
                                             </div>
                                             <input type="range" id="hsvHueMin" value="90" min="0" max="179" step="1" style="width: 100%;" oninput="updateSliderValue('hsvHueMin', 'hsvHueMinValue')">
+                                            <small style="color: #64748b; font-size: 10px; display: block; margin-top: 4px;">Minimum hue value for background color detection. Adjust to match your blue background shade.</small>
                                             <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
                                                 <span>0 (Red)</span>
                                                 <span>179 (Red)</span>
                                             </div>
                                         </div>
 
-                                        <div style="margin-bottom: 10px;">
-                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                                <label style="color: #cbd5e1; font-size: 11px;">HSV Hue Max (Blue)</label>
-                                                <span id="hsvHueMaxValue" style="color: #8b5cf6; font-weight: 600; font-size: 11px;">130</span>
+                                        <!-- HSV Hue Max -->
+                                        <div style="margin-bottom: 15px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <label style="color: #cbd5e1; font-size: 12px; font-weight: 500;">Background Color Max</label>
+                                                <span id="hsvHueMaxValue" style="color: #8b5cf6; font-weight: 600; font-size: 12px;">130</span>
                                             </div>
                                             <input type="range" id="hsvHueMax" value="130" min="0" max="179" step="1" style="width: 100%;" oninput="updateSliderValue('hsvHueMax', 'hsvHueMaxValue')">
+                                            <small style="color: #64748b; font-size: 10px; display: block; margin-top: 4px;">Maximum hue value for background color detection. Range between Min and Max defines the blue color range.</small>
                                             <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-top: 2px;">
                                                 <span>0 (Red)</span>
                                                 <span>179 (Red)</span>
                                             </div>
                                         </div>
-
-                                        <small style="color: #64748b; font-size: 9px; display: block; margin-top: 8px;">
-                                            💡 Adjust Hue range to match your blue background color. Increase Min Circularity if detecting non-circular objects.
-                                        </small>
                                     </div>
 
                                     <!-- Apply Settings Button -->
@@ -795,13 +799,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <label for="detectionMethod" style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px; margin-top: 10px;">Defect Detection Method:</label>
-                            <select id="detectionMethod" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0;">
-                                <option value="combined" selected>Combined (Recommended)</option>
-                                <option value="blob">Blob Detection</option>
-                                <option value="contour">Contour Analysis</option>
-                                <option value="edge">Edge Detection</option>
-                            </select>
                         </div>
                         <!-- Detection Mode Controls -->
                         <div style="margin-top: 15px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
@@ -1726,10 +1723,20 @@
         function updateSliderValue(sliderId, valueId, isDecimal = false) {
             const slider = document.getElementById(sliderId);
             const valueSpan = document.getElementById(valueId);
-            if (isDecimal) {
-                valueSpan.textContent = parseFloat(slider.value).toFixed(2);
-            } else {
-                valueSpan.textContent = slider.value;
+            if (slider && valueSpan) {
+                const value = parseFloat(slider.value);
+                let formattedValue = '';
+                
+                // Format based on slider ID with proper units
+                if (sliderId === 'minObjectArea' || sliderId === 'maxObjectArea') {
+                    formattedValue = Math.round(value).toLocaleString() + ' px²';
+                } else if (sliderId === 'minObjectConfidence' || sliderId === 'minCircularity') {
+                    formattedValue = Math.round(value * 100) + '%';
+                } else {
+                    formattedValue = isDecimal ? value.toFixed(2) : Math.round(value);
+                }
+                
+                valueSpan.textContent = formattedValue;
             }
         }
 
@@ -1741,17 +1748,17 @@
 
             if (method === 'circle') {
                 circleParams.style.display = 'block';
-                methodDesc.textContent = 'Circle detection finds circular objects (counters) on colored backgrounds using HSV color filtering.';
+                methodDesc.textContent = 'Best for detecting round counters on colored backgrounds. Uses color filtering to find circular objects.';
             } else {
                 circleParams.style.display = 'none';
                 if (method === 'background') {
-                    methodDesc.textContent = 'Background subtraction detects moving objects on conveyor belts.';
+                    methodDesc.textContent = 'Best for moving objects on conveyor belts. Compares current frame to learned background.';
                 } else if (method === 'contour') {
-                    methodDesc.textContent = 'Contour detection finds edges and shapes in the image.';
+                    methodDesc.textContent = 'Best for objects with clear edges. Finds object boundaries and shapes.';
                 } else if (method === 'blob') {
-                    methodDesc.textContent = 'Blob detection finds regions of similar color or intensity.';
+                    methodDesc.textContent = 'Best for simple blob-like objects. Finds regions of similar color or brightness.';
                 } else if (method === 'combined') {
-                    methodDesc.textContent = 'Combined method uses multiple detection techniques.';
+                    methodDesc.textContent = 'Uses multiple detection methods together for best accuracy. Slower but more reliable.';
                 }
             }
         }
