@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="description" content="Smart Factory Control">
     <title>Smart Factory - Control System</title>
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -15,7 +16,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #0a0a0a;
+            background: #000011;
             background-attachment: fixed;
             min-height: 100vh;
             padding: 0;
@@ -23,13 +24,14 @@
             color: #ffffff;
             display: flex;
             line-height: 1.4;
+            overflow-x: hidden;
         }
 
         /* Sidebar Navigation */
         .sidebar {
             width: 280px;
-            background: #1a1a1a;
-            border-right: 2px solid #333333;
+            background: linear-gradient(180deg, rgba(26, 26, 26, 0.95) 0%, rgba(15, 15, 15, 0.95) 100%);
+            border-right: 2px solid #007acc;
             padding: 24px;
             position: fixed;
             left: 0;
@@ -37,7 +39,18 @@
             height: 100vh;
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
+            box-shadow: 4px 0 20px rgba(0, 122, 204, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #007acc, #10b981, #f59e0b);
         }
 
         .sidebar-header {
@@ -104,6 +117,12 @@
             font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', sans-serif;
             line-height: 1;
             display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-menu-link:hover .sidebar-menu-icon {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 8px rgba(0, 122, 204, 0.6));
         }
 
         .main-content {
@@ -120,12 +139,13 @@
         }
 
         .header {
-            background: #1a1a1a;
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.8) 0%, rgba(51, 51, 51, 0.8) 100%);
             border: 2px solid #333333;
             padding: 32px;
             border-radius: 0;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
             margin-bottom: 32px;
+            backdrop-filter: blur(15px);
         }
 
         .header-content {
@@ -140,14 +160,26 @@
             font-weight: 700;
             letter-spacing: -0.02em;
             margin: 0;
+            background: linear-gradient(135deg, #ffffff 0%, #007acc 50%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 122, 204, 0.5);
+            animation: textGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes textGlow {
+            from { text-shadow: 0 0 30px rgba(0, 122, 204, 0.5); }
+            to { text-shadow: 0 0 40px rgba(0, 122, 204, 0.8), 0 0 60px rgba(16, 185, 129, 0.3); }
         }
 
         .content {
-            background: #1a1a1a;
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.7) 0%, rgba(51, 51, 51, 0.7) 100%);
             border: 2px solid #333333;
             padding: 48px;
             border-radius: 0;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(15px);
         }
 
         .content h2 {
@@ -173,19 +205,56 @@
         }
 
         .kpi-card {
-            background: #1a1a1a;
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.9) 0%, rgba(15, 15, 15, 0.9) 100%);
             border: 2px solid #333333;
-            border-radius: 0;
+            border-radius: 8px;
             padding: 28px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-            transition: all 0.2s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+            backdrop-filter: blur(10px);
+        }
+
+        .kpi-card:nth-child(1) { animation-delay: 0.1s; }
+        .kpi-card:nth-child(2) { animation-delay: 0.2s; }
+        .kpi-card:nth-child(3) { animation-delay: 0.3s; }
+        .kpi-card:nth-child(4) { animation-delay: 0.4s; }
+        .kpi-card:nth-child(5) { animation-delay: 0.5s; }
+        .kpi-card:nth-child(6) { animation-delay: 0.6s; }
+        .kpi-card:nth-child(7) { animation-delay: 0.7s; }
+        .kpi-card:nth-child(8) { animation-delay: 0.8s; }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #007acc, #10b981);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
         }
 
         .kpi-card:hover {
             border-color: #007acc;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
-            transform: translateY(-1px);
+            box-shadow: 0 12px 40px rgba(0, 122, 204, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .kpi-card:hover::before {
+            transform: scaleX(1);
         }
 
         .kpi-header {
@@ -204,9 +273,39 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #007acc;
+            background: linear-gradient(135deg, #007acc, #005999);
             color: #ffffff;
-            border-radius: 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-icon::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.3s ease;
+        }
+
+        .kpi-card:hover .kpi-icon {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 122, 204, 0.6);
+        }
+
+        .kpi-card:hover .kpi-icon::before {
+            animation: shine 1.5s ease-in-out;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
         }
 
         .kpi-title {
@@ -225,6 +324,41 @@
             margin: 12px 0;
             font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
             letter-spacing: -0.02em;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #333333;
+            border-radius: 3px;
+            margin-top: 16px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007acc, #10b981);
+            border-radius: 3px;
+            transition: width 0.8s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
 
         .kpi-status {
@@ -241,27 +375,49 @@
         }
 
         .status-running {
-            background: #1a4d3a;
+            background: linear-gradient(135deg, #064e3b, #065f46);
             color: #10b981;
             border-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+            animation: pulse-green 2s infinite;
         }
 
         .status-stopped {
-            background: #4d1a1a;
+            background: linear-gradient(135deg, #7f1d1d, #991b1b);
             color: #ef4444;
             border-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+            animation: pulse-red 2s infinite;
         }
 
         .status-warning {
-            background: #4d3d1a;
+            background: linear-gradient(135deg, #92400e, #b45309);
             color: #f59e0b;
             border-color: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+            animation: pulse-orange 2s infinite;
         }
 
         .status-normal {
-            background: #1a3a4d;
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
             color: #3b82f6;
             border-color: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+        }
+
+        @keyframes pulse-orange {
+            0%, 100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.6); }
         }
 
         .kpi-subtitle {
@@ -309,52 +465,69 @@
             letter-spacing: 0.5px;
         }
 
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 80px;
-                padding: 20px 12px;
-            }
+        /* Galaxy Particles Container */
+        #tsparticles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+        }
 
-            .sidebar-header h2,
-            .sidebar-header p,
-            .sidebar-menu-link span:not(.sidebar-menu-icon) {
-                display: none;
-            }
+        .dashboard-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeOut 1s ease-out 2s forwards;
+        }
 
-            .main-content {
-                margin-left: 80px;
-                padding: 20px;
-            }
+        .loading-content {
+            text-align: center;
+            color: #ffffff;
+        }
 
-            .sidebar-menu-link {
-                justify-content: center;
-                padding: 16px 12px;
-            }
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #333333;
+            border-top: 4px solid #007acc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
 
-            .header {
-                padding: 24px;
-            }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
-            .header h1 {
-                font-size: 28px;
-            }
-
-            .content {
-                padding: 32px;
-            }
-
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-
-            .kpi-card {
-                padding: 24px;
-            }
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
         }
     </style>
 </head>
 <body>
+    <!-- Galaxy Background -->
+    <div id="tsparticles"></div>
+
+    <!-- Loading Screen -->
+    <div class="dashboard-loading" id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2 style="margin-bottom: 10px; background: linear-gradient(135deg, #007acc, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Smart Factory</h2>
+            <p style="color: #888888; font-size: 14px;">Initializing Dashboard...</p>
+        </div>
+    </div>
+
     <!-- Sidebar Navigation -->
     <nav class="sidebar">
         <div class="sidebar-header">
@@ -364,31 +537,26 @@
         <ul class="sidebar-menu">
             <li class="sidebar-menu-item">
                 <a href="/" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">&#127968;</span>
                     <span>Home</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/robot-arm.html" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">&#129302;</span>
                     <span>Robot Arm</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/smart-factory.html" class="sidebar-menu-link active">
-                    <span class="sidebar-menu-icon">&#127981;</span>
                     <span>Smart Factory</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/vision-system.html" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">&#128065;</span>
                     <span>Vision System</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="/rfid.html" class="sidebar-menu-link">
-                    <span class="sidebar-menu-icon">&#128225;</span>
                     <span>RFID</span>
                 </a>
             </li>
@@ -451,6 +619,9 @@
                         <div class="kpi-value" id="uptime">98.7%</div>
                         <div class="kpi-status status-normal">24h 32m</div>
                         <div class="kpi-subtitle">Last restart: 2 days ago</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="uptime-bar" style="width: 98.7%"></div>
+                        </div>
                     </div>
 
                     <!-- Faults Detected -->
@@ -489,6 +660,9 @@
                         <div class="kpi-value" id="efficiency">94.2%</div>
                         <div class="kpi-status status-normal">Target: 95%</div>
                         <div class="kpi-subtitle">OEE: 91.8%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="efficiency-bar" style="width: 94.2%"></div>
+                        </div>
                     </div>
 
                     <!-- Quality Control -->
@@ -500,6 +674,9 @@
                         <div class="kpi-value" id="quality">99.1%</div>
                         <div class="kpi-status status-normal">Pass Rate</div>
                         <div class="kpi-subtitle">Defects: 12 items</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="quality-bar" style="width: 99.1%"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -522,13 +699,16 @@
             // Randomly update efficiency and quality
             efficiency = Math.max(90, Math.min(100, efficiency + (Math.random() - 0.5) * 0.2));
             document.getElementById('efficiency').textContent = efficiency.toFixed(1) + '%';
+            document.getElementById('efficiency-bar').style.width = efficiency.toFixed(1) + '%';
 
             quality = Math.max(95, Math.min(100, quality + (Math.random() - 0.5) * 0.1));
             document.getElementById('quality').textContent = quality.toFixed(1) + '%';
+            document.getElementById('quality-bar').style.width = quality.toFixed(1) + '%';
 
             // Update uptime
             uptime = Math.max(95, Math.min(100, uptime + (Math.random() - 0.5) * 0.05));
             document.getElementById('uptime').textContent = uptime.toFixed(1) + '%';
+            document.getElementById('uptime-bar').style.width = uptime.toFixed(1) + '%';
 
             // Occasionally add faults
             if (Math.random() < 0.05) { // 5% chance every update
@@ -542,6 +722,107 @@
 
         // Initial update
         updateKPIs();
+
+        // Hide loading screen after animations complete
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+        }, 3000);
+
+        // Initialize Galaxy Particle System
+        tsParticles.load("tsparticles", {
+            background: {
+                color: {
+                    value: "#000011",
+                },
+            },
+            fpsLimit: 120,
+            interactivity: {
+                events: {
+                    onClick: {
+                        enable: true,
+                        mode: "push",
+                    },
+                    onHover: {
+                        enable: true,
+                        mode: "repulse",
+                    },
+                    resize: true,
+                },
+                modes: {
+                    push: {
+                        quantity: 4,
+                    },
+                    repulse: {
+                        distance: 200,
+                        duration: 0.4,
+                    },
+                },
+            },
+            particles: {
+                color: {
+                    value: ["#ffffff", "#007acc", "#10b981", "#f59e0b", "#8b5cf6"],
+                },
+                links: {
+                    color: "#ffffff",
+                    distance: 150,
+                    enable: true,
+                    opacity: 0.1,
+                    width: 1,
+                },
+                collisions: {
+                    enable: true,
+                },
+                move: {
+                    direction: "none",
+                    enable: true,
+                    outModes: {
+                        default: "bounce",
+                    },
+                    random: true,
+                    speed: 0.5,
+                    straight: false,
+                },
+                number: {
+                    density: {
+                        enable: true,
+                        area: 800,
+                    },
+                    value: 80,
+                },
+                opacity: {
+                    value: { min: 0.1, max: 0.8 },
+                    animation: {
+                        enable: true,
+                        speed: 1,
+                        minimumValue: 0.1,
+                        sync: false,
+                    },
+                },
+                shape: {
+                    type: ["circle", "star"],
+                },
+                size: {
+                    value: { min: 1, max: 4 },
+                    animation: {
+                        enable: true,
+                        speed: 2,
+                        minimumValue: 0.5,
+                        sync: false,
+                    },
+                },
+                twinkle: {
+                    particles: {
+                        enable: true,
+                        frequency: 0.05,
+                        opacity: 1,
+                    },
+                },
+            },
+            detectRetina: true,
+        });
     </script>
 </body>
 </html>

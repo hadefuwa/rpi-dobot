@@ -1,0 +1,6 @@
+path: C:\Users\HamedA\Documents\rpi-dobot\pwa-dobot-plc\backend\dataset
+train: images
+val: images
+
+names:
+  0: counter

@@ -1,0 +1,4 @@
+names:
+  0: Counter
+path: .
+train: train.txt
