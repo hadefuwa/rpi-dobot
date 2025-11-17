@@ -845,15 +845,12 @@
                 statusText.textContent = 'Connected';
                 if (connectBtn) connectBtn.disabled = true;
                 if (disconnectBtn) disconnectBtn.disabled = false;
+                const captureBtn = document.getElementById('captureBtn');
+                const fullscreenBtn = document.getElementById('fullscreenBtn');
+                const settingsBtn = document.getElementById('settingsBtn');
                 if (captureBtn) captureBtn.disabled = false;
                 if (fullscreenBtn) fullscreenBtn.disabled = false;
                 if (settingsBtn) settingsBtn.disabled = false;
-                if (analyzeBtn) analyzeBtn.disabled = false;
-                // Enable new detection buttons
-                const startObjBtn = document.getElementById('startObjectDetectionBtn');
-                const startFullBtn = document.getElementById('startFullAnalysisBtn');
-                if (startObjBtn) startObjBtn.disabled = false;
-                if (startFullBtn) startFullBtn.disabled = false;
                 if (frame) frame.style.display = 'block';
                 if (placeholder) placeholder.style.display = 'none';
                 addSerialLog('Camera status: CONNECTED', 'camera');
@@ -862,19 +859,14 @@
                 statusText.textContent = 'Disconnected';
                 if (connectBtn) connectBtn.disabled = false;
                 if (disconnectBtn) disconnectBtn.disabled = true;
+                const captureBtn = document.getElementById('captureBtn');
+                const fullscreenBtn = document.getElementById('fullscreenBtn');
+                const settingsBtn = document.getElementById('settingsBtn');
+                const analyzeBtn = document.getElementById('analyzeBtn');
                 if (captureBtn) captureBtn.disabled = true;
                 if (fullscreenBtn) fullscreenBtn.disabled = true;
                 if (settingsBtn) settingsBtn.disabled = true;
                 if (analyzeBtn) analyzeBtn.disabled = true;
-                // Disable new detection buttons
-                const startObjBtn = document.getElementById('startObjectDetectionBtn');
-                const stopObjBtn = document.getElementById('stopObjectDetectionBtn');
-                const startFullBtn = document.getElementById('startFullAnalysisBtn');
-                const stopFullBtn = document.getElementById('stopFullAnalysisBtn');
-                if (startObjBtn) startObjBtn.disabled = true;
-                if (stopObjBtn) stopObjBtn.disabled = true;
-                if (startFullBtn) startFullBtn.disabled = true;
-                if (stopFullBtn) stopFullBtn.disabled = true;
                 if (frame) frame.style.display = 'none';
                 if (placeholder) placeholder.style.display = 'flex';
                 stopStream();
@@ -1020,110 +1012,18 @@
         }
 
         function toggleObjectDetection() {
-            // This function is now controlled by the top-level object detection checkbox
+            // Object detection is always enabled - no UI to toggle
             objectDetectionEnabled = topLevelObjectDetectionEnabled;
-            const options = document.getElementById('objectDetectionOptions');
             if (objectDetectionEnabled) {
-                options.style.display = 'block';
-                addSerialLog('Object detection enabled - will run before defect detection', 'info');
+                addSerialLog('Object detection enabled', 'info');
             } else {
-                options.style.display = 'none';
                 addSerialLog('Object detection disabled', 'info');
             }
         }
         
         async function analyzeFrame() {
-            // Check if defect detection is enabled at top level
-            if (!topLevelDefectDetectionEnabled) {
-                addSerialLog('Defect Detection is disabled. Enable it in the top-level settings to analyze frames.', 'error');
-                return;
-            }
-            
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const method = document.getElementById('detectionMethod').value;
-            const objectMethod = document.getElementById('objectDetectionMethod').value;
-            
-            // Use top-level object detection setting
-            const useObjectDetection = topLevelObjectDetectionEnabled && objectDetectionEnabled;
-            
-            // Update object params before sending
-            updateObjectParams();
-            
-            analyzeBtn.disabled = true;
-            analyzeBtn.innerHTML = '<span class="loading"></span> Analyzing...';
-            
-            if (useObjectDetection) {
-                addSerialLog(`Starting analysis: Object Detection (${objectMethod}) → Defect Detection (${method})`, 'detection');
-            } else {
-                addSerialLog(`Starting frame analysis (Method: ${method})...`, 'detection');
-            }
-            addSerialLog(`Using params: MinArea=${detectionParams.min_area}, MaxArea=${detectionParams.max_area}`, 'detection');
-            
-            try {
-                // Get analyzed image
-                const analyzeResponse = await fetch(`${API_BASE}/api/vision/analyze`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        method: method,
-                        params: detectionParams,
-                        use_object_detection: useObjectDetection,
-                        object_method: objectMethod,
-                        object_params: objectParams
-                    })
-                });
-                
-                if (analyzeResponse.ok) {
-                    const blob = await analyzeResponse.blob();
-                    const url = URL.createObjectURL(blob);
-                    const analyzedImg = document.getElementById('analyzedImage');
-                    const analyzedPlaceholder = document.getElementById('analyzedPlaceholder');
-                    const analyzedStatusIndicator = document.getElementById('analyzedStatusIndicator');
-                    const analyzedStatusText = document.getElementById('analyzedStatusText');
-
-                    // Clean up old blob URL if it exists
-                    if (analyzedImg.src && analyzedImg.src.startsWith('blob:')) {
-                        URL.revokeObjectURL(analyzedImg.src);
-                    }
-
-                    analyzedImg.src = url;
-                    analyzedImg.style.display = 'block';
-                    analyzedPlaceholder.style.display = 'none';
-                    analyzedStatusIndicator.classList.add('connected');
-                    analyzedStatusText.textContent = 'Analysis Complete';
-                    addSerialLog('Frame analyzed, annotated image generated', 'detection');
-                    
-                    // Get detection results
-                    const detectResponse = await fetch(`${API_BASE}/api/vision/detect`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            method: method,
-                            params: detectionParams,
-                            use_object_detection: objectDetectionEnabled,
-                            object_method: objectMethod,
-                            object_params: objectParams
-                        })
-                    });
-                    
-                    if (detectResponse.ok) {
-                        const results = await detectResponse.json();
-                        displayResults(results);
-                    }
-                } else {
-                    const error = await analyzeResponse.json();
-                    const errorMsg = error.error || 'Unknown error';
-                    addSerialLog(`Analysis failed: ${errorMsg}`, 'error');
-                    alert('Analysis failed: ' + errorMsg);
-                }
-            } catch (error) {
-                console.error('Error analyzing frame:', error);
-                addSerialLog(`Frame analysis error: ${error.message}`, 'error');
-                alert('Error analyzing frame: ' + error.message);
-            } finally {
-                analyzeBtn.disabled = false;
-                analyzeBtn.innerHTML = '<span>&#128269;</span><span>Analyze Frame</span>';
-            }
+            // Full analysis function - no longer used, kept for compatibility
+            addSerialLog('Full analysis is no longer available - use continuous object detection instead', 'info');
         }
 
         function displayResults(results) {
@@ -1482,46 +1382,18 @@
 
         // Full Analysis Functions
         async function startFullAnalysis() {
-            if (fullAnalysisActive) return;
-
-            fullAnalysisActive = true;
-            const startBtn = document.getElementById('startFullAnalysisBtn');
-            const stopBtn = document.getElementById('stopFullAnalysisBtn');
-
-            startBtn.style.display = 'none';
-            stopBtn.style.display = 'inline-flex';
-
-            addSerialLog('Full analysis started (continuous mode)', 'detection');
-
-            const continuous = document.getElementById('continuousFullAnalysis').checked;
-
-            // Run analysis immediately
-            await analyzeFrame();
-
-            // If continuous mode is enabled, run every 3 seconds
-            if (continuous) {
-                fullAnalysisInterval = setInterval(async () => {
-                    if (fullAnalysisActive && cameraConnected && topLevelDefectDetectionEnabled) {
-                        await analyzeFrame();
-                    }
-                }, 3000);
-            }
+            // Full analysis no longer available - use continuous object detection instead
+            addSerialLog('Full analysis is no longer available - use continuous object detection instead', 'info');
         }
 
         function stopFullAnalysis() {
+            // Full analysis no longer available
             fullAnalysisActive = false;
-            const startBtn = document.getElementById('startFullAnalysisBtn');
-            const stopBtn = document.getElementById('stopFullAnalysisBtn');
-
-            startBtn.style.display = 'inline-flex';
-            stopBtn.style.display = 'none';
-
-            addSerialLog('Full analysis stopped', 'detection');
-
             if (fullAnalysisInterval) {
                 clearInterval(fullAnalysisInterval);
                 fullAnalysisInterval = null;
             }
+            addSerialLog('Full analysis stopped', 'info');
         }
 
         function toggleInfoPanel() {
@@ -1686,14 +1558,9 @@
 
         function toggleTopLevelDefectDetection() {
             topLevelDefectDetectionEnabled = document.getElementById('topLevelDefectDetection').checked;
-            const analyzeBtn = document.getElementById('analyzeBtn');
-
-            // Enable or disable analyze buttons based on defect detection setting
             if (topLevelDefectDetectionEnabled) {
-                if (analyzeBtn) analyzeBtn.disabled = false;
                 addSerialLog('Defect Detection: ENABLED (top-level setting)', 'info');
             } else {
-                if (analyzeBtn) analyzeBtn.disabled = true;
                 // Stop full analysis if it's running (defect detection disabled)
                 if (fullAnalysisActive) stopFullAnalysis();
                 addSerialLog('Defect Detection: DISABLED (top-level setting)', 'info');
@@ -1724,29 +1591,7 @@
                 try {
                     const savedParams = JSON.parse(saved);
                     objectParams = { ...objectParams, ...savedParams };
-
-                    // Update UI sliders and their displayed values
-                    document.getElementById('minObjectArea').value = objectParams.min_object_area || 5000;
-                    document.getElementById('minObjectAreaValue').textContent = objectParams.min_object_area || 5000;
-
-                    document.getElementById('maxObjectArea').value = objectParams.max_object_area || 100000;
-                    document.getElementById('maxObjectAreaValue').textContent = objectParams.max_object_area || 100000;
-
-                    document.getElementById('bgThreshold').value = objectParams.bg_threshold || 32;
-                    document.getElementById('bgThresholdValue').textContent = objectParams.bg_threshold || 32;
-
-                    document.getElementById('minObjectConfidence').value = objectParams.min_confidence || 0.7;
-                    document.getElementById('minObjectConfidenceValue').textContent = (objectParams.min_confidence || 0.7).toFixed(2);
-
-                    document.getElementById('morphKernel').value = objectParams.morph_kernel_size || 7;
-                    document.getElementById('morphKernelValue').textContent = objectParams.morph_kernel_size || 7;
-
-                    // Update advanced settings
-                    document.getElementById('bgHistory').value = objectParams.bg_history || 500;
-                    document.getElementById('bgLearningRate').value = objectParams.bg_learning_rate || 0.001;
-                    document.getElementById('aspectRatioMin').value = objectParams.aspect_ratio_min || 0.2;
-                    document.getElementById('aspectRatioMax').value = objectParams.aspect_ratio_max || 5.0;
-                    document.getElementById('useBgSubtraction').checked = objectParams.use_background_subtraction !== false;
+                    // UI elements removed - just load params into memory
                 } catch (e) {
                     console.error('Error loading object params:', e);
                 }
@@ -1824,34 +1669,7 @@
             if (saved) {
                 try {
                     detectionParams = JSON.parse(saved);
-                    // Update UI - General
-                    document.getElementById('minDefectArea').value = detectionParams.min_area || 500;
-                    document.getElementById('maxDefectArea').value = detectionParams.max_area || 50000;
-                    document.getElementById('gaussianBlur').value = detectionParams.gaussian_blur || 5;
-                    document.getElementById('mergeThreshold').value = detectionParams.merge_threshold || 20;
-                    // Blob detection
-                    document.getElementById('blobMinArea').value = detectionParams.blob_min_area || 500;
-                    document.getElementById('blobMaxArea').value = detectionParams.blob_max_area || 20000;
-                    document.getElementById('adaptiveThreshBlock').value = detectionParams.adaptive_thresh_block || 11;
-                    document.getElementById('adaptiveThreshC').value = detectionParams.adaptive_thresh_c || 2;
-                    // Contour detection
-                    document.getElementById('contourMinArea').value = detectionParams.contour_min_area || 1000;
-                    document.getElementById('contourMaxArea').value = detectionParams.contour_max_area || 50000;
-                    document.getElementById('cannyLow').value = detectionParams.canny_low || 50;
-                    document.getElementById('cannyHigh').value = detectionParams.canny_high || 150;
-                    document.getElementById('aspectRatioMin').value = detectionParams.aspect_ratio_min || 0.2;
-                    document.getElementById('aspectRatioMax').value = detectionParams.aspect_ratio_max || 5.0;
-                    document.getElementById('dilationIterations').value = detectionParams.dilation_iterations || 1;
-                    document.getElementById('morphologicalKernelSize').value = detectionParams.morphological_kernel_size || 3;
-                    // Edge detection
-                    document.getElementById('edgeCannyLow').value = detectionParams.edge_canny_low || 30;
-                    document.getElementById('edgeCannyHigh').value = detectionParams.edge_canny_high || 100;
-                    document.getElementById('houghThreshold').value = detectionParams.hough_threshold || 50;
-                    document.getElementById('minLineLength').value = detectionParams.min_line_length || 30;
-                    document.getElementById('maxLineGap').value = detectionParams.max_line_gap || 10;
-                    document.getElementById('lineGroupingDistance').value = detectionParams.line_grouping_distance || 30;
-                    document.getElementById('minLinesPerDefect').value = detectionParams.min_lines_per_defect || 2;
-                    document.getElementById('minEdgeDefectSize').value = detectionParams.min_edge_defect_size || 10;
+                    // UI elements removed - just load params into memory
                 } catch (e) {
                     console.error('Error loading detection params:', e);
                 }
