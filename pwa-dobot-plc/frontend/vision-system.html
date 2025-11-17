@@ -521,7 +521,7 @@
                             <span class="status-indicator" id="cameraStatusIndicator"></span>
                             <span id="cameraStatusText">Disconnected</span>
                         </div>
-                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;" onerror="handleStreamError(this)">
+                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;" onerror="handleStreamError(this)" onload="handleStreamLoad(this)">
                         <div id="cameraPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: #64748b; flex-direction: column; gap: 10px;">
                             <div style="font-size: 48px;">&#128247;</div>
                             <div>Camera not connected</div>
@@ -952,18 +952,27 @@
             }, 2000);
         }
 
+        // Handle stream load success
+        function handleStreamLoad(imgElement) {
+            const placeholder = document.getElementById('cameraPlaceholder');
+            if (placeholder) placeholder.style.display = 'none';
+            imgElement.style.display = 'block';
+            addSerialLog('Camera stream loaded successfully', 'camera');
+        }
+
         // Handle stream errors with automatic retry
         function handleStreamError(imgElement) {
+            console.log('Stream error detected, retrying...');
             if (!cameraConnected) {
                 // Show placeholder again if stream fails
                 const placeholder = document.getElementById('cameraPlaceholder');
-                placeholder.style.display = 'flex';
+                if (placeholder) placeholder.style.display = 'flex';
                 imgElement.style.display = 'none';
             }
 
             // Retry after 1 second
             setTimeout(() => {
-                if (imgElement.src) {
+                if (cameraConnected && imgElement.src) {
                     imgElement.src = `${API_BASE}/api/camera/stream?t=${Date.now()}`;
                 }
             }, 1000);
