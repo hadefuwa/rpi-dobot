@@ -328,137 +328,17 @@ class CameraService:
                         object_count += 1
 
             # Circle detection for circular objects (counters) on colored backgrounds
-            # IMPROVED: Use grayscale for detection, color for classification
             if method == 'circle':
-                # Step 1: Detect circles using grayscale (better for shape detection)
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # Try HoughCircles first (grayscale-based detection)
+                detected_objects = self._detect_circles_hough(frame, params, min_object_area, max_object_area, min_confidence)
+                objects.extend(detected_objects)
+                object_count += len(detected_objects)
                 
-                # Apply Gaussian blur to reduce noise
-                blurred = cv2.GaussianBlur(gray, (9, 9), 2)
-                
-                # Use HoughCircles for circle detection (works on grayscale intensity)
-                dp = 1  # Inverse ratio of accumulator resolution
-                min_dist = params.get('min_dist_between_circles', 50)  # Minimum distance between circle centers
-                param1 = 50  # Upper threshold for edge detection
-                param2 = params.get('hough_circle_threshold', 30)  # Accumulator threshold (lower = more circles)
-                min_radius = int(np.sqrt(min_object_area / np.pi))  # Minimum circle radius
-                max_radius = int(np.sqrt(max_object_area / np.pi))  # Maximum circle radius
-                
-                circles = cv2.HoughCircles(
-                    blurred,
-                    cv2.HOUGH_GRADIENT,
-                    dp=dp,
-                    minDist=min_dist,
-                    param1=param1,
-                    param2=param2,
-                    minRadius=min_radius,
-                    maxRadius=max_radius
-                )
-                
-                # Step 2: Classify each detected circle using color
-                if circles is not None:
-                    circles = np.round(circles[0, :]).astype("int")
-                    
-                    for (x, y, r) in circles:
-                        # Extract ROI (region of interest) for classification
-                        # Get a square region around the circle
-                        y1 = max(0, y - r)
-                        y2 = min(frame.shape[0], y + r)
-                        x1 = max(0, x - r)
-                        x2 = min(frame.shape[1], x + r)
-                        
-                        roi = frame[y1:y2, x1:x2]
-                        
-                        if roi.size > 0:
-                            # Classify the disc using color analysis
-                            classification = self.classify_disc(roi)
-                            
-                            # Calculate area and confidence
-                            area = np.pi * r * r
-                            
-                            # Calculate confidence based on size
-                            size_confidence = min(area / max_object_area, 1.0)
-                            confidence = size_confidence
-                            
-                            if confidence >= min_confidence:
-                                # Get bounding box
-                                x_int, y_int = x - r, y - r
-                                w = h = 2 * r
-                                
-                                objects.append({
-                                    'type': 'circle',
-                                    'x': int(x_int),
-                                    'y': int(y_int),
-                                    'width': int(w),
-                                    'height': int(h),
-                                    'area': float(area),
-                                    'center': (int(x), int(y)),
-                                    'radius': int(r),
-                                    'circularity': 1.0,  # HoughCircles finds perfect circles
-                                    'confidence': round(confidence, 2),
-                                    'classification': classification,  # Add classification
-                                    'method': 'circle',
-                                    'aspect_ratio': 1.0
-                                })
-                                object_count += 1
-                
-                # Fallback: If HoughCircles doesn't find circles, use HSV color-based detection
-                # (Keep original method as backup)
+                # Fallback to HSV color-based detection if HoughCircles finds nothing
                 if object_count == 0:
-                    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-                    hsv_hue_min = params.get('hsv_hue_min', 90)
-                    hsv_hue_max = params.get('hsv_hue_max', 130)
-                    lower_blue = np.array([hsv_hue_min, 50, 50])
-                    upper_blue = np.array([hsv_hue_max, 255, 255])
-                    blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
-                    object_mask = cv2.bitwise_not(blue_mask)
-                    kernel_size = params.get('morphological_kernel_size', 7)
-                    kernel = np.ones((kernel_size, kernel_size), np.uint8)
-                    object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_CLOSE, kernel)
-                    object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_OPEN, kernel)
-                    contours, _ = cv2.findContours(object_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    
-                    for contour in contours:
-                        area = cv2.contourArea(contour)
-                        if min_object_area < area < max_object_area:
-                            (x, y), radius = cv2.minEnclosingCircle(contour)
-                            perimeter = cv2.arcLength(contour, True)
-                            if perimeter > 0:
-                                circularity = 4 * np.pi * area / (perimeter ** 2)
-                            else:
-                                circularity = 0
-                            min_circularity = params.get('min_circularity', 0.6)
-                            if circularity >= min_circularity:
-                                x_int, y_int, w, h = cv2.boundingRect(contour)
-                                aspect_ratio = float(w) / h if h > 0 else 0
-                                if 0.7 < aspect_ratio < 1.3:
-                                    # Extract ROI for classification
-                                    y1 = max(0, int(y) - int(radius))
-                                    y2 = min(frame.shape[0], int(y) + int(radius))
-                                    x1 = max(0, int(x) - int(radius))
-                                    x2 = min(frame.shape[1], int(x) + int(radius))
-                                    roi = frame[y1:y2, x1:x2]
-                                    classification = self.classify_disc(roi) if roi.size > 0 else 'unknown'
-                                    
-                                    size_confidence = min(area / max_object_area, 1.0)
-                                    confidence = (circularity * 0.7 + size_confidence * 0.3)
-                                    if confidence >= min_confidence:
-                                        objects.append({
-                                            'type': 'circle',
-                                            'x': int(x_int),
-                                            'y': int(y_int),
-                                            'width': int(w),
-                                            'height': int(h),
-                                            'area': float(area),
-                                            'center': (int(x), int(y)),
-                                            'radius': int(radius),
-                                            'circularity': round(circularity, 2),
-                                            'confidence': round(confidence, 2),
-                                            'classification': classification,
-                                            'method': 'circle',
-                                            'aspect_ratio': round(aspect_ratio, 2)
-                                        })
-                                        object_count += 1
+                    detected_objects = self._detect_circles_hsv_fallback(frame, params, min_object_area, max_object_area, min_confidence)
+                    objects.extend(detected_objects)
+                    object_count += len(detected_objects)
 
             # Remove duplicates if using combined method
             if method == 'combined' and len(objects) > 0:
@@ -544,6 +424,59 @@ class CameraService:
         
         return merged
     
+    def _extract_circle_roi(self, frame: np.ndarray, x: int, y: int, radius: int) -> Optional[np.ndarray]:
+        """
+        Extract region of interest around a circle for classification
+        
+        Args:
+            frame: Full image frame
+            x: Circle center X coordinate
+            y: Circle center Y coordinate
+            radius: Circle radius
+            
+        Returns:
+            ROI image or None if extraction fails
+        """
+        y1 = max(0, y - radius)
+        y2 = min(frame.shape[0], y + radius)
+        x1 = max(0, x - radius)
+        x2 = min(frame.shape[1], x + radius)
+        
+        roi = frame[y1:y2, x1:x2]
+        return roi if roi.size > 0 else None
+    
+    def _create_circle_object(self, x: int, y: int, radius: int, area: float, 
+                             confidence: float, classification: str = 'unknown') -> Dict:
+        """
+        Create a standardized circle object dictionary
+        
+        Args:
+            x: Circle center X coordinate
+            y: Circle center Y coordinate
+            radius: Circle radius
+            area: Circle area
+            confidence: Detection confidence (0-1)
+            classification: Disc classification (white/black/silver/grey)
+            
+        Returns:
+            Object dictionary
+        """
+        return {
+            'type': 'circle',
+            'x': int(x - radius),
+            'y': int(y - radius),
+            'width': int(2 * radius),
+            'height': int(2 * radius),
+            'area': float(area),
+            'center': (int(x), int(y)),
+            'radius': int(radius),
+            'circularity': 1.0,
+            'confidence': round(confidence, 2),
+            'classification': classification,
+            'method': 'circle',
+            'aspect_ratio': 1.0
+        }
+    
     def classify_disc(self, roi: np.ndarray) -> str:
         """
         Classify a disc (counter) as white, black, silver, or grey
@@ -583,6 +516,134 @@ class CameraService:
             logger.error(f"Error classifying disc: {e}")
             return 'unknown'
     
+    def _detect_circles_hough(self, frame: np.ndarray, params: Dict, 
+                              min_object_area: int, max_object_area: int, 
+                              min_confidence: float) -> List[Dict]:
+        """
+        Detect circles using HoughCircles on grayscale image
+        
+        Args:
+            frame: Input frame in BGR format
+            params: Detection parameters
+            min_object_area: Minimum object area
+            max_object_area: Maximum object area
+            min_confidence: Minimum confidence threshold
+            
+        Returns:
+            List of detected circle objects
+        """
+        objects = []
+        
+        # Convert to grayscale for circle detection
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        blurred = cv2.GaussianBlur(gray, (9, 9), 2)
+        
+        # HoughCircles parameters
+        dp = 1
+        min_dist = params.get('min_dist_between_circles', 50)
+        param1 = 50  # Upper threshold for edge detection
+        param2 = params.get('hough_circle_threshold', 30)
+        min_radius = int(np.sqrt(min_object_area / np.pi))
+        max_radius = int(np.sqrt(max_object_area / np.pi))
+        
+        # Detect circles
+        circles = cv2.HoughCircles(
+            blurred,
+            cv2.HOUGH_GRADIENT,
+            dp=dp,
+            minDist=min_dist,
+            param1=param1,
+            param2=param2,
+            minRadius=min_radius,
+            maxRadius=max_radius
+        )
+        
+        if circles is not None:
+            circles = np.round(circles[0, :]).astype("int")
+            
+            for (x, y, r) in circles:
+                # Extract ROI and classify
+                roi = self._extract_circle_roi(frame, x, y, r)
+                if roi is not None:
+                    classification = self.classify_disc(roi)
+                    area = np.pi * r * r
+                    size_confidence = min(area / max_object_area, 1.0)
+                    
+                    if size_confidence >= min_confidence:
+                        obj = self._create_circle_object(x, y, r, area, size_confidence, classification)
+                        objects.append(obj)
+        
+        return objects
+    
+    def _detect_circles_hsv_fallback(self, frame: np.ndarray, params: Dict,
+                                     min_object_area: int, max_object_area: int,
+                                     min_confidence: float) -> List[Dict]:
+        """
+        Fallback circle detection using HSV color masking (for when HoughCircles fails)
+        
+        Args:
+            frame: Input frame in BGR format
+            params: Detection parameters
+            min_object_area: Minimum object area
+            max_object_area: Maximum object area
+            min_confidence: Minimum confidence threshold
+            
+        Returns:
+            List of detected circle objects
+        """
+        objects = []
+        
+        # Convert to HSV for color-based detection
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        hsv_hue_min = params.get('hsv_hue_min', 90)
+        hsv_hue_max = params.get('hsv_hue_max', 130)
+        
+        # Create blue background mask
+        lower_blue = np.array([hsv_hue_min, 50, 50])
+        upper_blue = np.array([hsv_hue_max, 255, 255])
+        blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+        object_mask = cv2.bitwise_not(blue_mask)
+        
+        # Clean up mask
+        kernel_size = params.get('morphological_kernel_size', 7)
+        kernel = np.ones((kernel_size, kernel_size), np.uint8)
+        object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_CLOSE, kernel)
+        object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_OPEN, kernel)
+        
+        # Find contours
+        contours, _ = cv2.findContours(object_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if min_object_area < area < max_object_area:
+                (x, y), radius = cv2.minEnclosingCircle(contour)
+                
+                # Calculate circularity
+                perimeter = cv2.arcLength(contour, True)
+                circularity = 4 * np.pi * area / (perimeter ** 2) if perimeter > 0 else 0
+                
+                min_circularity = params.get('min_circularity', 0.6)
+                if circularity >= min_circularity:
+                    x_int, y_int, w, h = cv2.boundingRect(contour)
+                    aspect_ratio = float(w) / h if h > 0 else 0
+                    
+                    if 0.7 < aspect_ratio < 1.3:
+                        # Extract ROI and classify
+                        roi = self._extract_circle_roi(frame, int(x), int(y), int(radius))
+                        classification = self.classify_disc(roi) if roi is not None else 'unknown'
+                        
+                        # Calculate confidence
+                        size_confidence = min(area / max_object_area, 1.0)
+                        confidence = (circularity * 0.7 + size_confidence * 0.3)
+                        
+                        if confidence >= min_confidence:
+                            obj = self._create_circle_object(int(x), int(y), int(radius), area, confidence, classification)
+                            obj['circularity'] = round(circularity, 2)
+                            obj['aspect_ratio'] = round(aspect_ratio, 2)
+                            objects.append(obj)
+        
+        return objects
+    
     def draw_objects(self, frame: np.ndarray, objects: List[Dict], color: Tuple[int, int, int] = (0, 255, 0)) -> np.ndarray:
         """Draw detected objects on frame with classification labels"""
         annotated = frame.copy()
@@ -612,14 +673,12 @@ class CameraService:
         
         return annotated
     
-    # DEFECT DETECTION COMMENTED OUT - Focus on object/counter detection first
     def detect_defects(self, frame: np.ndarray, method: str = 'blob', params: Optional[Dict] = None) -> Dict:
         """
         Detect defects in an image frame
         
-        COMMENTED OUT - Focus on object/counter detection first
+        Note: Defect detection is currently disabled - focus on object/counter detection first
         """
-        # Return empty results since defect detection is disabled
         return {
             'defects_found': False,
             'defect_count': 0,
@@ -629,188 +688,10 @@ class CameraService:
             'timestamp': time.time(),
             'note': 'Defect detection is currently disabled'
         }
-    
-    # Original defect detection code commented out below:
-    # """
-    #     Detect defects in an image frame
-    #     
-    #     Args:
-    #         frame: Input image frame (BGR format)
-    #         method: Detection method ('blob', 'contour', 'edge', 'combined')
-    #         params: Optional detection parameters dictionary:
-    #             - min_area: Minimum defect area in pixels (default: varies by method)
-    #             - max_area: Maximum defect area in pixels (default: varies by method)
-    #             - blob_min_area: Blob-specific min area (default: 10)
-    #             - blob_max_area: Blob-specific max area (default: 5000)
-    #             - contour_min_area: Contour-specific min area (default: 50)
-    #             - contour_max_area: Contour-specific max area (default: 10000)
-    #             - canny_low: Canny edge detection low threshold (default: 50)
-    #             - canny_high: Canny edge detection high threshold (default: 150)
-    #             - edge_canny_low: Edge detection Canny low threshold (default: 30)
-    #             - edge_canny_high: Edge detection Canny high threshold (default: 100)
-    #             - hough_threshold: Hough line transform threshold (default: 50)
-    #             - merge_threshold: Distance threshold for merging defects (default: 20)
-    #             - gaussian_blur: Gaussian blur kernel size (default: 5)
-    #             - adaptive_thresh_block: Adaptive threshold block size (default: 11)
-    #             - adaptive_thresh_c: Adaptive threshold constant (default: 2)
-    #         
-    #     Returns:
-    #         Dictionary with detection results
-    #     """
-    # if frame is None:
-    #     return {
-    #         'defects_found': False,
-    #         'defect_count': 0,
-    #         'defects': [],
-    #         'confidence': 0.0,
-    #         'error': 'No frame provided'
-    #     }
-    # 
-    # # Default parameters
-    # if params is None:
-    #     params = {}
-    # 
-    # # Extract parameters with defaults
-    # blob_min_area = params.get('blob_min_area', params.get('min_area', 10))
-    # blob_max_area = params.get('blob_max_area', params.get('max_area', 5000))
-    # contour_min_area = params.get('contour_min_area', params.get('min_area', 50))
-    # contour_max_area = params.get('contour_max_area', params.get('max_area', 10000))
-    # canny_low = params.get('canny_low', 50)
-    # canny_high = params.get('canny_high', 150)
-    # edge_canny_low = params.get('edge_canny_low', 30)
-    # edge_canny_high = params.get('edge_canny_high', 100)
-    # hough_threshold = params.get('hough_threshold', 50)
-    # merge_threshold = params.get('merge_threshold', 20)
-    # gaussian_blur = params.get('gaussian_blur', 5)
-    # adaptive_thresh_block = params.get('adaptive_thresh_block', 11)
-    # adaptive_thresh_c = params.get('adaptive_thresh_c', 2)
-    # # Edge detection additional parameters
-    # min_line_length = params.get('min_line_length', 30)
-    # max_line_gap = params.get('max_line_gap', 10)
-    # line_grouping_distance = params.get('line_grouping_distance', 30)
-    # min_lines_per_defect = params.get('min_lines_per_defect', 2)
-    # min_edge_defect_size = params.get('min_edge_defect_size', 10)
-    # # Contour detection additional parameters
-    # aspect_ratio_min = params.get('aspect_ratio_min', 0.2)
-    # aspect_ratio_max = params.get('aspect_ratio_max', 5.0)
-    # dilation_iterations = params.get('dilation_iterations', 1)
-    # morphological_kernel_size = params.get('morphological_kernel_size', 3)
-    # 
-    # try:
-    #     # Convert to grayscale
-    #     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #     
-    #     # Apply Gaussian blur to reduce noise
-    #     blur_size = gaussian_blur if gaussian_blur % 2 == 1 else gaussian_blur + 1
-    #     blurred = cv2.GaussianBlur(gray, (blur_size, blur_size), 0)
-    #     
-    #     defects = []
-    #     defect_count = 0
-    #     
-    #     if method == 'blob' or method == 'combined':
-    #         # Blob detection for small defects
-    #         blob_defects = self._detect_blobs(blurred, min_area=blob_min_area, max_area=blob_max_area,
-    #                                           adaptive_block=adaptive_thresh_block, adaptive_c=adaptive_thresh_c,
-    #                                           kernel_size=morphological_kernel_size)
-    #         defects.extend(blob_defects)
-    #         defect_count += len(blob_defects)
-    #     
-    #     if method == 'contour' or method == 'combined':
-    #         # Contour-based detection for larger defects
-    #         contour_defects = self._detect_contours(blurred, min_area=contour_min_area, max_area=contour_max_area,
-    #                                                  canny_low=canny_low, canny_high=canny_high,
-    #                                                  aspect_ratio_min=aspect_ratio_min, aspect_ratio_max=aspect_ratio_max,
-    #                                                  dilation_iterations=dilation_iterations, kernel_size=morphological_kernel_size)
-    #         defects.extend(contour_defects)
-    #         defect_count += len(contour_defects)
-    #     
-    #     if method == 'edge' or method == 'combined':
-    #         # Edge-based detection
-    #         edge_defects = self._detect_edges(blurred, canny_low=edge_canny_low, canny_high=edge_canny_high,
-    #                                           hough_threshold=hough_threshold, min_line_length=min_line_length,
-    #                                           max_line_gap=max_line_gap, line_grouping_distance=line_grouping_distance,
-    #                                           min_lines_per_defect=min_lines_per_defect, min_defect_size=min_edge_defect_size)
-    #         defects.extend(edge_defects)
-    #         defect_count += len(edge_defects)
-    #     
-    #     # Remove duplicates if using combined method
-    #     if method == 'combined' and len(defects) > 0:
-    #         defects = self._merge_nearby_defects(defects, threshold=merge_threshold)
-    #         defect_count = len(defects)
-    #     
-    #     # Calculate confidence based on defect characteristics
-    #     confidence = self._calculate_confidence(defects, frame.shape)
-    #     
-    #     return {
-    #         'defects_found': defect_count > 0,
-    #         'defect_count': defect_count,
-    #         'defects': defects,
-    #         'confidence': confidence,
-    #         'method': method,
-    #         'timestamp': time.time()
-    #     }
-    #     
-    # except Exception as e:
-    #     logger.error(f"Error in defect detection: {e}")
-    #     return {
-    #         'defects_found': False,
-    #         'defect_count': 0,
-    #         'defects': [],
-    #         'confidence': 0.0,
-    #         'error': str(e)
-    #     }
-    
-    # DEFECT DETECTION HELPER METHODS COMMENTED OUT
-    # def _detect_blobs(self, gray: np.ndarray, min_area: int = 10, max_area: int = 5000,
-    #                  adaptive_block: int = 11, adaptive_c: int = 2, kernel_size: int = 3) -> List[Dict]:
-    #     """Detect defects using blob detection"""
-    #     defects = []
-    #     
-    #     try:
-    #         # Apply adaptive threshold
-    #         block_size = adaptive_block if adaptive_block % 2 == 1 else adaptive_block + 1
-    #         thresh = cv2.adaptiveThreshold(
-    #             gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-    #             cv2.THRESH_BINARY_INV, block_size, adaptive_c
-    #         )
-    #         
-    #         # Morphological operations to clean up
-    #         kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    #         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-    #         thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-    #         
-    #         # Find contours
-    #         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #         
-    #         for contour in contours:
-    #             area = cv2.contourArea(contour)
-    #             # Filter based on area parameters
-    #             if min_area < area < max_area:
-    #                 x, y, w, h = cv2.boundingRect(contour)
-    #                 defects.append({
-    #                     'type': 'blob',
-    #                     'x': int(x),
-    #                     'y': int(y),
-    #                     'width': int(w),
-    #                     'height': int(h),
-    #                     'area': float(area),
-    #                     'center': (int(x + w/2), int(y + h/2))
-    #                 })
-    #     except Exception as e:
-    #         logger.error(f"Error in blob detection: {e}")
-    #     
-    #     return defects
-    
     def _detect_blobs(self, gray: np.ndarray, min_area: int = 10, max_area: int = 5000,
                      adaptive_block: int = 11, adaptive_c: int = 2, kernel_size: int = 3) -> List[Dict]:
         """Stub - defect detection disabled"""
         return []
-    
-    # def _detect_contours(self, gray: np.ndarray, min_area: int = 50, max_area: int = 10000,
-    #                     canny_low: int = 50, canny_high: int = 150, aspect_ratio_min: float = 0.2,
-    #                     aspect_ratio_max: float = 5.0, dilation_iterations: int = 1, kernel_size: int = 3) -> List[Dict]:
-    #     """Detect defects using contour analysis"""
-    #     ... (commented out)
     
     def _detect_contours(self, gray: np.ndarray, min_area: int = 50, max_area: int = 10000,
                         canny_low: int = 50, canny_high: int = 150, aspect_ratio_min: float = 0.2,
@@ -818,21 +699,11 @@ class CameraService:
         """Stub - defect detection disabled"""
         return []
     
-    # def _detect_edges(self, gray: np.ndarray, canny_low: int = 30, canny_high: int = 100,
-    #                  hough_threshold: int = 50, min_line_length: int = 30, max_line_gap: int = 10,
-    #                  line_grouping_distance: int = 30, min_lines_per_defect: int = 2, min_defect_size: int = 10) -> List[Dict]:
-    #     """Detect defects using edge detection"""
-    #     ... (commented out)
-    
     def _detect_edges(self, gray: np.ndarray, canny_low: int = 30, canny_high: int = 100,
                      hough_threshold: int = 50, min_line_length: int = 30, max_line_gap: int = 10,
                      line_grouping_distance: int = 30, min_lines_per_defect: int = 2, min_defect_size: int = 10) -> List[Dict]:
         """Stub - defect detection disabled"""
         return []
-    
-    # def _merge_nearby_defects(self, defects: List[Dict], threshold: int = 20) -> List[Dict]:
-    #     """Merge defects that are close to each other"""
-    #     ... (commented out)
     
     def _merge_nearby_defects(self, defects: List[Dict], threshold: int = 20) -> List[Dict]:
         """Stub - defect detection disabled"""

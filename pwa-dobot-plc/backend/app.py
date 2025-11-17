@@ -982,33 +982,7 @@ def vision_analyze():
                 y2 = min(frame.shape[0], y + h + padding)
                 roi_regions.append((x1, y1, x2, y2))
         
-        # DEFECT DETECTION COMMENTED OUT - Focus on object/counter detection first
-        # Run defect detection
-        # if roi_regions:
-        #     all_defects = []
-        #     for x1, y1, x2, y2 in roi_regions:
-        #         roi = frame[y1:y2, x1:x2]
-        #         if roi.size > 0:
-        #             roi_results = camera_service.detect_defects(roi, method=method, params=detection_params)
-        #             for defect in roi_results.get('defects', []):
-        #                 defect['x'] += x1
-        #                 defect['y'] += y1
-        #                 all_defects.append(defect)
-        #     
-        #     results = {
-        #         'defects_found': len(all_defects) > 0,
-        #         'defect_count': len(all_defects),
-        #         'defects': all_defects,
-        #         'confidence': camera_service._calculate_confidence(all_defects, frame.shape) if hasattr(camera_service, '_calculate_confidence') else 0.0,
-        #         'method': method,
-        #         'objects_detected': len(detected_objects),
-        #         'timestamp': time.time()
-        #     }
-        # else:
-        #     results = camera_service.detect_defects(frame, method=method, params=detection_params)
-        #     results['objects_detected'] = 0
-        
-        # Return object detection results only (no defect detection)
+        # Return object detection results only (defect detection disabled)
         results = {
             'defects_found': False,
             'defect_count': 0,
@@ -1021,17 +995,10 @@ def vision_analyze():
         
         results['detected_objects'] = detected_objects
         
-        # Write to PLC fault bit if enabled (disabled since no defects)
-        # plc_write_result = write_plc_fault_bit(results.get('defects_found', False))
-        # if plc_write_result:
-        #     results['plc_write'] = plc_write_result
-        
-        # Draw objects on frame (defect drawing disabled)
+        # Draw objects on frame
         annotated_frame = frame.copy()
         if detected_objects:
             annotated_frame = camera_service.draw_objects(annotated_frame, detected_objects, color=(0, 255, 0))
-        # if results.get('defects_found'):
-        #     annotated_frame = camera_service.draw_defects(annotated_frame, results['defects'])
         
         # Encode as JPEG
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
@@ -1095,56 +1062,14 @@ def vision_detect():
             results['objects_found'] = len(detected_objects) > 0
             results['object_method'] = object_method
 
-        # DEFECT DETECTION COMMENTED OUT - Focus on object/counter detection first
-        # Run defect detection if enabled
+        # Run defect detection if enabled (currently disabled)
         if defect_detection_enabled:
-            # Defect detection is disabled - return empty results
             results['defects_found'] = False
             results['defect_count'] = 0
             results['defects'] = []
             results['confidence'] = 0.0
             results['defect_method'] = defect_method
             results['note'] = 'Defect detection is currently disabled'
-            
-            # # Original defect detection code commented out:
-            # if detected_objects:
-            #     # Detect defects only in object regions
-            #     all_defects = []
-            #     for obj in detected_objects:
-            #         x, y = obj['x'], obj['y']
-            #         w, h = obj['width'], obj['height']
-            #         padding = object_params.get('roi_padding', 10)
-            #         x1 = max(0, x - padding)
-            #         y1 = max(0, y - padding)
-            #         x2 = min(frame.shape[1], x + w + padding)
-            #         y2 = min(frame.shape[0], y + h + padding)
-            #
-            #         roi = frame[y1:y2, x1:x2]
-            #         if roi.size > 0:
-            #             roi_results = camera_service.detect_defects(roi, method=defect_method, params=detection_params)
-            #             for defect in roi_results.get('defects', []):
-            #                 defect['x'] += x1
-            #                 defect['y'] += y1
-            #                 all_defects.append(defect)
-            #
-            #     results['defects_found'] = len(all_defects) > 0
-            #     results['defect_count'] = len(all_defects)
-            #     results['defects'] = all_defects
-            #     results['confidence'] = camera_service._calculate_confidence(all_defects, frame.shape) if hasattr(camera_service, '_calculate_confidence') else 0.0
-            # else:
-            #     # Detect defects in whole frame
-            #     defect_results = camera_service.detect_defects(frame, method=defect_method, params=detection_params)
-            #     results['defects_found'] = defect_results.get('defects_found', False)
-            #     results['defect_count'] = defect_results.get('defect_count', 0)
-            #     results['defects'] = defect_results.get('defects', [])
-            #     results['confidence'] = defect_results.get('confidence', 0.0)
-            #
-            # results['defect_method'] = defect_method
-            #
-            # # Write to PLC fault bit if enabled
-            # plc_write_result = write_plc_fault_bit(results.get('defects_found', False))
-            # if plc_write_result:
-            #     results['plc_write'] = plc_write_result
 
         return jsonify(results)
 
