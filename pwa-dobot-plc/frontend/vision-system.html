@@ -1616,7 +1616,7 @@
         // Object detection parameters - Tunable via sliders
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
-            min_object_area: 5000,  // Default from slider
+            min_object_area: 2000,  // Lower default to detect smaller circles
             max_object_area: 100000,  // Default from slider
             use_background_subtraction: true,  // Use background subtraction by default
             bg_history: 500,
