@@ -243,27 +243,45 @@ class CameraService:
         conf = params.get('conf', 0.25)
         iou = params.get('iou', 0.45)
         classes = params.get('classes', None)
+        crop_top_percent = params.get('crop_top_percent', 25)
+        crop_bottom_percent = params.get('crop_bottom_percent', 25)
 
-        # Run inference
-        results = self.yolo_model(frame, conf=conf, iou=iou, classes=classes, verbose=False)
+        # Crop the frame to remove top and bottom regions
+        original_height = frame.shape[0]
+        original_width = frame.shape[1]
+
+        crop_top = int(original_height * crop_top_percent / 100)
+        crop_bottom = int(original_height * (100 - crop_bottom_percent) / 100)
+
+        cropped_frame = frame[crop_top:crop_bottom, :]
+        logger.debug(f"Cropped frame from {original_height}x{original_width} to {cropped_frame.shape[0]}x{cropped_frame.shape[1]}")
+
+        # Run inference on cropped frame
+        results = self.yolo_model(cropped_frame, conf=conf, iou=iou, classes=classes, verbose=False)
 
         objects = []
         for result in results:
             boxes = result.boxes
             for box in boxes:
-                # Extract box coordinates
+                # Extract box coordinates (relative to cropped frame)
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                 conf = float(box.conf[0])
                 cls = int(box.cls[0])
                 class_name = result.names[cls]
 
+                # Adjust coordinates back to original frame
+                x1_original = x1
+                y1_original = y1 + crop_top
+                x2_original = x2
+                y2_original = y2 + crop_top
+
                 # Calculate center and dimensions
-                x = int(x1)
-                y = int(y1)
-                w = int(x2 - x1)
-                h = int(y2 - y1)
-                center_x = int(x1 + w / 2)
-                center_y = int(y1 + h / 2)
+                x = int(x1_original)
+                y = int(y1_original)
+                w = int(x2_original - x1_original)
+                h = int(y2_original - y1_original)
+                center_x = int(x1_original + w / 2)
+                center_y = int(y1_original + h / 2)
                 area = w * h
 
                 objects.append({

@@ -631,6 +631,34 @@
                                 <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Overlapping detection threshold (NMS)</div>
                             </div>
                         </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                            <div>
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                    Crop Top: <span id="cropTopValue" style="color: #60a5fa; font-weight: 600;">25</span>%
+                                </label>
+                                <input type="range" id="cropTop" value="25" min="0" max="50" step="5"
+                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
+                                       oninput="updateSliderValue('cropTop', 'cropTopValue', false); updateObjectParams();">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
+                                    <span>0%</span>
+                                    <span>50%</span>
+                                </div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Remove top portion of image</div>
+                            </div>
+                            <div>
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                    Crop Bottom: <span id="cropBottomValue" style="color: #60a5fa; font-weight: 600;">25</span>%
+                                </label>
+                                <input type="range" id="cropBottom" value="25" min="0" max="50" step="5"
+                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
+                                       oninput="updateSliderValue('cropBottom', 'cropBottomValue', false); updateObjectParams();">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
+                                    <span>0%</span>
+                                    <span>50%</span>
+                                </div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Remove bottom portion of image</div>
+                            </div>
+                        </div>
                         <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
                             <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
                                 <span style="color: #10b981;">✓</span> Using trained YOLO model (counter_detector.pt)<br>
@@ -777,6 +805,8 @@
             setTimeout(() => {
                 updateSliderValue('yoloConf', 'yoloConfValue', true);
                 updateSliderValue('yoloIou', 'yoloIouValue', true);
+                updateSliderValue('cropTop', 'cropTopValue', false);
+                updateSliderValue('cropBottom', 'cropBottomValue', false);
             }, 100);
 
             // Object detection is always enabled (no checkbox needed)
@@ -1172,6 +1202,9 @@
                 } else if (sliderId === 'yoloConf') {
                     // Show 3 decimal places for confidence threshold
                     formattedValue = value.toFixed(3);
+                } else if (sliderId === 'cropTop' || sliderId === 'cropBottom') {
+                    // Show percentage without decimal places
+                    formattedValue = Math.round(value);
                 } else if (isDecimal) {
                     formattedValue = value.toFixed(2);
                 } else {
@@ -1194,13 +1227,17 @@
         // Update object detection params from UI (called when sliders change)
         function updateObjectParams() {
             // Update objectParams from UI elements for YOLO
-            const conf = parseFloat(document.getElementById('yoloConf')?.value || '0.25');
+            const conf = parseFloat(document.getElementById('yoloConf')?.value || '0.01');
             const iou = parseFloat(document.getElementById('yoloIou')?.value || '0.45');
+            const cropTop = parseInt(document.getElementById('cropTop')?.value || '25');
+            const cropBottom = parseInt(document.getElementById('cropBottom')?.value || '25');
 
             objectParams.conf = conf;
             objectParams.iou = iou;
+            objectParams.crop_top_percent = cropTop;
+            objectParams.crop_bottom_percent = cropBottom;
 
-            addSerialLog(`YOLO params updated: Confidence=${conf.toFixed(2)}, IOU=${iou.toFixed(2)}`, 'info');
+            addSerialLog(`YOLO params updated: Confidence=${conf.toFixed(3)}, IOU=${iou.toFixed(2)}, Crop Top=${cropTop}%, Bottom=${cropBottom}%`, 'info');
         }
 
         // Apply object detection settings
@@ -1590,7 +1627,9 @@
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
             conf: 0.01,  // Confidence threshold (very low due to small training set)
-            iou: 0.45    // IOU threshold for NMS
+            iou: 0.45,   // IOU threshold for NMS
+            crop_top_percent: 25,  // Crop top 25%
+            crop_bottom_percent: 25  // Crop bottom 25%
         };
         
         function loadObjectParams() {
