@@ -1790,10 +1790,26 @@
 
         // Update object detection params from UI (called when method changes)
         function updateObjectParams() {
-            // This function is called when detection method changes
-            // Just save current selection, actual params are read in applyObjectDetectionSettings
-            const method = document.getElementById('objectDetectionMethod').value;
-            addSerialLog(`Object detection method changed to: ${method}`, 'info');
+            // Update objectParams from UI elements
+            const minArea = parseInt(document.getElementById('minObjectArea')?.value || '5000');
+            const maxArea = parseInt(document.getElementById('maxObjectArea')?.value || '100000');
+            const minConfidence = parseFloat(document.getElementById('minObjectConfidence')?.value || '0.7');
+            
+            objectParams.min_object_area = minArea;
+            objectParams.max_object_area = maxArea;
+            objectParams.min_confidence = minConfidence;
+            
+            // Circle detection specific parameters
+            const method = document.getElementById('objectDetectionMethod')?.value || 'circle';
+            if (method === 'circle') {
+                objectParams.min_circularity = parseFloat(document.getElementById('minCircularity')?.value || '0.6');
+                objectParams.hsv_hue_min = parseInt(document.getElementById('hsvHueMin')?.value || '90');
+                objectParams.hsv_hue_max = parseInt(document.getElementById('hsvHueMax')?.value || '130');
+                objectParams.hough_circle_threshold = parseInt(document.getElementById('houghCircleThreshold')?.value || '30');
+                objectParams.min_dist_between_circles = parseInt(document.getElementById('minDistBetweenCircles')?.value || '50');
+            }
+            
+            addSerialLog(`Object params updated: Method=${method}, MinArea=${minArea}, MaxArea=${maxArea}, Confidence=${minConfidence.toFixed(2)}`, 'info');
         }
 
         // Apply object detection settings
@@ -1892,6 +1908,14 @@
 
         async function detectObjectsOnly() {
             try {
+                // Get the selected object detection method from UI
+                const objectMethod = document.getElementById('objectDetectionMethod').value;
+                
+                // Update object params before sending
+                updateObjectParams();
+                
+                addSerialLog(`Running object detection with method: ${objectMethod}`, 'detection');
+                
                 // First capture the frame
                 const captureResponse = await fetch(`${API_BASE}/api/vision/analyze`, {
                     method: 'POST',
@@ -1900,7 +1924,7 @@
                         method: 'combined',
                         params: detectionParams,
                         use_object_detection: true,
-                        object_method: 'background',
+                        object_method: objectMethod,  // Use selected method instead of hardcoded 'background'
                         object_params: objectParams,
                         defect_detection_enabled: false  // Only detect objects, not defects
                     })
@@ -1939,6 +1963,16 @@
                         const results = await detectResponse.json();
                         const objectCount = results.object_count || 0;
                         const objects = results.objects || [];
+
+                        // Log detailed results for debugging
+                        addSerialLog(`Detection results: ${objectCount} objects found`, 'detection');
+                        if (objects.length > 0) {
+                            objects.forEach((obj, idx) => {
+                                addSerialLog(`  Object ${idx + 1}: type=${obj.type}, area=${obj.area?.toFixed(0) || 'N/A'}, confidence=${obj.confidence || 'N/A'}, classification=${obj.classification || 'unknown'}`, 'detection');
+                            });
+                        } else {
+                            addSerialLog('  No objects detected - check detection parameters', 'warning');
+                        }
 
                         // Update stats
                         const statsDiv = document.getElementById('objectDetectionStats');
@@ -1984,7 +2018,10 @@
                             if (classificationDiv) classificationDiv.style.display = 'none';
                         }
 
-                        addSerialLog(`Object detection: Found ${objectCount} objects (target: 4)`, objectCount === 4 ? 'info' : 'detection');
+                        addSerialLog(`Object detection complete: Found ${objectCount} objects (target: 4)`, objectCount === 4 ? 'info' : 'detection');
+                    } else {
+                        const errorText = await detectResponse.text();
+                        addSerialLog(`Detection API error: ${detectResponse.status} - ${errorText}`, 'error');
                     }
                 }
             } catch (error) {

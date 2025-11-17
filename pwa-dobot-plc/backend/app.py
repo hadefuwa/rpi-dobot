@@ -776,14 +776,14 @@ def generate_frames():
         if camera_service is None:
             break
         
-        frame_bytes = camera_service.get_frame_jpeg(quality=85)
+        frame_bytes = camera_service.get_frame_jpeg(quality=70)  # Reduced quality for faster streaming
         if frame_bytes is None:
-            time.sleep(0.1)
+            time.sleep(0.05)  # Reduced sleep time when no frame available
             continue
         
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-        time.sleep(0.033)  # ~30 FPS
+        time.sleep(0.05)  # ~20 FPS - reduced for faster initial load
 
 @app.route('/api/camera/stream')
 def camera_stream():
