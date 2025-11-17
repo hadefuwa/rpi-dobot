@@ -131,21 +131,20 @@ class CameraService:
         
         return None
     
-    def detect_objects(self, frame: np.ndarray, method: str = 'contour', params: Optional[Dict] = None) -> Dict:
+    def detect_objects(self, frame: np.ndarray, method: str = 'blob', params: Optional[Dict] = None) -> Dict:
         """
-        Detect circular counters on conveyor belt using contour detection.
-        Works in changing lighting conditions by detecting round shapes, not colors.
+        Detect circular counters on conveyor belt using SimpleBlobDetector.
+        Works in changing lighting conditions by detecting round blob shapes.
 
         Args:
             frame: Input image frame (BGR format)
-            method: Detection method ('contour' recommended)
+            method: Detection method ('blob' for SimpleBlobDetector)
             params: Optional detection parameters:
-                - min_object_area: Minimum counter area in pixels (default: 2000)
-                - max_object_area: Maximum counter area in pixels (default: 50000)
-                - min_circularity: Minimum circularity (0.65-1.0, default: 0.65)
-                - blur_kernel: Gaussian blur kernel size (default: 5)
-                - canny_low: Canny edge detection low threshold (default: 50)
-                - canny_high: Canny edge detection high threshold (default: 150)
+                - min_area: Minimum counter area in pixels (default: 500)
+                - max_area: Maximum counter area in pixels (default: 50000)
+                - min_circularity: Minimum circularity (0-1, default: 0.6)
+                - min_convexity: Minimum convexity (0-1, default: 0.7)
+                - min_inertia_ratio: Minimum inertia ratio (0-1, default: 0.3)
 
         Returns:
             Dictionary with counter detection results
@@ -162,66 +161,72 @@ class CameraService:
             params = {}
 
         # Extract parameters
-        min_object_area = params.get('min_object_area', 2000)
-        max_object_area = params.get('max_object_area', 50000)
-        min_circularity = params.get('min_circularity', 0.65)
-        blur_kernel = params.get('blur_kernel', 5)
-        canny_low = params.get('canny_low', 50)
-        canny_high = params.get('canny_high', 150)
+        min_area = params.get('min_area', 500)
+        max_area = params.get('max_area', 50000)
+        min_circularity = params.get('min_circularity', 0.6)
+        min_convexity = params.get('min_convexity', 0.7)
+        min_inertia_ratio = params.get('min_inertia_ratio', 0.3)
 
         try:
             # Step 1: Convert to grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # Step 2: Apply Gaussian blur to reduce noise and reflections
-            blurred = cv2.GaussianBlur(gray, (blur_kernel, blur_kernel), 0)
+            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-            # Step 3: Edge detection using Canny
-            edges = cv2.Canny(blurred, canny_low, canny_high)
+            # Step 3: Setup SimpleBlobDetector parameters
+            blob_params = cv2.SimpleBlobDetector_Params()
 
-            # Step 4: Find contours
-            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Filter by Area
+            blob_params.filterByArea = True
+            blob_params.minArea = min_area
+            blob_params.maxArea = max_area
+
+            # Filter by Circularity (how round the blob is)
+            blob_params.filterByCircularity = True
+            blob_params.minCircularity = min_circularity
+
+            # Filter by Convexity (how convex the contour is)
+            blob_params.filterByConvexity = True
+            blob_params.minConvexity = min_convexity
+
+            # Filter by Inertia (how elongated the blob is)
+            blob_params.filterByInertia = True
+            blob_params.minInertiaRatio = min_inertia_ratio
+
+            # Filter by Color (detect dark and light blobs)
+            blob_params.filterByColor = False
+
+            # Step 4: Create detector and detect blobs
+            detector = cv2.SimpleBlobDetector_create(blob_params)
+            keypoints = detector.detect(blurred)
 
             objects = []
 
-            # Step 5-7: Filter by size and circularity
-            for contour in contours:
-                area = cv2.contourArea(contour)
+            # Step 5: Extract blob information
+            for kp in keypoints:
+                x, y = kp.pt
+                size = kp.size
+                radius = size / 2
+                area = np.pi * radius * radius
 
-                # Step 5: Filter by size
-                if area < min_object_area or area > max_object_area:
-                    continue
-
-                # Step 6: Calculate circularity
-                perimeter = cv2.arcLength(contour, True)
-                if perimeter == 0:
-                    continue
-
-                circularity = 4 * np.pi * area / (perimeter ** 2)
-
-                # Filter by circularity (round shapes only)
-                if circularity < min_circularity:
-                    continue
-
-                # Step 7: This is a counter - extract position and bounding box
-                x, y, w, h = cv2.boundingRect(contour)
-                center_x = int(x + w / 2)
-                center_y = int(y + h / 2)
-
-                # Calculate confidence (higher for more circular shapes)
-                confidence = min(circularity, 1.0)
+                # Calculate bounding box
+                x_int = int(x - radius)
+                y_int = int(y - radius)
+                w = h = int(size)
 
                 objects.append({
                     'type': 'counter',
-                    'x': int(x),
-                    'y': int(y),
-                    'width': int(w),
-                    'height': int(h),
+                    'x': x_int,
+                    'y': y_int,
+                    'width': w,
+                    'height': h,
                     'area': float(area),
-                    'center': (center_x, center_y),
-                    'circularity': round(circularity, 2),
-                    'confidence': round(confidence, 2),
-                    'method': 'contour'
+                    'center': (int(x), int(y)),
+                    'radius': int(radius),
+                    'circularity': 1.0,  # SimpleBlobDetector filters by circularity already
+                    'confidence': 0.9,  # High confidence for blob detection
+                    'method': 'blob'
                 })
 
             return {
