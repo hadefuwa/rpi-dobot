@@ -614,15 +614,15 @@
                                     <label for="objectDetectionMethod" style="display: block; color: #cbd5e1; font-size: 13px; font-weight: 600; margin-bottom: 8px;">
                                         Detection Method
                                     </label>
-                                    <select id="objectDetectionMethod" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 13px;" onchange="updateObjectParams(); toggleCircleParams();">
-                                        <option value="circle" selected>Circle Detection - For circular counters on colored backgrounds</option>
-                                        <option value="background">Background Subtraction - For moving objects on conveyor belts</option>
-                                        <option value="contour">Contour Detection - For objects with clear edges</option>
-                                        <option value="blob">Blob Detection - For simple blob-like objects</option>
-                                        <option value="combined">Combined - Uses multiple methods together</option>
-                                    </select>
+                                    <div style="padding: 10px; background: rgba(139, 92, 246, 0.15); border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                                        <div style="color: #a78bfa; font-weight: 600; font-size: 13px; margin-bottom: 4px;">🎯 Circle Detection</div>
+                                        <small style="color: #cbd5e1; font-size: 11px; display: block; line-height: 1.4;">
+                                            Optimized for detecting circular counters on colored backgrounds. Uses HoughCircles for shape detection and color analysis for classification.
+                                        </small>
+                                    </div>
+                                    <input type="hidden" id="objectDetectionMethod" value="circle">
                                     <small style="color: #64748b; font-size: 11px; display: block; margin-top: 6px; line-height: 1.4;">
-                                        <span id="methodDescription">Selects how the system finds objects in the camera image. Circle detection works best for round counters on blue backgrounds.</span>
+                                        <span id="methodDescription">Circle detection automatically finds round objects and classifies them by color (white, black, silver, grey).</span>
                                     </small>
                                 </div>
 
@@ -767,38 +767,9 @@
                                         </div>
                                     </div>
 
-                                    <!-- Background Subtraction Parameters (collapsed by default) -->
-                                    <div id="bgSubtractionParams" style="margin-top: 10px; padding: 10px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
-                                        <h6 style="color: #8b5cf6; font-size: 11px; margin-bottom: 8px; cursor: pointer;" onclick="toggleBgSubtractionParams()">
-                                            <span id="bgSubtractionToggleIcon">▶</span> Advanced Settings
-                                        </h6>
-                                        <div id="bgSubtractionContent" style="display: none;">
-                                        <div style="margin-bottom: 8px;">
-                                            <label style="display: flex; align-items: center; color: #cbd5e1; font-size: 11px; cursor: pointer;">
-                                                <input type="checkbox" id="useBgSubtraction" checked style="margin-right: 6px; cursor: pointer;">
-                                                <span>Use Background Subtraction (recommended for conveyor belts)</span>
-                                            </label>
-                                        </div>
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
-                                            <div>
-                                                <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">History Frames</label>
-                                                <input type="number" id="bgHistory" value="500" min="100" max="2000" step="50" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;">
-                                            </div>
-                                            <div>
-                                                <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Learning Rate</label>
-                                                <input type="number" id="bgLearningRate" value="0.001" min="0.0001" max="0.1" step="0.0001" style="width: 100%; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;">
-                                            </div>
-                                        </div>
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                            <div>
-                                                <label style="display: block; color: #cbd5e1; font-size: 11px; margin-bottom: 3px;">Aspect Ratio Range</label>
-                                                <div style="display: flex; gap: 5px;">
-                                                    <input type="number" id="aspectRatioMin" value="0.2" min="0.1" max="2.0" step="0.1" placeholder="Min" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;">
-                                                    <input type="number" id="aspectRatioMax" value="5.0" min="1.0" max="10.0" step="0.1" placeholder="Max" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.8); color: #e2e8f0; font-size: 11px;">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        </div>
+                                    <!-- Background Subtraction Parameters - Hidden (not needed for circle detection) -->
+                                    <div id="bgSubtractionParams" style="display: none;">
+                                        <input type="hidden" id="useBgSubtraction" value="false">
                                     </div>
                                     </div>
                                 </div>
@@ -1765,26 +1736,12 @@
             }
         }
 
-        // Toggle circle detection parameters visibility
+        // Circle detection parameters are always visible (only method available)
         function toggleCircleParams() {
-            const method = document.getElementById('objectDetectionMethod').value;
+            // No-op: Circle detection is always enabled
             const circleParams = document.getElementById('circleDetectionParams');
-            const methodDesc = document.getElementById('methodDescription');
-
-            if (method === 'circle') {
+            if (circleParams) {
                 circleParams.style.display = 'block';
-                methodDesc.textContent = 'Best for detecting round counters on colored backgrounds. Uses color filtering to find circular objects.';
-            } else {
-                circleParams.style.display = 'none';
-                if (method === 'background') {
-                    methodDesc.textContent = 'Best for moving objects on conveyor belts. Compares current frame to learned background.';
-                } else if (method === 'contour') {
-                    methodDesc.textContent = 'Best for objects with clear edges. Finds object boundaries and shapes.';
-                } else if (method === 'blob') {
-                    methodDesc.textContent = 'Best for simple blob-like objects. Finds regions of similar color or brightness.';
-                } else if (method === 'combined') {
-                    methodDesc.textContent = 'Uses multiple detection methods together for best accuracy. Slower but more reliable.';
-                }
             }
         }
 
