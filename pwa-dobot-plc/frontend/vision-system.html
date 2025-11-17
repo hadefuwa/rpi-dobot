@@ -784,6 +784,9 @@
 
             // Load object detection parameters
             loadObjectParams();
+            
+            // Initialize object params from UI elements on page load
+            updateObjectParams();
 
             // Object detection is always enabled (no checkbox needed)
             topLevelObjectDetectionEnabled = true;
@@ -1322,10 +1325,12 @@
                 const objectMethodElement = document.getElementById('objectDetectionMethod');
                 const objectMethod = objectMethodElement ? objectMethodElement.value : 'circle';
                 
-                // Update object params before sending
+                // Update object params from UI BEFORE sending
                 updateObjectParams();
                 
+                // Log what we're sending for debugging
                 addSerialLog(`Running object detection with method: ${objectMethod}`, 'detection');
+                addSerialLog(`  Params: MinArea=${objectParams.min_object_area}, MaxArea=${objectParams.max_object_area}, Confidence=${objectParams.min_confidence}, Sensitivity=${objectParams.hough_circle_threshold || 30}`, 'info');
                 
                 // First capture the frame
                 const captureResponse = await fetch(`${API_BASE}/api/vision/analyze`, {
