@@ -133,25 +133,22 @@ class CameraService:
     
     def detect_objects(self, frame: np.ndarray, method: str = 'contour', params: Optional[Dict] = None) -> Dict:
         """
-        Detect objects in an image frame before defect detection
-        Uses background subtraction for moving objects on conveyor belts
+        Detect circular counters on conveyor belt using contour detection.
+        Works in changing lighting conditions by detecting round shapes, not colors.
 
         Args:
             frame: Input image frame (BGR format)
-            method: Detection method ('contour', 'blob', 'combined', 'background', 'circle')
+            method: Detection method ('contour' recommended)
             params: Optional detection parameters:
-                - min_object_area: Minimum object area in pixels (default: 2000)
-                - max_object_area: Maximum object area in pixels (default: 100000)
-                - use_background_subtraction: Use background subtraction (default: True)
-                - bg_history: Background history frames (default: 500)
-                - bg_threshold: Background threshold (default: 16)
-                - bg_learning_rate: Background learning rate (default: 0.001)
-                - aspect_ratio_min: Minimum aspect ratio (default: 0.2)
-                - aspect_ratio_max: Maximum aspect ratio (default: 5.0)
-                - min_confidence: Minimum confidence for detection (default: 0.5)
-            
+                - min_object_area: Minimum counter area in pixels (default: 2000)
+                - max_object_area: Maximum counter area in pixels (default: 50000)
+                - min_circularity: Minimum circularity (0.65-1.0, default: 0.65)
+                - blur_kernel: Gaussian blur kernel size (default: 5)
+                - canny_low: Canny edge detection low threshold (default: 50)
+                - canny_high: Canny edge detection high threshold (default: 150)
+
         Returns:
-            Dictionary with object detection results
+            Dictionary with counter detection results
         """
         if frame is None:
             return {
@@ -160,207 +157,81 @@ class CameraService:
                 'objects': [],
                 'error': 'No frame provided'
             }
-        
+
         if params is None:
             params = {}
-        
-        # Extract parameters with better defaults for conveyor belt counters
-        min_object_area = params.get('min_object_area', 5000)  # Increased to detect only larger objects
-        max_object_area = params.get('max_object_area', 100000)  # Increased from 50000
-        use_bg_subtraction = params.get('use_background_subtraction', True)
-        bg_history = params.get('bg_history', 500)
-        bg_threshold = params.get('bg_threshold', 32)  # Increased from 16 to reduce noise
-        bg_learning_rate = params.get('bg_learning_rate', 0.001)
-        aspect_ratio_min = params.get('aspect_ratio_min', 0.2)
-        aspect_ratio_max = params.get('aspect_ratio_max', 5.0)
-        min_confidence = params.get('min_confidence', 0.7)  # Increased from 0.5
-        
+
+        # Extract parameters
+        min_object_area = params.get('min_object_area', 2000)
+        max_object_area = params.get('max_object_area', 50000)
+        min_circularity = params.get('min_circularity', 0.65)
+        blur_kernel = params.get('blur_kernel', 5)
+        canny_low = params.get('canny_low', 50)
+        canny_high = params.get('canny_high', 150)
+
         try:
+            # Step 1: Convert to grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+            # Step 2: Apply Gaussian blur to reduce noise and reflections
+            blurred = cv2.GaussianBlur(gray, (blur_kernel, blur_kernel), 0)
+
+            # Step 3: Edge detection using Canny
+            edges = cv2.Canny(blurred, canny_low, canny_high)
+
+            # Step 4: Find contours
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
             objects = []
-            object_count = 0
-            
-            # Use background subtraction for moving objects on conveyor belt
-            if use_bg_subtraction or method == 'background':
-                # Initialize background subtractor if needed
-                if self.bg_subtractor is None:
-                    self.bg_subtractor = cv2.createBackgroundSubtractorMOG2(
-                        history=bg_history,
-                        varThreshold=bg_threshold,
-                        detectShadows=True
-                    )
-                    self.bg_initialized = False
-                    self.bg_learning_frames = 0
-                
-                # Convert to grayscale for background subtraction
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                
-                # Apply Gaussian blur to reduce noise
-                blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-                
-                # Apply background subtraction
-                fg_mask = self.bg_subtractor.apply(blurred, learningRate=bg_learning_rate)
-                
-                # Update learning frame count
-                if not self.bg_initialized:
-                    self.bg_learning_frames += 1
-                    if self.bg_learning_frames >= 30:  # Learn background for 30 frames
-                        self.bg_initialized = True
-                
-                # Only detect objects after background is learned
-                if self.bg_initialized:
-                    # Morphological operations to clean up the mask
-                    kernel = np.ones((7, 7), np.uint8)  # Larger kernel to merge small regions
-                    fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_CLOSE, kernel)
-                    fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN, kernel)
 
-                    # Dilate to merge nearby regions (reduced iterations)
-                    fg_mask = cv2.dilate(fg_mask, kernel, iterations=1)  # Reduced from 2 to 1
-                    
-                    # Find contours in the foreground mask
-                    contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    
-                    for contour in contours:
-                        area = cv2.contourArea(contour)
-                        if min_object_area < area < max_object_area:
-                            x, y, w, h = cv2.boundingRect(contour)
-                            
-                            # Calculate aspect ratio
-                            aspect_ratio = float(w) / h if h > 0 else 0
-                            if aspect_ratio_min < aspect_ratio < aspect_ratio_max:
-                                # Calculate solidity (how convex the shape is)
-                                hull = cv2.convexHull(contour)
-                                hull_area = cv2.contourArea(hull)
-                                solidity = float(area) / hull_area if hull_area > 0 else 0
-                                
-                                # Calculate confidence based on area and solidity
-                                area_confidence = min(area / max_object_area, 1.0)
-                                confidence = (area_confidence * 0.6 + solidity * 0.4)
-                                
-                                if confidence >= min_confidence:
-                                    objects.append({
-                                        'type': 'object',
-                                        'x': int(x),
-                                        'y': int(y),
-                                        'width': int(w),
-                                        'height': int(h),
-                                        'area': float(area),
-                                        'center': (int(x + w/2), int(y + h/2)),
-                                        'confidence': round(confidence, 2),
-                                        'method': 'background',
-                                        'aspect_ratio': round(aspect_ratio, 2),
-                                        'solidity': round(solidity, 2)
-                                    })
-                                    object_count += 1
-            
-            # Fallback to traditional methods if background subtraction is disabled
-            if not use_bg_subtraction:
-                if method == 'contour' or method == 'combined':
-                    # Simple contour-based object detection
-                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-                    
-                    # Adaptive threshold to find objects
-                    thresh = cv2.adaptiveThreshold(
-                        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                        cv2.THRESH_BINARY_INV, 11, 2
-                    )
-                    
-                    # Morphological operations
-                    kernel = np.ones((5, 5), np.uint8)
-                    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-                    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-                    
-                    # Find contours
-                    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    
-                    for contour in contours:
-                        area = cv2.contourArea(contour)
-                        if min_object_area < area < max_object_area:
-                            x, y, w, h = cv2.boundingRect(contour)
-                            # Calculate aspect ratio
-                            aspect_ratio = float(w) / h if h > 0 else 0
-                            if aspect_ratio_min < aspect_ratio < aspect_ratio_max:
-                                objects.append({
-                                    'type': 'object',
-                                    'x': int(x),
-                                    'y': int(y),
-                                    'width': int(w),
-                                    'height': int(h),
-                                    'area': float(area),
-                                    'center': (int(x + w/2), int(y + h/2)),
-                                    'confidence': 0.7,
-                                    'method': 'contour'
-                                })
-                                object_count += 1
-                
-                if method == 'blob' or method == 'combined':
-                    # Blob-based object detection
-                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    blurred = cv2.GaussianBlur(gray, (9, 9), 0)
-                    
-                    # Simple blob detector
-                    params_blob = cv2.SimpleBlobDetector_Params()
-                    params_blob.filterByArea = True
-                    params_blob.minArea = min_object_area
-                    params_blob.maxArea = max_object_area
-                    params_blob.filterByCircularity = False
-                    params_blob.filterByConvexity = False
-                    params_blob.filterByInertia = False
-                    
-                    detector = cv2.SimpleBlobDetector_create(params_blob)
-                    keypoints = detector.detect(blurred)
-                    
-                    for kp in keypoints:
-                        x, y = int(kp.pt[0]), int(kp.pt[1])
-                        size = int(kp.size)
-                        w = h = size
-                        objects.append({
-                            'type': 'object',
-                            'x': int(x - w/2),
-                            'y': int(y - h/2),
-                            'width': w,
-                            'height': h,
-                            'area': float(np.pi * (size/2)**2),
-                            'center': (x, y),
-                            'confidence': 0.6,
-                            'method': 'blob'
-                        })
-                        object_count += 1
+            # Step 5-7: Filter by size and circularity
+            for contour in contours:
+                area = cv2.contourArea(contour)
 
-            # Circle detection for circular objects (counters) on colored backgrounds
-            if method == 'circle':
-                # Try HoughCircles first (grayscale-based detection)
-                detected_objects = self._detect_circles_hough(frame, params, min_object_area, max_object_area, min_confidence)
-                objects.extend(detected_objects)
-                object_count += len(detected_objects)
-                
-                # Fallback to HSV color-based detection if HoughCircles finds nothing
-                if object_count == 0:
-                    detected_objects = self._detect_circles_hsv_fallback(frame, params, min_object_area, max_object_area, min_confidence)
-                    objects.extend(detected_objects)
-                    object_count += len(detected_objects)
+                # Step 5: Filter by size
+                if area < min_object_area or area > max_object_area:
+                    continue
 
-            # Remove duplicates if using combined method
-            if method == 'combined' and len(objects) > 0:
-                objects = self._merge_nearby_objects(objects, threshold=50)  # Increased threshold
-                object_count = len(objects)
+                # Step 6: Calculate circularity
+                perimeter = cv2.arcLength(contour, True)
+                if perimeter == 0:
+                    continue
 
-            # Keep only the most confident detection (since we expect 1 object at a time)
-            if len(objects) > 1:
-                objects = sorted(objects, key=lambda x: x.get('confidence', 0), reverse=True)
-                objects = [objects[0]]  # Keep only the best one
-                object_count = 1
+                circularity = 4 * np.pi * area / (perimeter ** 2)
+
+                # Filter by circularity (round shapes only)
+                if circularity < min_circularity:
+                    continue
+
+                # Step 7: This is a counter - extract position and bounding box
+                x, y, w, h = cv2.boundingRect(contour)
+                center_x = int(x + w / 2)
+                center_y = int(y + h / 2)
+
+                # Calculate confidence (higher for more circular shapes)
+                confidence = min(circularity, 1.0)
+
+                objects.append({
+                    'type': 'counter',
+                    'x': int(x),
+                    'y': int(y),
+                    'width': int(w),
+                    'height': int(h),
+                    'area': float(area),
+                    'center': (center_x, center_y),
+                    'circularity': round(circularity, 2),
+                    'confidence': round(confidence, 2),
+                    'method': 'contour'
+                })
 
             return {
-                'objects_found': object_count > 0,
-                'object_count': object_count,
+                'objects_found': len(objects) > 0,
+                'object_count': len(objects),
                 'objects': objects,
                 'method': method,
-                'bg_initialized': self.bg_initialized,
-                'bg_learning_frames': self.bg_learning_frames,
                 'timestamp': time.time()
             }
-            
+
         except Exception as e:
             logger.error(f"Error in object detection: {e}")
             return {
@@ -666,27 +537,42 @@ class CameraService:
         return objects
     
     def draw_objects(self, frame: np.ndarray, objects: List[Dict], color: Tuple[int, int, int] = (0, 255, 0)) -> np.ndarray:
-        """Draw detected circles on frame"""
+        """
+        Draw detected counters on frame with bounding box and info overlay.
+
+        Args:
+            frame: Input frame
+            objects: List of detected counter objects
+            color: Color for annotations (default: green)
+
+        Returns:
+            Annotated frame with visual overlays
+        """
         annotated = frame.copy()
-        
+
         for obj in objects:
             x, y = obj['x'], obj['y']
             w, h = obj['width'], obj['height']
-            
+            center = obj['center']
+
             # Draw bounding box
             cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
-            
+
             # Draw center point
-            center = obj['center']
             cv2.circle(annotated, center, 5, color, -1)
-            
-            # Draw simple label with confidence
+
+            # Draw circle around center for visual emphasis
+            radius = max(w, h) // 2
+            cv2.circle(annotated, center, radius, color, 2)
+
+            # Draw label with counter info
             confidence = obj.get('confidence', 0)
-            label = f"Counter ({confidence*100:.0f}%)"
-            
+            circularity = obj.get('circularity', 0)
+            label = f"Counter ({confidence*100:.0f}%, C:{circularity:.2f})"
+
             cv2.putText(annotated, label, (x, y - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-        
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
         return annotated
     
     def detect_defects(self, frame: np.ndarray, method: str = 'blob', params: Optional[Dict] = None) -> Dict:
