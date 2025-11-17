@@ -174,7 +174,7 @@ class CameraService:
             # Step 2: Apply Gaussian blur to reduce noise and reflections
             blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-            # Step 3: Setup SimpleBlobDetector parameters
+            # Step 3: Setup SimpleBlobDetector parameters (very relaxed)
             blob_params = cv2.SimpleBlobDetector_Params()
 
             # Filter by Area
@@ -182,24 +182,31 @@ class CameraService:
             blob_params.minArea = min_area
             blob_params.maxArea = max_area
 
-            # Filter by Circularity (how round the blob is)
+            # Filter by Circularity (relaxed for imperfect circles)
             blob_params.filterByCircularity = True
             blob_params.minCircularity = min_circularity
 
-            # Filter by Convexity (how convex the contour is)
+            # Filter by Convexity (relaxed)
             blob_params.filterByConvexity = True
             blob_params.minConvexity = min_convexity
 
-            # Filter by Inertia (how elongated the blob is)
+            # Filter by Inertia (relaxed to accept ovals)
             blob_params.filterByInertia = True
             blob_params.minInertiaRatio = min_inertia_ratio
 
-            # Filter by Color (detect dark and light blobs)
+            # Detect both dark and light blobs
             blob_params.filterByColor = False
+
+            # Set threshold values for better detection
+            blob_params.minThreshold = 10
+            blob_params.maxThreshold = 200
+            blob_params.thresholdStep = 10
 
             # Step 4: Create detector and detect blobs
             detector = cv2.SimpleBlobDetector_create(blob_params)
             keypoints = detector.detect(blurred)
+
+            logger.info(f"SimpleBlobDetector found {len(keypoints)} keypoints")
 
             objects = []
 
@@ -209,6 +216,8 @@ class CameraService:
                 size = kp.size
                 radius = size / 2
                 area = np.pi * radius * radius
+
+                logger.debug(f"Blob at ({x:.0f},{y:.0f}), size={size:.0f}, area={area:.0f}")
 
                 # Calculate bounding box
                 x_int = int(x - radius)
@@ -228,6 +237,8 @@ class CameraService:
                     'confidence': 0.9,  # High confidence for blob detection
                     'method': 'blob'
                 })
+
+            logger.info(f"Returning {len(objects)} detected counters")
 
             return {
                 'objects_found': len(objects) > 0,
