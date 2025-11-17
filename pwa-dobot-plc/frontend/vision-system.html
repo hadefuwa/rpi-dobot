@@ -1572,6 +1572,11 @@
                     const analyzedStatusIndicator = document.getElementById('analyzedStatusIndicator');
                     const analyzedStatusText = document.getElementById('analyzedStatusText');
 
+                    // Clean up old blob URL if it exists
+                    if (analyzedImg.src && analyzedImg.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(analyzedImg.src);
+                    }
+
                     analyzedImg.src = url;
                     analyzedImg.style.display = 'block';
                     analyzedPlaceholder.style.display = 'none';
@@ -1871,9 +1876,17 @@
 
                 if (captureResponse.ok) {
                     // Update analyzed image with object detection boxes
+                    const blob = await captureResponse.blob();
+                    const url = URL.createObjectURL(blob);
                     const analyzedImg = document.getElementById('analyzedImage');
                     const analyzedPlaceholder = document.getElementById('analyzedPlaceholder');
-                    analyzedImg.src = `${API_BASE}/api/vision/annotated?t=${Date.now()}`;
+                    
+                    // Clean up old blob URL if it exists
+                    if (analyzedImg.src && analyzedImg.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(analyzedImg.src);
+                    }
+                    
+                    analyzedImg.src = url;
                     analyzedImg.style.display = 'block';
                     analyzedPlaceholder.style.display = 'none';
 

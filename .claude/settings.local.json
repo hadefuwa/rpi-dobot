@@ -20,7 +20,9 @@
       "Bash(git remote:*)",
       "Bash(sshpass:*)",
       "Bash(chmod:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(test:*)",
+      "Read(//c/Users/HamedA/.ssh/**)"
     ],
     "deny": [],
     "ask": []
