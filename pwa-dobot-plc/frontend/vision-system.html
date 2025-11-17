@@ -602,73 +602,81 @@
 
                     <!-- Detection Settings -->
                     <div style="margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 15px;">⚙️ Detection Settings</h4>
+                        <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 15px;">⚙️ Blob Detection Settings</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Min Object Area: <span id="minObjectAreaValue" style="color: #60a5fa; font-weight: 600;">5000</span> px²
+                                    Min Area: <span id="minAreaValue" style="color: #60a5fa; font-weight: 600;">500</span> px²
                                 </label>
-                                <input type="range" id="minObjectArea" value="5000" min="1000" max="50000" step="500" 
+                                <input type="range" id="minArea" value="500" min="100" max="10000" step="100"
                                        style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('minObjectArea', 'minObjectAreaValue', false); updateObjectParams();">
+                                       oninput="updateSliderValue('minArea', 'minAreaValue', false); updateObjectParams();">
                                 <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
-                                    <span>1000</span>
-                                    <span>50000</span>
+                                    <span>100</span>
+                                    <span>10000</span>
                                 </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Minimum size to detect</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Minimum blob size</div>
                             </div>
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Max Object Area: <span id="maxObjectAreaValue" style="color: #60a5fa; font-weight: 600;">100000</span> px²
+                                    Max Area: <span id="maxAreaValue" style="color: #60a5fa; font-weight: 600;">50000</span> px²
                                 </label>
-                                <input type="range" id="maxObjectArea" value="100000" min="10000" max="500000" step="10000" 
+                                <input type="range" id="maxArea" value="50000" min="10000" max="200000" step="5000"
                                        style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('maxObjectArea', 'maxObjectAreaValue', false); updateObjectParams();">
+                                       oninput="updateSliderValue('maxArea', 'maxAreaValue', false); updateObjectParams();">
                                 <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
                                     <span>10000</span>
-                                    <span>500000</span>
+                                    <span>200000</span>
                                 </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Maximum size to detect</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Maximum blob size</div>
                             </div>
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Min Confidence: <span id="minObjectConfidenceValue" style="color: #60a5fa; font-weight: 600;">70%</span>
+                                    Circularity: <span id="minCircularityValue" style="color: #60a5fa; font-weight: 600;">0.60</span>
                                 </label>
-                                <input type="range" id="minObjectConfidence" value="0.70" min="0.1" max="1.0" step="0.05" 
+                                <input type="range" id="minCircularity" value="0.60" min="0.1" max="1.0" step="0.05"
                                        style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('minObjectConfidence', 'minObjectConfidenceValue', true); updateObjectParams();">
+                                       oninput="updateSliderValue('minCircularity', 'minCircularityValue', true); updateObjectParams();">
                                 <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
-                                    <span>10%</span>
-                                    <span>100%</span>
+                                    <span>0.1</span>
+                                    <span>1.0</span>
                                 </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Higher = fewer false positives</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">How round (1.0 = perfect circle)</div>
                             </div>
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Circle Sensitivity: <span id="houghCircleThresholdValue" style="color: #60a5fa; font-weight: 600;">30</span>
+                                    Convexity: <span id="minConvexityValue" style="color: #60a5fa; font-weight: 600;">0.70</span>
                                 </label>
-                                <input type="range" id="houghCircleThreshold" value="30" min="10" max="50" step="5" 
+                                <input type="range" id="minConvexity" value="0.70" min="0.1" max="1.0" step="0.05"
                                        style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('houghCircleThreshold', 'houghCircleThresholdValue', false); updateObjectParams();">
+                                       oninput="updateSliderValue('minConvexity', 'minConvexityValue', true); updateObjectParams();">
                                 <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
-                                    <span>10</span>
-                                    <span>50</span>
+                                    <span>0.1</span>
+                                    <span>1.0</span>
                                 </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Lower = more sensitive (detects more circles)</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Shape convexity</div>
+                            </div>
+                            <div>
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                    Inertia Ratio: <span id="minInertiaRatioValue" style="color: #60a5fa; font-weight: 600;">0.30</span>
+                                </label>
+                                <input type="range" id="minInertiaRatio" value="0.30" min="0.1" max="1.0" step="0.05"
+                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
+                                       oninput="updateSliderValue('minInertiaRatio', 'minInertiaRatioValue', true); updateObjectParams();">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
+                                    <span>0.1</span>
+                                    <span>1.0</span>
+                                </div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">How elongated (lower = accepts ovals)</div>
                             </div>
                         </div>
                         <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
-                            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">💡 Tip: Adjust sliders and detection updates automatically. Check the Serial Monitor for detection results.</div>
+                            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">💡 Tip: Lower circularity/convexity to detect imperfect circles. Check Serial Monitor for detection results.</div>
                         </div>
                     </div>
-                        
-                    <!-- Hidden inputs for other values -->
-                    <input type="hidden" id="objectDetectionMethod" value="circle">
-                    <input type="hidden" id="minCircularity" value="0.60">
-                    <input type="hidden" id="hsvHueMin" value="90">
-                    <input type="hidden" id="hsvHueMax" value="130">
-                    <input type="hidden" id="bgThreshold" value="32">
-                    <input type="hidden" id="useBgSubtraction" value="false">
+
+                    <!-- Hidden inputs for method -->
+                    <input type="hidden" id="objectDetectionMethod" value="blob">
                     <input type="hidden" id="continuousObjectDetection" value="true">
                 </div>
 
@@ -803,10 +811,11 @@
             
             // Initialize slider value displays
             setTimeout(() => {
-                updateSliderValue('minObjectArea', 'minObjectAreaValue', false);
-                updateSliderValue('maxObjectArea', 'maxObjectAreaValue', false);
-                updateSliderValue('minObjectConfidence', 'minObjectConfidenceValue', true);
-                updateSliderValue('houghCircleThreshold', 'houghCircleThresholdValue', false);
+                updateSliderValue('minArea', 'minAreaValue', false);
+                updateSliderValue('maxArea', 'maxAreaValue', false);
+                updateSliderValue('minCircularity', 'minCircularityValue', true);
+                updateSliderValue('minConvexity', 'minConvexityValue', true);
+                updateSliderValue('minInertiaRatio', 'minInertiaRatioValue', true);
             }, 100);
 
             // Object detection is always enabled (no checkbox needed)
@@ -1195,18 +1204,16 @@
             if (slider && valueSpan) {
                 const value = parseFloat(slider.value);
                 let formattedValue = '';
-                
+
                 // Format based on slider ID with proper units
-                if (sliderId === 'minObjectArea' || sliderId === 'maxObjectArea') {
+                if (sliderId === 'minArea' || sliderId === 'maxArea') {
                     formattedValue = Math.round(value).toLocaleString();
-                } else if (sliderId === 'minObjectConfidence') {
-                    formattedValue = Math.round(value * 100) + '%';
-                } else if (sliderId === 'houghCircleThreshold') {
-                    formattedValue = Math.round(value);
+                } else if (isDecimal) {
+                    formattedValue = value.toFixed(2);
                 } else {
-                    formattedValue = isDecimal ? value.toFixed(2) : Math.round(value);
+                    formattedValue = Math.round(value);
                 }
-                
+
                 valueSpan.textContent = formattedValue;
             }
         }
@@ -1220,28 +1227,22 @@
             }
         }
 
-        // Update object detection params from UI (called when method changes)
+        // Update object detection params from UI (called when sliders change)
         function updateObjectParams() {
-            // Update objectParams from UI elements
-            const minArea = parseInt(document.getElementById('minObjectArea')?.value || '5000');
-            const maxArea = parseInt(document.getElementById('maxObjectArea')?.value || '100000');
-            const minConfidence = parseFloat(document.getElementById('minObjectConfidence')?.value || '0.7');
-            
-            objectParams.min_object_area = minArea;
-            objectParams.max_object_area = maxArea;
-            objectParams.min_confidence = minConfidence;
-            
-            // Circle detection specific parameters
-            const method = document.getElementById('objectDetectionMethod')?.value || 'circle';
-            if (method === 'circle') {
-                objectParams.min_circularity = parseFloat(document.getElementById('minCircularity')?.value || '0.6');
-                objectParams.hsv_hue_min = parseInt(document.getElementById('hsvHueMin')?.value || '90');
-                objectParams.hsv_hue_max = parseInt(document.getElementById('hsvHueMax')?.value || '130');
-                objectParams.hough_circle_threshold = parseInt(document.getElementById('houghCircleThreshold')?.value || '30');
-                objectParams.min_dist_between_circles = parseInt(document.getElementById('minDistBetweenCircles')?.value || '50');
-            }
-            
-            addSerialLog(`Object params updated: Method=${method}, MinArea=${minArea}, MaxArea=${maxArea}, Confidence=${minConfidence.toFixed(2)}`, 'info');
+            // Update objectParams from UI elements for SimpleBlobDetector
+            const minArea = parseInt(document.getElementById('minArea')?.value || '500');
+            const maxArea = parseInt(document.getElementById('maxArea')?.value || '50000');
+            const minCircularity = parseFloat(document.getElementById('minCircularity')?.value || '0.6');
+            const minConvexity = parseFloat(document.getElementById('minConvexity')?.value || '0.7');
+            const minInertiaRatio = parseFloat(document.getElementById('minInertiaRatio')?.value || '0.3');
+
+            objectParams.min_area = minArea;
+            objectParams.max_area = maxArea;
+            objectParams.min_circularity = minCircularity;
+            objectParams.min_convexity = minConvexity;
+            objectParams.min_inertia_ratio = minInertiaRatio;
+
+            addSerialLog(`Blob params updated: MinArea=${minArea}, MaxArea=${maxArea}, Circularity=${minCircularity.toFixed(2)}, Convexity=${minConvexity.toFixed(2)}, Inertia=${minInertiaRatio.toFixed(2)}`, 'info');
         }
 
         // Apply object detection settings
@@ -1352,8 +1353,8 @@
                 updateObjectParams();
                 
                 // Log what we're sending for debugging
-                addSerialLog(`Running object detection with method: ${objectMethod}`, 'detection');
-                addSerialLog(`  Params: MinArea=${objectParams.min_object_area}, MaxArea=${objectParams.max_object_area}, Confidence=${objectParams.min_confidence}, Sensitivity=${objectParams.hough_circle_threshold || 30}`, 'info');
+                addSerialLog(`Running blob detection`, 'detection');
+                addSerialLog(`  Params: MinArea=${objectParams.min_area}, MaxArea=${objectParams.max_area}, Circularity=${objectParams.min_circularity}, Convexity=${objectParams.min_convexity}, Inertia=${objectParams.min_inertia_ratio}`, 'info');
                 
                 // First capture the frame
                 const captureResponse = await fetch(`${API_BASE}/api/vision/analyze`, {
@@ -1417,7 +1418,7 @@
                             });
                         } else {
                             addSerialLog('  No counters detected - check detection parameters', 'warning');
-                            addSerialLog(`  Current settings: MinArea=${objectParams.min_object_area}, MaxArea=${objectParams.max_object_area}, Confidence=${objectParams.min_confidence}, Sensitivity=${objectParams.hough_circle_threshold || 30}`, 'info');
+                            addSerialLog(`  Current settings: MinArea=${objectParams.min_area}, MaxArea=${objectParams.max_area}, Circularity=${objectParams.min_circularity}, Convexity=${objectParams.min_convexity}`, 'info');
                         }
 
                         // Update stats
@@ -1627,22 +1628,14 @@
             topLevelDefectDetectionEnabled = true;
         }
 
-        // Object detection parameters - Tunable via sliders
+        // Object detection parameters - SimpleBlobDetector
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
-            min_object_area: 5000,  // Default from slider
-            max_object_area: 100000,  // Default from slider
-            use_background_subtraction: true,  // Use background subtraction by default
-            bg_history: 500,
-            bg_threshold: 32,  // Default from slider
-            bg_learning_rate: 0.001,
-            aspect_ratio_min: 0.2,
-            aspect_ratio_max: 5.0,
-            min_confidence: 0.7,  // Default from slider
-            morph_kernel_size: 7,  // Default from slider
-            object_confidence: 0.7,
-            object_nms_threshold: 0.5,  // More aggressive merging
-            roi_padding: 10
+            min_area: 500,  // Default from slider
+            max_area: 50000,  // Default from slider
+            min_circularity: 0.6,  // Default from slider
+            min_convexity: 0.7,  // Default from slider
+            min_inertia_ratio: 0.3  // Default from slider
         };
         
         function loadObjectParams() {
