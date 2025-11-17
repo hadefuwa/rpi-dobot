@@ -800,6 +800,14 @@
 
             // Initialize object params from UI elements on page load
             updateObjectParams();
+            
+            // Initialize slider value displays
+            setTimeout(() => {
+                updateSliderValue('minObjectArea', 'minObjectAreaValue', false);
+                updateSliderValue('maxObjectArea', 'maxObjectAreaValue', false);
+                updateSliderValue('minObjectConfidence', 'minObjectConfidenceValue', true);
+                updateSliderValue('houghCircleThreshold', 'houghCircleThresholdValue', false);
+            }, 100);
 
             // Object detection is always enabled (no checkbox needed)
             topLevelObjectDetectionEnabled = true;
