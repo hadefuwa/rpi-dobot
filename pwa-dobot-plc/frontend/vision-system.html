@@ -602,76 +602,40 @@
 
                     <!-- Detection Settings -->
                     <div style="margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
-                        <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 15px;">⚙️ Blob Detection Settings</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 15px;">🤖 YOLO Detection Settings</h4>
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Min Area: <span id="minAreaValue" style="color: #60a5fa; font-weight: 600;">500</span> px²
+                                    Confidence Threshold: <span id="yoloConfValue" style="color: #60a5fa; font-weight: 600;">0.25</span>
                                 </label>
-                                <input type="range" id="minArea" value="500" min="100" max="10000" step="100"
+                                <input type="range" id="yoloConf" value="0.25" min="0.05" max="0.95" step="0.05"
                                        style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('minArea', 'minAreaValue', false); updateObjectParams();">
+                                       oninput="updateSliderValue('yoloConf', 'yoloConfValue', true); updateObjectParams();">
                                 <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
-                                    <span>100</span>
-                                    <span>10000</span>
+                                    <span>0.05</span>
+                                    <span>0.95</span>
                                 </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Minimum blob size</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Higher = fewer false positives, lower = detects more counters</div>
                             </div>
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Max Area: <span id="maxAreaValue" style="color: #60a5fa; font-weight: 600;">50000</span> px²
+                                    IOU Threshold: <span id="yoloIouValue" style="color: #60a5fa; font-weight: 600;">0.45</span>
                                 </label>
-                                <input type="range" id="maxArea" value="50000" min="10000" max="200000" step="5000"
+                                <input type="range" id="yoloIou" value="0.45" min="0.1" max="0.9" step="0.05"
                                        style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('maxArea', 'maxAreaValue', false); updateObjectParams();">
-                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
-                                    <span>10000</span>
-                                    <span>200000</span>
-                                </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Maximum blob size</div>
-                            </div>
-                            <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Circularity: <span id="minCircularityValue" style="color: #60a5fa; font-weight: 600;">0.60</span>
-                                </label>
-                                <input type="range" id="minCircularity" value="0.60" min="0.1" max="1.0" step="0.05"
-                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('minCircularity', 'minCircularityValue', true); updateObjectParams();">
+                                       oninput="updateSliderValue('yoloIou', 'yoloIouValue', true); updateObjectParams();">
                                 <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
                                     <span>0.1</span>
-                                    <span>1.0</span>
+                                    <span>0.9</span>
                                 </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">How round (1.0 = perfect circle)</div>
-                            </div>
-                            <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Convexity: <span id="minConvexityValue" style="color: #60a5fa; font-weight: 600;">0.70</span>
-                                </label>
-                                <input type="range" id="minConvexity" value="0.70" min="0.1" max="1.0" step="0.05"
-                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('minConvexity', 'minConvexityValue', true); updateObjectParams();">
-                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
-                                    <span>0.1</span>
-                                    <span>1.0</span>
-                                </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Shape convexity</div>
-                            </div>
-                            <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Inertia Ratio: <span id="minInertiaRatioValue" style="color: #60a5fa; font-weight: 600;">0.30</span>
-                                </label>
-                                <input type="range" id="minInertiaRatio" value="0.30" min="0.1" max="1.0" step="0.05"
-                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
-                                       oninput="updateSliderValue('minInertiaRatio', 'minInertiaRatioValue', true); updateObjectParams();">
-                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
-                                    <span>0.1</span>
-                                    <span>1.0</span>
-                                </div>
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">How elongated (lower = accepts ovals)</div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Overlapping detection threshold (NMS)</div>
                             </div>
                         </div>
                         <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
-                            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">💡 Tip: Lower circularity/convexity to detect imperfect circles. Check Serial Monitor for detection results.</div>
+                            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                <span style="color: #10b981;">✓</span> Using trained YOLO model (counter_detector.pt)<br>
+                                💡 Lower confidence to detect more counters. Check Serial Monitor for results.
+                            </div>
                         </div>
                     </div>
 
@@ -811,11 +775,8 @@
             
             // Initialize slider value displays
             setTimeout(() => {
-                updateSliderValue('minArea', 'minAreaValue', false);
-                updateSliderValue('maxArea', 'maxAreaValue', false);
-                updateSliderValue('minCircularity', 'minCircularityValue', true);
-                updateSliderValue('minConvexity', 'minConvexityValue', true);
-                updateSliderValue('minInertiaRatio', 'minInertiaRatioValue', true);
+                updateSliderValue('yoloConf', 'yoloConfValue', true);
+                updateSliderValue('yoloIou', 'yoloIouValue', true);
             }, 100);
 
             // Object detection is always enabled (no checkbox needed)
@@ -1229,20 +1190,14 @@
 
         // Update object detection params from UI (called when sliders change)
         function updateObjectParams() {
-            // Update objectParams from UI elements for SimpleBlobDetector
-            const minArea = parseInt(document.getElementById('minArea')?.value || '500');
-            const maxArea = parseInt(document.getElementById('maxArea')?.value || '50000');
-            const minCircularity = parseFloat(document.getElementById('minCircularity')?.value || '0.6');
-            const minConvexity = parseFloat(document.getElementById('minConvexity')?.value || '0.7');
-            const minInertiaRatio = parseFloat(document.getElementById('minInertiaRatio')?.value || '0.3');
+            // Update objectParams from UI elements for YOLO
+            const conf = parseFloat(document.getElementById('yoloConf')?.value || '0.25');
+            const iou = parseFloat(document.getElementById('yoloIou')?.value || '0.45');
 
-            objectParams.min_area = minArea;
-            objectParams.max_area = maxArea;
-            objectParams.min_circularity = minCircularity;
-            objectParams.min_convexity = minConvexity;
-            objectParams.min_inertia_ratio = minInertiaRatio;
+            objectParams.conf = conf;
+            objectParams.iou = iou;
 
-            addSerialLog(`Blob params updated: MinArea=${minArea}, MaxArea=${maxArea}, Circularity=${minCircularity.toFixed(2)}, Convexity=${minConvexity.toFixed(2)}, Inertia=${minInertiaRatio.toFixed(2)}`, 'info');
+            addSerialLog(`YOLO params updated: Confidence=${conf.toFixed(2)}, IOU=${iou.toFixed(2)}`, 'info');
         }
 
         // Apply object detection settings
@@ -1353,8 +1308,8 @@
                 updateObjectParams();
                 
                 // Log what we're sending for debugging
-                addSerialLog(`Running blob detection`, 'detection');
-                addSerialLog(`  Params: MinArea=${objectParams.min_area}, MaxArea=${objectParams.max_area}, Circularity=${objectParams.min_circularity}, Convexity=${objectParams.min_convexity}, Inertia=${objectParams.min_inertia_ratio}`, 'info');
+                addSerialLog(`Running YOLO detection`, 'detection');
+                addSerialLog(`  Params: Confidence=${objectParams.conf}, IOU=${objectParams.iou}`, 'info');
                 
                 // First capture the frame
                 const captureResponse = await fetch(`${API_BASE}/api/vision/analyze`, {
@@ -1417,8 +1372,8 @@
                                 addSerialLog(`  Counter ${idx + 1}: center=(${obj.center[0]},${obj.center[1]}), radius=${obj.radius || 'N/A'}px, area=${obj.area?.toFixed(0) || 'N/A'}px², confidence=${(obj.confidence * 100).toFixed(0) || 'N/A'}%`, 'detection');
                             });
                         } else {
-                            addSerialLog('  No counters detected - check detection parameters', 'warning');
-                            addSerialLog(`  Current settings: MinArea=${objectParams.min_area}, MaxArea=${objectParams.max_area}, Circularity=${objectParams.min_circularity}, Convexity=${objectParams.min_convexity}`, 'info');
+                            addSerialLog('  No counters detected - try lowering confidence threshold', 'warning');
+                            addSerialLog(`  Current settings: Confidence=${objectParams.conf}, IOU=${objectParams.iou}`, 'info');
                         }
 
                         // Update stats
@@ -1628,14 +1583,11 @@
             topLevelDefectDetectionEnabled = true;
         }
 
-        // Object detection parameters - SimpleBlobDetector
+        // Object detection parameters - YOLO
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
-            min_area: 500,  // Default from slider
-            max_area: 50000,  // Default from slider
-            min_circularity: 0.6,  // Default from slider
-            min_convexity: 0.7,  // Default from slider
-            min_inertia_ratio: 0.3  // Default from slider
+            conf: 0.25,  // Confidence threshold
+            iou: 0.45    // IOU threshold for NMS
         };
         
         function loadObjectParams() {
