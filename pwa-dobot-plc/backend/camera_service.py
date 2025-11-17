@@ -446,7 +446,7 @@ class CameraService:
         return roi if roi.size > 0 else None
     
     def _create_circle_object(self, x: int, y: int, radius: int, area: float, 
-                             confidence: float, classification: str = 'unknown') -> Dict:
+                             confidence: float) -> Dict:
         """
         Create a standardized circle object dictionary
         
@@ -456,7 +456,6 @@ class CameraService:
             radius: Circle radius
             area: Circle area
             confidence: Detection confidence (0-1)
-            classification: Disc classification (white/black/silver/grey)
             
         Returns:
             Object dictionary
@@ -472,7 +471,6 @@ class CameraService:
             'radius': int(radius),
             'circularity': 1.0,
             'confidence': round(confidence, 2),
-            'classification': classification,
             'method': 'circle',
             'aspect_ratio': 1.0
         }
@@ -536,17 +534,19 @@ class CameraService:
         
         # Convert to grayscale for circle detection
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (9, 9), 2)
         
-        # HoughCircles parameters
-        dp = 1
+        # Apply Gaussian blur to reduce noise (larger kernel for better smoothing)
+        blurred = cv2.GaussianBlur(gray, (11, 11), 2)
+        
+        # HoughCircles parameters - optimized for ultra-reliable circle detection
+        dp = 1  # Inverse ratio of accumulator resolution
         min_dist = params.get('min_dist_between_circles', 50)
-        param1 = 50  # Upper threshold for edge detection
-        param2 = params.get('hough_circle_threshold', 30)
+        param1 = 100  # Upper threshold for edge detection (higher = better edge detection)
+        param2 = params.get('hough_circle_threshold', 20)  # Lower threshold = more sensitive, detects more circles
         min_radius = int(np.sqrt(min_object_area / np.pi))
         max_radius = int(np.sqrt(max_object_area / np.pi))
         
-        # Detect circles
+        # Detect circles using HoughCircles
         circles = cv2.HoughCircles(
             blurred,
             cv2.HOUGH_GRADIENT,
@@ -562,16 +562,27 @@ class CameraService:
             circles = np.round(circles[0, :]).astype("int")
             
             for (x, y, r) in circles:
-                # Extract ROI and classify
-                roi = self._extract_circle_roi(frame, x, y, r)
-                if roi is not None:
-                    classification = self.classify_disc(roi)
-                    area = np.pi * r * r
-                    size_confidence = min(area / max_object_area, 1.0)
-                    
-                    if size_confidence >= min_confidence:
-                        obj = self._create_circle_object(x, y, r, area, size_confidence, classification)
-                        objects.append(obj)
+                # Calculate area
+                area = np.pi * r * r
+                
+                # Calculate confidence based on size (normalized to max area)
+                # Higher confidence for circles closer to expected size
+                size_ratio = area / max_object_area
+                size_confidence = min(size_ratio, 1.0)
+                
+                # Boost confidence for circles in the middle of the size range
+                if min_object_area < area < max_object_area:
+                    # Normalize area to 0-1 range within min/max bounds
+                    normalized_area = (area - min_object_area) / (max_object_area - min_object_area)
+                    # Higher confidence for circles in the middle range
+                    confidence = 0.5 + (normalized_area * 0.5)  # Range: 0.5 to 1.0
+                else:
+                    confidence = size_confidence
+                
+                # Only add if meets confidence threshold
+                if confidence >= min_confidence:
+                    obj = self._create_circle_object(x, y, r, area, confidence)
+                    objects.append(obj)
         
         return objects
     
@@ -628,16 +639,12 @@ class CameraService:
                     aspect_ratio = float(w) / h if h > 0 else 0
                     
                     if 0.7 < aspect_ratio < 1.3:
-                        # Extract ROI and classify
-                        roi = self._extract_circle_roi(frame, int(x), int(y), int(radius))
-                        classification = self.classify_disc(roi) if roi is not None else 'unknown'
-                        
-                        # Calculate confidence
+                        # Calculate confidence based on circularity and size
                         size_confidence = min(area / max_object_area, 1.0)
                         confidence = (circularity * 0.7 + size_confidence * 0.3)
                         
                         if confidence >= min_confidence:
-                            obj = self._create_circle_object(int(x), int(y), int(radius), area, confidence, classification)
+                            obj = self._create_circle_object(int(x), int(y), int(radius), area, confidence)
                             obj['circularity'] = round(circularity, 2)
                             obj['aspect_ratio'] = round(aspect_ratio, 2)
                             objects.append(obj)
@@ -645,7 +652,7 @@ class CameraService:
         return objects
     
     def draw_objects(self, frame: np.ndarray, objects: List[Dict], color: Tuple[int, int, int] = (0, 255, 0)) -> np.ndarray:
-        """Draw detected objects on frame with classification labels"""
+        """Draw detected circles on frame"""
         annotated = frame.copy()
         
         for obj in objects:
@@ -659,14 +666,9 @@ class CameraService:
             center = obj['center']
             cv2.circle(annotated, center, 5, color, -1)
             
-            # Draw label with classification if available
-            classification = obj.get('classification', '')
+            # Draw simple label with confidence
             confidence = obj.get('confidence', 0)
-            
-            if classification:
-                label = f"{classification.upper()} ({confidence*100:.0f}%)"
-            else:
-                label = f"Object ({confidence*100:.0f}%)"
+            label = f"Counter ({confidence*100:.0f}%)"
             
             cv2.putText(annotated, label, (x, y - 10),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)

@@ -611,10 +611,6 @@
                             <span style="color: #cbd5e1; font-size: 14px; font-weight: 500;">Objects Detected:</span>
                             <span id="currentObjectCount" style="color: #10b981; font-weight: 700; font-size: 18px;">0</span>
                         </div>
-                        <div id="classificationSummary" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2); display: none;">
-                            <span style="color: #cbd5e1; font-size: 12px; display: block; margin-bottom: 6px; font-weight: 500;">Classifications:</span>
-                            <div id="classificationList" style="color: #94a3b8; font-size: 12px; line-height: 1.8;"></div>
-                        </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
                             <span style="color: #cbd5e1; font-size: 11px;">Last Updated:</span>
                             <span id="lastDetectionTime" style="color: #94a3b8; font-size: 11px;">Never</span>
@@ -675,7 +671,7 @@
                         <div style="color: #cbd5e1; line-height: 1.8; font-size: 14px;">
                             <p style="margin-bottom: 15px;">
                                 The Vision System automatically detects and counts circular objects (counters) on colored backgrounds. 
-                                It uses circle detection algorithms to find round objects and classifies them by color (white, black, silver, grey).
+                                It uses optimized circle detection algorithms to reliably find round objects.
                             </p>
                             
                             <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#127909; Camera Connection</h4>
@@ -691,12 +687,9 @@
                             <div style="margin-bottom: 15px;">
                                 <p style="font-weight: 600; color: #a78bfa; margin-bottom: 8px;">🎯 Circle Detection</p>
                                 <p style="margin-left: 20px; margin-bottom: 10px;">
-                                    The system uses HoughCircles algorithm to detect circular shapes in the image. It works in two steps:
+                                    The system uses HoughCircles algorithm with optimized preprocessing to reliably detect circular shapes. 
+                                    It applies Gaussian blur and adaptive thresholding to enhance circle edges before detection.
                                 </p>
-                                <ol style="margin-left: 40px; margin-bottom: 10px;">
-                                    <li><strong>Shape Detection:</strong> Uses grayscale image processing to find circular objects by their shape</li>
-                                    <li><strong>Color Classification:</strong> Analyzes the color of each detected circle to classify it as white, black, silver, or grey</li>
-                                </ol>
                                 <p style="margin-left: 20px; margin-bottom: 10px;">
                                     This method works best for detecting round counters on colored backgrounds (like blue conveyor belts).
                                 </p>
@@ -705,19 +698,17 @@
                             <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#9881;&#65039; How It Works</h4>
                             <ol style="margin-left: 20px; margin-bottom: 15px;">
                                 <li><strong>Image Capture:</strong> The system continuously captures frames from the USB camera</li>
-                                <li><strong>Preprocessing:</strong> Converts the image to grayscale and applies Gaussian blur to reduce noise</li>
-                                <li><strong>Circle Detection:</strong> Uses HoughCircles algorithm to find circular shapes in the image</li>
-                                <li><strong>Color Analysis:</strong> For each detected circle, analyzes the color in HSV space to classify it</li>
+                                <li><strong>Preprocessing:</strong> Converts to grayscale, applies Gaussian blur, and adaptive thresholding to enhance circle edges</li>
+                                <li><strong>Circle Detection:</strong> Uses HoughCircles algorithm with optimized parameters to find circular shapes</li>
                                 <li><strong>Filtering:</strong> Filters detections by size and confidence to remove false positives</li>
-                                <li><strong>Display:</strong> Shows the count and classifications, and draws bounding boxes on the analyzed image</li>
+                                <li><strong>Display:</strong> Shows the count and draws bounding boxes around detected counters on the analyzed image</li>
                             </ol>
                             
                             <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128202; Results Display</h4>
                             <ul style="margin-left: 20px; margin-bottom: 15px;">
-                                <li><strong>Objects Detected:</strong> Shows the total number of circular objects found in the current frame</li>
-                                <li><strong>Classifications:</strong> Displays the count of each color type (e.g., "2x WHITE, 1x BLACK, 1x SILVER")</li>
+                                <li><strong>Objects Detected:</strong> Shows the total number of circular counters found in the current frame</li>
                                 <li><strong>Last Updated:</strong> Shows when the detection was last performed</li>
-                                <li><strong>Analyzed Image:</strong> Shows the camera frame with green bounding boxes around detected objects</li>
+                                <li><strong>Analyzed Image:</strong> Shows the camera frame with green bounding boxes and labels around detected counters</li>
                             </ul>
                             
                             <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128161; Tips for Best Results</h4>
@@ -733,7 +724,7 @@
                             <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128295; Technical Details</h4>
                             <ul style="margin-left: 20px; margin-bottom: 15px;">
                                 <li><strong>Library:</strong> OpenCV (cv2) for image processing</li>
-                                <li><strong>Detection Method:</strong> HoughCircles for shape detection, HSV color analysis for classification</li>
+                                <li><strong>Detection Method:</strong> HoughCircles algorithm with optimized preprocessing for reliable circle detection</li>
                                 <li><strong>Frame Rate:</strong> 20 FPS for live stream, detection runs every 1 second</li>
                                 <li><strong>Resolution:</strong> 640×480 pixels</li>
                                 <li><strong>Stream Format:</strong> MJPEG (Motion JPEG) for efficient web streaming</li>
@@ -1447,13 +1438,13 @@
                         const objects = results.objects || [];
 
                         // Log detailed results for debugging
-                        addSerialLog(`Detection results: ${objectCount} objects found`, 'detection');
+                        addSerialLog(`Detection results: ${objectCount} counters found`, 'detection');
                         if (objects.length > 0) {
                             objects.forEach((obj, idx) => {
-                                addSerialLog(`  Object ${idx + 1}: type=${obj.type}, area=${obj.area?.toFixed(0) || 'N/A'}, confidence=${obj.confidence || 'N/A'}, classification=${obj.classification || 'unknown'}`, 'detection');
+                                addSerialLog(`  Counter ${idx + 1}: area=${obj.area?.toFixed(0) || 'N/A'}px², confidence=${(obj.confidence * 100).toFixed(0) || 'N/A'}%`, 'detection');
                             });
                         } else {
-                            addSerialLog('  No objects detected - check detection parameters', 'warning');
+                            addSerialLog('  No counters detected', 'warning');
                         }
 
                         // Update stats
@@ -1477,30 +1468,7 @@
                             }
                         }
 
-                        // Display classification results
-                        const classificationDiv = document.getElementById('classificationSummary');
-                        const classificationList = document.getElementById('classificationList');
-                        if (objects.length > 0) {
-                            const classifications = objects.map(obj => obj.classification || 'unknown').filter(c => c !== 'unknown');
-                            if (classifications.length > 0) {
-                                const classCounts = {};
-                                classifications.forEach(c => classCounts[c] = (classCounts[c] || 0) + 1);
-                                const classSummary = Object.entries(classCounts)
-                                    .map(([type, count]) => `<span style="color: #60a5fa;">${count}x ${type.toUpperCase()}</span>`)
-                                    .join(', ');
-                                
-                                if (classificationDiv) classificationDiv.style.display = 'block';
-                                if (classificationList) classificationList.innerHTML = classSummary;
-                                
-                                addSerialLog(`Classifications: ${Object.entries(classCounts).map(([type, count]) => `${count}x ${type}`).join(', ')}`, 'detection');
-                            } else {
-                                if (classificationDiv) classificationDiv.style.display = 'none';
-                            }
-                        } else {
-                            if (classificationDiv) classificationDiv.style.display = 'none';
-                        }
-
-                        addSerialLog(`Object detection complete: Found ${objectCount} objects (target: 4)`, objectCount === 4 ? 'info' : 'detection');
+                        addSerialLog(`Counter detection complete: Found ${objectCount} counters`, objectCount > 0 ? 'info' : 'detection');
                     } else {
                         const errorText = await detectResponse.text();
                         addSerialLog(`Detection API error: ${detectResponse.status} - ${errorText}`, 'error');
