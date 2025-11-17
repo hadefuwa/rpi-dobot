@@ -1169,6 +1169,9 @@
                 // Format based on slider ID with proper units
                 if (sliderId === 'minArea' || sliderId === 'maxArea') {
                     formattedValue = Math.round(value).toLocaleString();
+                } else if (sliderId === 'yoloConf') {
+                    // Show 3 decimal places for confidence threshold
+                    formattedValue = value.toFixed(3);
                 } else if (isDecimal) {
                     formattedValue = value.toFixed(2);
                 } else {
