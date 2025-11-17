@@ -328,78 +328,137 @@ class CameraService:
                         object_count += 1
 
             # Circle detection for circular objects (counters) on colored backgrounds
+            # IMPROVED: Use grayscale for detection, color for classification
             if method == 'circle':
-                # Optimized for detecting large circles on blue background
-                # Convert to HSV to isolate blue background
-                hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-                # Get HSV parameters (tunable via frontend sliders)
-                hsv_hue_min = params.get('hsv_hue_min', 90)
-                hsv_hue_max = params.get('hsv_hue_max', 130)
-
-                # Define blue color range (adjust these for your specific blue)
-                lower_blue = np.array([hsv_hue_min, 50, 50])  # Lower bound of blue in HSV
-                upper_blue = np.array([hsv_hue_max, 255, 255])  # Upper bound of blue in HSV
-
-                # Create mask for blue background
-                blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
-
-                # Invert to get objects (non-blue regions)
-                object_mask = cv2.bitwise_not(blue_mask)
-
-                # Apply morphological operations to clean up
-                kernel_size = params.get('morphological_kernel_size', 7)
-                kernel = np.ones((kernel_size, kernel_size), np.uint8)
-                object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_CLOSE, kernel)
-                object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_OPEN, kernel)
-
-                # Find contours
-                contours, _ = cv2.findContours(object_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-                for contour in contours:
-                    area = cv2.contourArea(contour)
-                    if min_object_area < area < max_object_area:
-                        # Fit a circle to the contour
-                        (x, y), radius = cv2.minEnclosingCircle(contour)
-
-                        # Calculate circularity (how close to a perfect circle)
-                        perimeter = cv2.arcLength(contour, True)
-                        if perimeter > 0:
-                            circularity = 4 * np.pi * area / (perimeter ** 2)
-                        else:
-                            circularity = 0
-
-                        # Only accept circular objects (circularity close to 1.0)
-                        min_circularity = params.get('min_circularity', 0.6)
-                        if circularity >= min_circularity:
-                            # Get bounding box
-                            x_int, y_int, w, h = cv2.boundingRect(contour)
-
-                            # Calculate aspect ratio
-                            aspect_ratio = float(w) / h if h > 0 else 0
-
-                            # Check if aspect ratio is close to 1 (circular)
-                            if 0.7 < aspect_ratio < 1.3:  # Allow some tolerance
-                                # Calculate confidence based on circularity and size
-                                size_confidence = min(area / max_object_area, 1.0)
-                                confidence = (circularity * 0.7 + size_confidence * 0.3)
-
-                                if confidence >= min_confidence:
-                                    objects.append({
-                                        'type': 'circle',
-                                        'x': int(x_int),
-                                        'y': int(y_int),
-                                        'width': int(w),
-                                        'height': int(h),
-                                        'area': float(area),
-                                        'center': (int(x), int(y)),
-                                        'radius': int(radius),
-                                        'circularity': round(circularity, 2),
-                                        'confidence': round(confidence, 2),
-                                        'method': 'circle',
-                                        'aspect_ratio': round(aspect_ratio, 2)
-                                    })
-                                    object_count += 1
+                # Step 1: Detect circles using grayscale (better for shape detection)
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                
+                # Apply Gaussian blur to reduce noise
+                blurred = cv2.GaussianBlur(gray, (9, 9), 2)
+                
+                # Use HoughCircles for circle detection (works on grayscale intensity)
+                dp = 1  # Inverse ratio of accumulator resolution
+                min_dist = params.get('min_dist_between_circles', 50)  # Minimum distance between circle centers
+                param1 = 50  # Upper threshold for edge detection
+                param2 = params.get('hough_circle_threshold', 30)  # Accumulator threshold (lower = more circles)
+                min_radius = int(np.sqrt(min_object_area / np.pi))  # Minimum circle radius
+                max_radius = int(np.sqrt(max_object_area / np.pi))  # Maximum circle radius
+                
+                circles = cv2.HoughCircles(
+                    blurred,
+                    cv2.HOUGH_GRADIENT,
+                    dp=dp,
+                    minDist=min_dist,
+                    param1=param1,
+                    param2=param2,
+                    minRadius=min_radius,
+                    maxRadius=max_radius
+                )
+                
+                # Step 2: Classify each detected circle using color
+                if circles is not None:
+                    circles = np.round(circles[0, :]).astype("int")
+                    
+                    for (x, y, r) in circles:
+                        # Extract ROI (region of interest) for classification
+                        # Get a square region around the circle
+                        y1 = max(0, y - r)
+                        y2 = min(frame.shape[0], y + r)
+                        x1 = max(0, x - r)
+                        x2 = min(frame.shape[1], x + r)
+                        
+                        roi = frame[y1:y2, x1:x2]
+                        
+                        if roi.size > 0:
+                            # Classify the disc using color analysis
+                            classification = self.classify_disc(roi)
+                            
+                            # Calculate area and confidence
+                            area = np.pi * r * r
+                            
+                            # Calculate confidence based on size
+                            size_confidence = min(area / max_object_area, 1.0)
+                            confidence = size_confidence
+                            
+                            if confidence >= min_confidence:
+                                # Get bounding box
+                                x_int, y_int = x - r, y - r
+                                w = h = 2 * r
+                                
+                                objects.append({
+                                    'type': 'circle',
+                                    'x': int(x_int),
+                                    'y': int(y_int),
+                                    'width': int(w),
+                                    'height': int(h),
+                                    'area': float(area),
+                                    'center': (int(x), int(y)),
+                                    'radius': int(r),
+                                    'circularity': 1.0,  # HoughCircles finds perfect circles
+                                    'confidence': round(confidence, 2),
+                                    'classification': classification,  # Add classification
+                                    'method': 'circle',
+                                    'aspect_ratio': 1.0
+                                })
+                                object_count += 1
+                
+                # Fallback: If HoughCircles doesn't find circles, use HSV color-based detection
+                # (Keep original method as backup)
+                if object_count == 0:
+                    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                    hsv_hue_min = params.get('hsv_hue_min', 90)
+                    hsv_hue_max = params.get('hsv_hue_max', 130)
+                    lower_blue = np.array([hsv_hue_min, 50, 50])
+                    upper_blue = np.array([hsv_hue_max, 255, 255])
+                    blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+                    object_mask = cv2.bitwise_not(blue_mask)
+                    kernel_size = params.get('morphological_kernel_size', 7)
+                    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+                    object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_CLOSE, kernel)
+                    object_mask = cv2.morphologyEx(object_mask, cv2.MORPH_OPEN, kernel)
+                    contours, _ = cv2.findContours(object_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    for contour in contours:
+                        area = cv2.contourArea(contour)
+                        if min_object_area < area < max_object_area:
+                            (x, y), radius = cv2.minEnclosingCircle(contour)
+                            perimeter = cv2.arcLength(contour, True)
+                            if perimeter > 0:
+                                circularity = 4 * np.pi * area / (perimeter ** 2)
+                            else:
+                                circularity = 0
+                            min_circularity = params.get('min_circularity', 0.6)
+                            if circularity >= min_circularity:
+                                x_int, y_int, w, h = cv2.boundingRect(contour)
+                                aspect_ratio = float(w) / h if h > 0 else 0
+                                if 0.7 < aspect_ratio < 1.3:
+                                    # Extract ROI for classification
+                                    y1 = max(0, int(y) - int(radius))
+                                    y2 = min(frame.shape[0], int(y) + int(radius))
+                                    x1 = max(0, int(x) - int(radius))
+                                    x2 = min(frame.shape[1], int(x) + int(radius))
+                                    roi = frame[y1:y2, x1:x2]
+                                    classification = self.classify_disc(roi) if roi.size > 0 else 'unknown'
+                                    
+                                    size_confidence = min(area / max_object_area, 1.0)
+                                    confidence = (circularity * 0.7 + size_confidence * 0.3)
+                                    if confidence >= min_confidence:
+                                        objects.append({
+                                            'type': 'circle',
+                                            'x': int(x_int),
+                                            'y': int(y_int),
+                                            'width': int(w),
+                                            'height': int(h),
+                                            'area': float(area),
+                                            'center': (int(x), int(y)),
+                                            'radius': int(radius),
+                                            'circularity': round(circularity, 2),
+                                            'confidence': round(confidence, 2),
+                                            'classification': classification,
+                                            'method': 'circle',
+                                            'aspect_ratio': round(aspect_ratio, 2)
+                                        })
+                                        object_count += 1
 
             # Remove duplicates if using combined method
             if method == 'combined' and len(objects) > 0:
@@ -485,8 +544,47 @@ class CameraService:
         
         return merged
     
+    def classify_disc(self, roi: np.ndarray) -> str:
+        """
+        Classify a disc (counter) as white, black, silver, or grey
+        Uses color analysis in HSV space
+        
+        Args:
+            roi: Region of interest (the disc area) in BGR format
+            
+        Returns:
+            Classification string: 'white', 'black', 'silver', or 'grey'
+        """
+        if roi is None or roi.size == 0:
+            return 'unknown'
+        
+        try:
+            # Convert to HSV for color analysis
+            hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+            
+            # Calculate mean HSV values
+            mean_hsv = hsv.mean(axis=(0, 1))  # H, S, V mean values
+            H, S, V = mean_hsv
+            
+            # Calculate variance in BGR space for silver vs grey detection
+            grey_var = np.var(roi)
+            
+            # Classification logic based on brightness, saturation, and variance
+            if V > 180 and S < 40:
+                return 'white'
+            elif V < 60:
+                return 'black'
+            elif grey_var > 200:
+                return 'silver'
+            else:
+                return 'grey'
+                
+        except Exception as e:
+            logger.error(f"Error classifying disc: {e}")
+            return 'unknown'
+    
     def draw_objects(self, frame: np.ndarray, objects: List[Dict], color: Tuple[int, int, int] = (0, 255, 0)) -> np.ndarray:
-        """Draw detected objects on frame"""
+        """Draw detected objects on frame with classification labels"""
         annotated = frame.copy()
         
         for obj in objects:
@@ -500,10 +598,17 @@ class CameraService:
             center = obj['center']
             cv2.circle(annotated, center, 5, color, -1)
             
-            # Draw label
-            label = f"Object {obj.get('confidence', 0):.2f}"
+            # Draw label with classification if available
+            classification = obj.get('classification', '')
+            confidence = obj.get('confidence', 0)
+            
+            if classification:
+                label = f"{classification.upper()} ({confidence*100:.0f}%)"
+            else:
+                label = f"Object ({confidence*100:.0f}%)"
+            
             cv2.putText(annotated, label, (x, y - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
         
         return annotated
     

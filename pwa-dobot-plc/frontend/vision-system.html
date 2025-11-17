@@ -757,7 +757,11 @@
                                             <span style="color: #cbd5e1; font-size: 11px;">Objects Detected:</span>
                                             <span id="currentObjectCount" style="color: #10b981; font-weight: 600; font-size: 11px;">0</span>
                                         </div>
-                                        <div style="display: flex; justify-content: space-between;">
+                                        <div id="classificationSummary" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.2); display: none;">
+                                            <span style="color: #cbd5e1; font-size: 10px; display: block; margin-bottom: 4px;">Classifications:</span>
+                                            <div id="classificationList" style="color: #94a3b8; font-size: 10px; line-height: 1.6;"></div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; margin-top: 8px;">
                                             <span style="color: #cbd5e1; font-size: 11px;">Last Updated:</span>
                                             <span id="lastDetectionTime" style="color: #94a3b8; font-size: 10px;">Never</span>
                                         </div>
@@ -1290,9 +1294,14 @@
                 addSerialLog('Serial monitor ready', 'info');
             }, 500);
 
-            // Start object detection after camera has time to connect
+            // Auto-start continuous object detection when camera connects
             setTimeout(() => {
                 if (cameraConnected && !objectDetectionActive) {
+                    // Ensure continuous detection checkbox is checked
+                    const continuousCheckbox = document.getElementById('continuousObjectDetection');
+                    if (continuousCheckbox) {
+                        continuousCheckbox.checked = true;
+                    }
                     startObjectDetection();
                 }
             }, 2000);
@@ -1307,9 +1316,14 @@
                     updateCameraStatus(true);
                     startStream();
 
-                    // Auto-start object detection if not already active
+                    // Auto-start continuous object detection if not already active
                     setTimeout(() => {
                         if (!objectDetectionActive) {
+                            // Ensure continuous detection checkbox is checked
+                            const continuousCheckbox = document.getElementById('continuousObjectDetection');
+                            if (continuousCheckbox) {
+                                continuousCheckbox.checked = true;
+                            }
                             startObjectDetection();
                         }
                     }, 1000);
@@ -1394,6 +1408,17 @@
                 if (data.success) {
                     updateCameraStatus(true);
                     startStream();
+                    
+                    // Auto-start continuous object detection after camera connects
+                    setTimeout(() => {
+                        if (!objectDetectionActive) {
+                            const continuousCheckbox = document.getElementById('continuousObjectDetection');
+                            if (continuousCheckbox) {
+                                continuousCheckbox.checked = true;
+                            }
+                            startObjectDetection();
+                        }
+                    }, 1500);
                 } else {
                     alert('Failed to connect camera: ' + (data.error || 'Unknown error'));
                 }
@@ -1913,6 +1938,7 @@
                     if (detectResponse.ok) {
                         const results = await detectResponse.json();
                         const objectCount = results.object_count || 0;
+                        const objects = results.objects || [];
 
                         // Update stats
                         const statsDiv = document.getElementById('objectDetectionStats');
@@ -1933,6 +1959,29 @@
                             } else {
                                 countElement.style.color = '#ef4444'; // Red - too few
                             }
+                        }
+
+                        // Display classification results
+                        const classificationDiv = document.getElementById('classificationSummary');
+                        const classificationList = document.getElementById('classificationList');
+                        if (objects.length > 0) {
+                            const classifications = objects.map(obj => obj.classification || 'unknown').filter(c => c !== 'unknown');
+                            if (classifications.length > 0) {
+                                const classCounts = {};
+                                classifications.forEach(c => classCounts[c] = (classCounts[c] || 0) + 1);
+                                const classSummary = Object.entries(classCounts)
+                                    .map(([type, count]) => `<span style="color: #60a5fa;">${count}x ${type.toUpperCase()}</span>`)
+                                    .join(', ');
+                                
+                                if (classificationDiv) classificationDiv.style.display = 'block';
+                                if (classificationList) classificationList.innerHTML = classSummary;
+                                
+                                addSerialLog(`Classifications: ${Object.entries(classCounts).map(([type, count]) => `${count}x ${type}`).join(', ')}`, 'detection');
+                            } else {
+                                if (classificationDiv) classificationDiv.style.display = 'none';
+                            }
+                        } else {
+                            if (classificationDiv) classificationDiv.style.display = 'none';
                         }
 
                         addSerialLog(`Object detection: Found ${objectCount} objects (target: 4)`, objectCount === 4 ? 'info' : 'detection');
