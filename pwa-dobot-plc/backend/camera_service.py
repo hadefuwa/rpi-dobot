@@ -14,6 +14,15 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Try to import YOLO (optional)
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+    logger.info("YOLO (Ultralytics) loaded successfully")
+except ImportError:
+    YOLO_AVAILABLE = False
+    logger.warning("YOLO not available - install with: pip install ultralytics")
+
 class CameraService:
     """Service for managing USB camera and defect detection"""
     
@@ -42,6 +51,9 @@ class CameraService:
         self.bg_subtractor: Optional[cv2.BackgroundSubtractor] = None
         self.bg_learning_frames = 0
         self.bg_initialized = False
+        # YOLO model
+        self.yolo_model = None
+        self.yolo_model_path = None
         
     def initialize_camera(self) -> bool:
         """Initialize and open camera"""
@@ -131,15 +143,46 @@ class CameraService:
         
         return None
     
-    def detect_objects(self, frame: np.ndarray, method: str = 'blob', params: Optional[Dict] = None) -> Dict:
+    def load_yolo_model(self, model_path: str = 'yolov8n.pt') -> bool:
         """
-        Detect circular counters on conveyor belt using SimpleBlobDetector.
-        Works in changing lighting conditions by detecting round blob shapes.
+        Load YOLO model for object detection
+
+        Args:
+            model_path: Path to YOLO model file (.pt)
+                       Use 'yolov8n.pt' for pretrained nano model
+                       Use custom path for trained counter detection model
+
+        Returns:
+            True if model loaded successfully
+        """
+        if not YOLO_AVAILABLE:
+            logger.error("YOLO not available")
+            return False
+
+        try:
+            logger.info(f"Loading YOLO model: {model_path}")
+            self.yolo_model = YOLO(model_path)
+            self.yolo_model_path = model_path
+            logger.info(f"YOLO model loaded successfully: {model_path}")
+            return True
+        except Exception as e:
+            logger.error(f"Error loading YOLO model: {e}")
+            return False
+
+    def detect_objects(self, frame: np.ndarray, method: str = 'yolo', params: Optional[Dict] = None) -> Dict:
+        """
+        Detect circular counters on conveyor belt.
 
         Args:
             frame: Input image frame (BGR format)
-            method: Detection method ('blob' for SimpleBlobDetector)
+            method: Detection method - 'yolo' (default), 'blob'
             params: Optional detection parameters:
+                YOLO:
+                - conf: Confidence threshold (default: 0.25)
+                - iou: IOU threshold for NMS (default: 0.45)
+                - classes: List of class IDs to detect (default: None = all)
+
+                SimpleBlobDetector:
                 - min_area: Minimum counter area in pixels (default: 500)
                 - max_area: Maximum counter area in pixels (default: 50000)
                 - min_circularity: Minimum circularity (0-1, default: 0.6)
@@ -160,6 +203,95 @@ class CameraService:
         if params is None:
             params = {}
 
+        try:
+            # YOLO Detection
+            if method == 'yolo':
+                return self._detect_with_yolo(frame, params)
+
+            # SimpleBlobDetector (fallback)
+            elif method == 'blob':
+                return self._detect_with_blob(frame, params)
+
+            else:
+                return {
+                    'objects_found': False,
+                    'object_count': 0,
+                    'objects': [],
+                    'error': f'Unknown detection method: {method}'
+                }
+
+        except Exception as e:
+            logger.error(f"Error in object detection: {e}")
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'error': str(e)
+            }
+
+    def _detect_with_yolo(self, frame: np.ndarray, params: Dict) -> Dict:
+        """Detect objects using YOLO"""
+        if not YOLO_AVAILABLE or self.yolo_model is None:
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'error': 'YOLO model not loaded. Call load_yolo_model() first.'
+            }
+
+        # Extract YOLO parameters
+        conf = params.get('conf', 0.25)
+        iou = params.get('iou', 0.45)
+        classes = params.get('classes', None)
+
+        # Run inference
+        results = self.yolo_model(frame, conf=conf, iou=iou, classes=classes, verbose=False)
+
+        objects = []
+        for result in results:
+            boxes = result.boxes
+            for box in boxes:
+                # Extract box coordinates
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                conf = float(box.conf[0])
+                cls = int(box.cls[0])
+                class_name = result.names[cls]
+
+                # Calculate center and dimensions
+                x = int(x1)
+                y = int(y1)
+                w = int(x2 - x1)
+                h = int(y2 - y1)
+                center_x = int(x1 + w / 2)
+                center_y = int(y1 + h / 2)
+                area = w * h
+
+                objects.append({
+                    'type': 'counter',
+                    'class': class_name,
+                    'class_id': cls,
+                    'x': x,
+                    'y': y,
+                    'width': w,
+                    'height': h,
+                    'area': float(area),
+                    'center': (center_x, center_y),
+                    'confidence': round(conf, 2),
+                    'method': 'yolo'
+                })
+
+        logger.info(f"YOLO detected {len(objects)} objects")
+
+        return {
+            'objects_found': len(objects) > 0,
+            'object_count': len(objects),
+            'objects': objects,
+            'method': 'yolo',
+            'timestamp': time.time()
+        }
+
+    def _detect_with_blob(self, frame: np.ndarray, params: Dict) -> Dict:
+        """Detect objects using SimpleBlobDetector"""
         # Extract parameters
         min_area = params.get('min_area', 500)
         max_area = params.get('max_area', 50000)
@@ -244,12 +376,12 @@ class CameraService:
                 'objects_found': len(objects) > 0,
                 'object_count': len(objects),
                 'objects': objects,
-                'method': method,
+                'method': 'blob',
                 'timestamp': time.time()
             }
 
         except Exception as e:
-            logger.error(f"Error in object detection: {e}")
+            logger.error(f"Error in blob detection: {e}")
             return {
                 'objects_found': False,
                 'object_count': 0,
