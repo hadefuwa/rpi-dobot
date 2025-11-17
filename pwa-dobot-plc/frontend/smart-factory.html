@@ -6,7 +6,6 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="description" content="Smart Factory Control">
     <title>Smart Factory - Control System</title>
-    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -25,6 +24,68 @@
             display: flex;
             line-height: 1.4;
             overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.8) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 122, 204, 0.6) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(16, 185, 129, 0.6) 0%, transparent 50%),
+                radial-gradient(circle at 60% 60%, rgba(245, 158, 11, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 10% 70%, rgba(139, 92, 246, 0.5) 0%, transparent 50%);
+            animation: galaxyTwinkle 8s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.9), transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(0, 122, 204, 0.7), transparent),
+                radial-gradient(1px 1px at 90px 40px, rgba(16, 185, 129, 0.8), transparent),
+                radial-gradient(3px 3px at 160px 80px, rgba(245, 158, 11, 0.6), transparent),
+                radial-gradient(2px 2px at 300px 60px, rgba(139, 92, 246, 0.7), transparent),
+                radial-gradient(1px 1px at 220px 150px, rgba(255, 255, 255, 0.8), transparent),
+                radial-gradient(2px 2px at 350px 120px, rgba(6, 182, 212, 0.6), transparent),
+                radial-gradient(1px 1px at 180px 200px, rgba(236, 72, 153, 0.7), transparent);
+            background-repeat: repeat;
+            background-size: 400px 200px;
+            animation: starField 20s linear infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes galaxyTwinkle {
+            0% {
+                opacity: 0.7;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            100% {
+                opacity: 0.8;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes starField {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-200px); }
         }
 
         /* Sidebar Navigation */
@@ -108,21 +169,6 @@
             color: #ffffff;
             border-left: 3px solid #007acc;
             font-weight: 600;
-        }
-
-        .sidebar-menu-icon {
-            font-size: 20px;
-            width: 24px;
-            text-align: center;
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', sans-serif;
-            line-height: 1;
-            display: inline-block;
-            transition: all 0.3s ease;
-        }
-
-        .sidebar-menu-link:hover .sidebar-menu-icon {
-            transform: scale(1.2);
-            filter: drop-shadow(0 0 8px rgba(0, 122, 204, 0.6));
         }
 
         .main-content {
@@ -260,52 +306,10 @@
         .kpi-header {
             display: flex;
             align-items: center;
-            gap: 16px;
+            justify-content: center;
             margin-bottom: 20px;
             padding-bottom: 16px;
             border-bottom: 1px solid #333333;
-        }
-
-        .kpi-icon {
-            font-size: 20px;
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #007acc, #005999);
-            color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .kpi-icon::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transform: rotate(45deg);
-            transition: all 0.3s ease;
-        }
-
-        .kpi-card:hover .kpi-icon {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(0, 122, 204, 0.6);
-        }
-
-        .kpi-card:hover .kpi-icon::before {
-            animation: shine 1.5s ease-in-out;
-        }
-
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
         }
 
         .kpi-title {
@@ -464,74 +468,13 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
-        /* Galaxy Particles Container */
-        #tsparticles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -2;
-            pointer-events: none;
-        }
-
-        .dashboard-loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #0a0a0a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            animation: fadeOut 1s ease-out 2s forwards;
-        }
-
-        .loading-content {
-            text-align: center;
-            color: #ffffff;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid #333333;
-            border-top: 4px solid #007acc;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes fadeOut {
-            to { opacity: 0; visibility: hidden; }
-        }
     </style>
 </head>
 <body>
-    <!-- Galaxy Background -->
-    <div id="tsparticles"></div>
-
-    <!-- Loading Screen -->
-    <div class="dashboard-loading" id="loading-screen">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <h2 style="margin-bottom: 10px; background: linear-gradient(135deg, #007acc, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Smart Factory</h2>
-            <p style="color: #888888; font-size: 14px;">Initializing Dashboard...</p>
-        </div>
-    </div>
-
     <!-- Sidebar Navigation -->
     <nav class="sidebar">
         <div class="sidebar-header">
-            <h2>&#127981; Smart Factory</h2>
+            <h2>Smart Factory</h2>
             <p>Control System</p>
         </div>
         <ul class="sidebar-menu">
@@ -568,7 +511,7 @@
         <div class="container">
             <div class="header">
                 <div class="header-content">
-                    <h1>&#127981; Smart Factory</h1>
+                    <h1>Smart Factory</h1>
                 </div>
             </div>
 
@@ -580,7 +523,6 @@
                     <!-- Production Counter -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">📦</div>
                             <h3 class="kpi-title">Production Counter</h3>
                         </div>
                         <div class="kpi-value" id="production-counter">1,247</div>
@@ -591,7 +533,6 @@
                     <!-- Conveyor Status -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">⚙️</div>
                             <h3 class="kpi-title">Conveyor System</h3>
                         </div>
                         <div class="kpi-value">RUNNING</div>
@@ -602,7 +543,6 @@
                     <!-- Gantry Status -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">🤖</div>
                             <h3 class="kpi-title">Gantry Robot</h3>
                         </div>
                         <div class="kpi-value">RUNNING</div>
@@ -613,7 +553,6 @@
                     <!-- System Uptime -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">⏱️</div>
                             <h3 class="kpi-title">System Uptime</h3>
                         </div>
                         <div class="kpi-value" id="uptime">98.7%</div>
@@ -627,7 +566,6 @@
                     <!-- Faults Detected -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">⚠️</div>
                             <h3 class="kpi-title">Faults Detected</h3>
                         </div>
                         <div class="kpi-value" id="total-faults">3</div>
@@ -638,7 +576,6 @@
                     <!-- Current Faults -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">🚨</div>
                             <h3 class="kpi-title">Active Faults</h3>
                         </div>
                         <div class="kpi-value">1</div>
@@ -654,7 +591,6 @@
                     <!-- Efficiency Rate -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">📈</div>
                             <h3 class="kpi-title">Efficiency Rate</h3>
                         </div>
                         <div class="kpi-value" id="efficiency">94.2%</div>
@@ -668,7 +604,6 @@
                     <!-- Quality Control -->
                     <div class="kpi-card">
                         <div class="kpi-header">
-                            <div class="kpi-icon">✅</div>
                             <h3 class="kpi-title">Quality Control</h3>
                         </div>
                         <div class="kpi-value" id="quality">99.1%</div>
@@ -722,107 +657,6 @@
 
         // Initial update
         updateKPIs();
-
-        // Hide loading screen after animations complete
-        setTimeout(() => {
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.style.display = 'none';
-            }
-        }, 3000);
-
-        // Initialize Galaxy Particle System
-        tsParticles.load("tsparticles", {
-            background: {
-                color: {
-                    value: "#000011",
-                },
-            },
-            fpsLimit: 120,
-            interactivity: {
-                events: {
-                    onClick: {
-                        enable: true,
-                        mode: "push",
-                    },
-                    onHover: {
-                        enable: true,
-                        mode: "repulse",
-                    },
-                    resize: true,
-                },
-                modes: {
-                    push: {
-                        quantity: 4,
-                    },
-                    repulse: {
-                        distance: 200,
-                        duration: 0.4,
-                    },
-                },
-            },
-            particles: {
-                color: {
-                    value: ["#ffffff", "#007acc", "#10b981", "#f59e0b", "#8b5cf6"],
-                },
-                links: {
-                    color: "#ffffff",
-                    distance: 150,
-                    enable: true,
-                    opacity: 0.1,
-                    width: 1,
-                },
-                collisions: {
-                    enable: true,
-                },
-                move: {
-                    direction: "none",
-                    enable: true,
-                    outModes: {
-                        default: "bounce",
-                    },
-                    random: true,
-                    speed: 0.5,
-                    straight: false,
-                },
-                number: {
-                    density: {
-                        enable: true,
-                        area: 800,
-                    },
-                    value: 80,
-                },
-                opacity: {
-                    value: { min: 0.1, max: 0.8 },
-                    animation: {
-                        enable: true,
-                        speed: 1,
-                        minimumValue: 0.1,
-                        sync: false,
-                    },
-                },
-                shape: {
-                    type: ["circle", "star"],
-                },
-                size: {
-                    value: { min: 1, max: 4 },
-                    animation: {
-                        enable: true,
-                        speed: 2,
-                        minimumValue: 0.5,
-                        sync: false,
-                    },
-                },
-                twinkle: {
-                    particles: {
-                        enable: true,
-                        frequency: 0.05,
-                        opacity: 1,
-                    },
-                },
-            },
-            detectRetina: true,
-        });
     </script>
 </body>
 </html>
