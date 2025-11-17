@@ -603,51 +603,64 @@
                     <!-- Detection Settings -->
                     <div style="margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
                         <h4 style="color: #60a5fa; font-size: 14px; margin-bottom: 15px;">⚙️ Detection Settings</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                             <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
-                                    Min Object Area (px²)
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                    Min Object Area: <span id="minObjectAreaValue" style="color: #60a5fa; font-weight: 600;">5000</span> px²
                                 </label>
-                                <input type="number" id="minObjectArea" value="5000" min="1000" max="50000" step="500" 
-                                       style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
-                                       onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Minimum size to detect</div>
-                            </div>
-                                            <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
-                                    Max Object Area (px²)
-                                </label>
-                                <input type="number" id="maxObjectArea" value="100000" min="10000" max="500000" step="10000" 
-                                       style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
-                                       onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Maximum size to detect</div>
-                                            </div>
-                                            <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
-                                    Min Confidence (%)
-                                </label>
-                                <input type="number" id="minObjectConfidence" value="0.70" min="0.1" max="1.0" step="0.05" 
-                                       style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
-                                       onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Higher = fewer false positives</div>
-                                            </div>
-                            <div>
-                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 5px;">
-                                    Circle Sensitivity
-                                </label>
-                                <input type="number" id="houghCircleThreshold" value="30" min="10" max="50" step="5" 
-                                       style="width: 100%; padding: 8px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #cbd5e1; font-size: 14px;"
-                                       onchange="updateObjectParams()">
-                                <div style="color: #94a3b8; font-size: 11px; margin-top: 4px;">Lower = more sensitive (10-50)</div>
-                            </div>
+                                <input type="range" id="minObjectArea" value="5000" min="1000" max="50000" step="500" 
+                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
+                                       oninput="updateSliderValue('minObjectArea', 'minObjectAreaValue', false); updateObjectParams();">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
+                                    <span>1000</span>
+                                    <span>50000</span>
                                 </div>
-                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
-                            <button onclick="updateObjectParams(); addSerialLog('Settings updated - detection will use new parameters', 'info');" 
-                                    style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;">
-                                        Apply Settings
-                                    </button>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Minimum size to detect</div>
+                            </div>
+                            <div>
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                    Max Object Area: <span id="maxObjectAreaValue" style="color: #60a5fa; font-weight: 600;">100000</span> px²
+                                </label>
+                                <input type="range" id="maxObjectArea" value="100000" min="10000" max="500000" step="10000" 
+                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
+                                       oninput="updateSliderValue('maxObjectArea', 'maxObjectAreaValue', false); updateObjectParams();">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
+                                    <span>10000</span>
+                                    <span>500000</span>
+                                </div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Maximum size to detect</div>
+                            </div>
+                            <div>
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                    Min Confidence: <span id="minObjectConfidenceValue" style="color: #60a5fa; font-weight: 600;">70%</span>
+                                </label>
+                                <input type="range" id="minObjectConfidence" value="0.70" min="0.1" max="1.0" step="0.05" 
+                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
+                                       oninput="updateSliderValue('minObjectConfidence', 'minObjectConfidenceValue', true); updateObjectParams();">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
+                                    <span>10%</span>
+                                    <span>100%</span>
+                                </div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Higher = fewer false positives</div>
+                            </div>
+                            <div>
+                                <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
+                                    Circle Sensitivity: <span id="houghCircleThresholdValue" style="color: #60a5fa; font-weight: 600;">30</span>
+                                </label>
+                                <input type="range" id="houghCircleThreshold" value="30" min="10" max="50" step="5" 
+                                       style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
+                                       oninput="updateSliderValue('houghCircleThreshold', 'houghCircleThresholdValue', false); updateObjectParams();">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
+                                    <span>10</span>
+                                    <span>50</span>
+                                </div>
+                                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px;">Lower = more sensitive (detects more circles)</div>
                             </div>
                         </div>
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+                            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">💡 Tip: Adjust sliders and detection updates automatically. Check the Serial Monitor for detection results.</div>
+                        </div>
+                    </div>
                         
                     <!-- Hidden inputs for other values -->
                     <input type="hidden" id="objectDetectionMethod" value="circle">
@@ -1177,10 +1190,12 @@
                 
                 // Format based on slider ID with proper units
                 if (sliderId === 'minObjectArea' || sliderId === 'maxObjectArea') {
-                    formattedValue = Math.round(value).toLocaleString() + ' px²';
-                } else if (sliderId === 'minObjectConfidence' || sliderId === 'minCircularity') {
+                    formattedValue = Math.round(value).toLocaleString();
+                } else if (sliderId === 'minObjectConfidence') {
                     formattedValue = Math.round(value * 100) + '%';
-            } else {
+                } else if (sliderId === 'houghCircleThreshold') {
+                    formattedValue = Math.round(value);
+                } else {
                     formattedValue = isDecimal ? value.toFixed(2) : Math.round(value);
                 }
                 
