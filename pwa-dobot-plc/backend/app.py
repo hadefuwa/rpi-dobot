@@ -1044,7 +1044,7 @@ def vision_detect():
         data = request.json or {}
         object_detection_enabled = data.get('object_detection_enabled', True)
         defect_detection_enabled = data.get('defect_detection_enabled', False)
-        object_method = data.get('object_method', 'circle')
+        object_method = data.get('object_method', 'yolo')  # Default to YOLO for counter detection
         defect_method = data.get('method', 'combined')
 
         # Read current frame
