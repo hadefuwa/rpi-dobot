@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Image Labeling Tool - Counter Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #60a5fa;
+        }
+
+        .instructions {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #60a5fa;
+        }
+
+        .instructions h3 {
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #60a5fa;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3b82f6;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #8b5cf6;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .file-label:hover {
+            background: #7c3aed;
+        }
+
+        .status {
+            padding: 15px;
+            background: #374151;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            display: inline-block;
+            margin-right: 20px;
+            padding: 5px 15px;
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        .canvas-container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #canvas {
+            border: 2px solid #60a5fa;
+            cursor: crosshair;
+            max-width: 100%;
+            background: #000;
+        }
+
+        .labels-list {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .labels-list h3 {
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+
+        .label-item {
+            background: #374151;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .label-item button {
+            padding: 4px 12px;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #9ca3af;
+            padding: 40px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏷️ Simple Image Labeling Tool - Counter Detection</h1>
+
+        <div class="instructions">
+            <h3>📖 How to Use:</h3>
+            <ul>
+                <li><strong>Step 1:</strong> Click "Load Images" and select all your counter images</li>
+                <li><strong>Step 2:</strong> Click and drag on the image to draw a box around each counter</li>
+                <li><strong>Step 3:</strong> Click "Save Label" to save the annotation</li>
+                <li><strong>Step 4:</strong> Click "Next Image" to move to the next image</li>
+                <li><strong>Step 5:</strong> After labeling all images, click "Download All Labels" to get a ZIP file</li>
+                <li><strong>Tip:</strong> You can draw multiple boxes on one image if there are multiple counters</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <div class="button-group">
+                <label for="imageInput" class="file-label">📁 Load Images</label>
+                <input type="file" id="imageInput" accept="image/*" multiple>
+                
+                <button class="btn-success" id="saveBtn" disabled>💾 Save Label</button>
+                <button class="btn-primary" id="nextBtn" disabled>➡️ Next Image</button>
+                <button class="btn-primary" id="prevBtn" disabled>⬅️ Previous Image</button>
+                <button class="btn-danger" id="clearBtn" disabled>🗑️ Clear Boxes</button>
+                <button class="btn-warning" id="downloadBtn" disabled>📦 Download All Labels</button>
+            </div>
+        </div>
+
+        <div class="status">
+            <span class="status-item">📷 Image: <span id="currentIndex">0</span> / <span id="totalImages">0</span></span>
+            <span class="status-item">📦 Boxes on this image: <span id="boxCount">0</span></span>
+            <span class="status-item">✅ Labeled images: <span id="labeledCount">0</span></span>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+            <div id="emptyState" class="empty-state">
+                👆 Click "Load Images" to start labeling
+            </div>
+        </div>
+
+        <div class="labels-list">
+            <h3>Current Image Boxes:</h3>
+            <div id="labelsList"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        // Global variables
+        let images = [];
+        let currentImageIndex = 0;
+        let boxes = {}; // Store boxes for each image
+        let isDrawing = false;
+        let startX, startY;
+        let currentBox = null;
+
+        // Get elements
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const imageInput = document.getElementById('imageInput');
+        const saveBtn = document.getElementById('saveBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const emptyState = document.getElementById('emptyState');
+
+        // Load images
+        imageInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            images = [];
+            boxes = {};
+            currentImageIndex = 0;
+
+            let loadedCount = 0;
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        images.push({
+                            name: file.name,
+                            img: img,
+                            width: img.width,
+                            height: img.height
+                        });
+                        boxes[file.name] = [];
+                        
+                        loadedCount++;
+                        if (loadedCount === files.length) {
+                            // All images loaded
+                            images.sort((a, b) => a.name.localeCompare(b.name));
+                            displayImage(0);
+                            updateStatus();
+                            enableButtons();
+                        }
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Display image on canvas
+        function displayImage(index) {
+            if (images.length === 0) return;
+
+            currentImageIndex = index;
+            const imageData = images[index];
+            
+            // Set canvas size to match image
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
+            
+            // Draw image
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imageData.img, 0, 0);
+            
+            // Draw existing boxes
+            drawBoxes();
+            
+            // Hide empty state
+            emptyState.style.display = 'none';
+            canvas.style.display = 'block';
+            
+            updateStatus();
+        }
+
+        // Draw all boxes for current image
+        function drawBoxes() {
+            const imageName = images[currentImageIndex].name;
+            const imageBoxes = boxes[imageName] || [];
+            
+            imageBoxes.forEach((box, index) => {
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(box.x, box.y, box.width, box.height);
+                
+                // Draw label
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(box.x, box.y - 25, 80, 25);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText('counter', box.x + 5, box.y - 8);
+            });
+            
+            updateLabelsList();
+        }
+
+        // Mouse events for drawing boxes
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            isDrawing = true;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            // Redraw image and existing boxes
+            const imageData = images[currentImageIndex];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imageData.img, 0, 0);
+            drawBoxes();
+            
+            // Draw current box being drawn
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+            ctx.setLineDash([]);
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            // Calculate box dimensions
+            const x = Math.min(startX, endX);
+            const y = Math.min(startY, endY);
+            const width = Math.abs(endX - startX);
+            const height = Math.abs(endY - startY);
+            
+            // Only add box if it has some size
+            if (width > 10 && height > 10) {
+                const imageName = images[currentImageIndex].name;
+                boxes[imageName].push({ x, y, width, height });
+                displayImage(currentImageIndex);
+            }
+            
+            isDrawing = false;
+        });
+
+        // Save label for current image
+        saveBtn.addEventListener('click', () => {
+            alert('Label saved! ✅\n\nClick "Next Image" to continue labeling.');
+            updateStatus();
+        });
+
+        // Next image
+        nextBtn.addEventListener('click', () => {
+            if (currentImageIndex < images.length - 1) {
+                displayImage(currentImageIndex + 1);
+            }
+        });
+
+        // Previous image
+        prevBtn.addEventListener('click', () => {
+            if (currentImageIndex > 0) {
+                displayImage(currentImageIndex - 1);
+            }
+        });
+
+        // Clear boxes on current image
+        clearBtn.addEventListener('click', () => {
+            const imageName = images[currentImageIndex].name;
+            boxes[imageName] = [];
+            displayImage(currentImageIndex);
+        });
+
+        // Download all labels as ZIP
+        downloadBtn.addEventListener('click', async () => {
+            const zip = new JSZip();
+            
+            images.forEach((imageData) => {
+                const imageName = imageData.name;
+                const imageBoxes = boxes[imageName] || [];
+                
+                // Convert boxes to YOLO format
+                const yoloLines = imageBoxes.map(box => {
+                    const centerX = (box.x + box.width / 2) / imageData.width;
+                    const centerY = (box.y + box.height / 2) / imageData.height;
+                    const w = box.width / imageData.width;
+                    const h = box.height / imageData.height;
+                    
+                    return `0 ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${w.toFixed(6)} ${h.toFixed(6)}`;
+                });
+                
+                // Create label file
+                const labelFileName = imageName.replace(/\.(jpg|jpeg|png|bmp)$/i, '.txt');
+                const labelContent = yoloLines.join('\n');
+                zip.file(labelFileName, labelContent);
+            });
+            
+            // Generate ZIP file
+            const content = await zip.generateAsync({ type: 'blob' });
+            
+            // Download ZIP
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = 'counter_labels.zip';
+            link.click();
+            
+            alert('✅ All labels downloaded!\n\nExtract the ZIP file and copy the .txt files to:\n- dataset/labels/train (for 80% of files)\n- dataset/labels/val (for 20% of files)');
+        });
+
+        // Update status display
+        function updateStatus() {
+            document.getElementById('currentIndex').textContent = images.length > 0 ? currentImageIndex + 1 : 0;
+            document.getElementById('totalImages').textContent = images.length;
+            
+            const imageName = images[currentImageIndex]?.name;
+            const boxCount = imageName ? (boxes[imageName] || []).length : 0;
+            document.getElementById('boxCount').textContent = boxCount;
+            
+            // Count labeled images (images with at least one box)
+            const labeledCount = Object.values(boxes).filter(b => b.length > 0).length;
+            document.getElementById('labeledCount').textContent = labeledCount;
+        }
+
+        // Update labels list
+        function updateLabelsList() {
+            const listDiv = document.getElementById('labelsList');
+            const imageName = images[currentImageIndex]?.name;
+            const imageBoxes = boxes[imageName] || [];
+            
+            if (imageBoxes.length === 0) {
+                listDiv.innerHTML = '<div style="color: #9ca3af; text-align: center;">No boxes drawn yet</div>';
+                return;
+            }
+            
+            listDiv.innerHTML = imageBoxes.map((box, index) => `
+                <div class="label-item">
+                    <span>Box ${index + 1}: counter (${Math.round(box.width)}x${Math.round(box.height)}px)</span>
+                    <button class="btn-danger" onclick="deleteBox(${index})">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        // Delete a specific box
+        window.deleteBox = function(index) {
+            const imageName = images[currentImageIndex].name;
+            boxes[imageName].splice(index, 1);
+            displayImage(currentImageIndex);
+        };
+
+        // Enable buttons
+        function enableButtons() {
+            saveBtn.disabled = false;
+            nextBtn.disabled = false;
+            prevBtn.disabled = false;
+            clearBtn.disabled = false;
+            downloadBtn.disabled = false;
+        }
+
+        // Initial status
+        updateStatus();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,17 @@
+# YOLOv11 Dataset Configuration for Counter Detection
+# This file tells YOLO where to find images and what classes to detect
+
+# Path to dataset folder (relative to this file)
+path: dataset
+
+# Path to training images (relative to 'path' above)
+train: images/train
+
+# Path to validation images (relative to 'path' above)
+val: images/val
+
+# Class names
+# Each number is the class ID, each name is what that class represents
+names:
+  0: counter
+
