@@ -606,9 +606,9 @@
                         <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
                             <div>
                                 <label style="display: block; color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">
-                                    Confidence Threshold: <span id="yoloConfValue" style="color: #60a5fa; font-weight: 600;">0.01</span>
+                                    Confidence Threshold: <span id="yoloConfValue" style="color: #60a5fa; font-weight: 600;">0.001</span>
                                 </label>
-                                <input type="range" id="yoloConf" value="0.01" min="0.001" max="0.95" step="0.001"
+                                <input type="range" id="yoloConf" value="0.001" min="0.001" max="0.95" step="0.001"
                                        style="width: 100%; height: 6px; background: rgba(148, 163, 184, 0.2); border-radius: 3px; outline: none; cursor: pointer;"
                                        oninput="updateSliderValue('yoloConf', 'yoloConfValue', true); updateObjectParams();">
                                 <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 10px; margin-top: 4px;">
@@ -1227,7 +1227,7 @@
         // Update object detection params from UI (called when sliders change)
         function updateObjectParams() {
             // Update objectParams from UI elements for YOLO
-            const conf = parseFloat(document.getElementById('yoloConf')?.value || '0.01');
+            const conf = parseFloat(document.getElementById('yoloConf')?.value || '0.001');
             const iou = parseFloat(document.getElementById('yoloIou')?.value || '0.45');
             const cropTop = parseInt(document.getElementById('cropTop')?.value || '25');
             const cropBottom = parseInt(document.getElementById('cropBottom')?.value || '25');
@@ -1626,7 +1626,7 @@
         // Object detection parameters - YOLO
         let objectDetectionEnabled = true;  // Enabled by default
         let objectParams = {
-            conf: 0.01,  // Confidence threshold (very low due to small training set)
+            conf: 0.001,  // Confidence threshold (very low for better detection)
             iou: 0.45,   // IOU threshold for NMS
             crop_top_percent: 25,  // Crop top 25%
             crop_bottom_percent: 25  // Crop bottom 25%
