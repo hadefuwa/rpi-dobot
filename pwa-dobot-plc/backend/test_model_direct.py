@@ -69,43 +69,66 @@ if not ret or frame is None:
 
 logger.info(f"✓ Got frame: {frame.shape}")
 
-# Test with different confidence levels
+# Test with different confidence levels (test higher confidence first to find best threshold)
 logger.info("\n" + "="*60)
 logger.info("Testing Detection with Different Confidence Levels")
 logger.info("="*60)
+logger.info("Note: Testing from highest to lowest confidence to find optimal threshold")
+logger.info("="*60)
 
-for conf_threshold in [0.001, 0.01, 0.1, 0.25]:
+# Test confidence levels from highest to lowest (0.25 is the app's default)
+all_results = []
+for conf_threshold in [0.25, 0.1, 0.05, 0.01, 0.001]:
     logger.info(f"\nTesting with confidence: {conf_threshold}")
     
     # Run detection on FULL frame (no cropping)
     results = model(frame, conf=conf_threshold, iou=0.45, verbose=False)
     
     detection_count = 0
+    detections = []
     for result in results:
         boxes = result.boxes
         detection_count = len(boxes)
         
-        # Show first 3 detections
-        for i, box in enumerate(boxes[:3]):
+        # Show first 5 detections with details
+        for i, box in enumerate(boxes[:5]):
             conf = float(box.conf[0])
             cls = int(box.cls[0])
             class_name = result.names[cls]
             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-            logger.info(f"  Detection {i+1}: {class_name} (conf: {conf:.3f}) at ({int(x1)},{int(y1)})-({int(x2)},{int(y2)})")
+            detections.append({
+                'conf': conf,
+                'class': class_name,
+                'bbox': (int(x1), int(y1), int(x2), int(y2))
+            })
+            if i < 3:  # Show first 3 in detail
+                logger.info(f"  Detection {i+1}: {class_name} (conf: {conf:.3f}) at ({int(x1)},{int(y1)})-({int(x2)},{int(y2)})")
     
     logger.info(f"  Total: {detection_count} counter(s) detected")
+    all_results.append((conf_threshold, detection_count))
     
-    if detection_count > 0:
-        logger.info(f"\n✓ SUCCESS! Model IS working - found {detection_count} counter(s) at conf={conf_threshold}")
+    # If we get a reasonable number (2-5 counters), that's probably correct
+    if 2 <= detection_count <= 5:
+        logger.info(f"\n✓ GOOD! Found {detection_count} counter(s) at conf={conf_threshold} (this looks correct!)")
+        logger.info(f"\nRecommendation: Use confidence threshold {conf_threshold} in your app")
         logger.info("\nIf this works but your app doesn't, the issue is in how the app calls the model.")
         break
-else:
-    logger.warning("\n⚠ No detections found at any confidence level")
+
+# Summary of all results
+logger.info("\n" + "="*60)
+logger.info("Summary of all confidence levels tested:")
+for conf, count in all_results:
+    status = "✓ GOOD" if 2 <= count <= 5 else "⚠ Too many" if count > 5 else "✗ Too few"
+    logger.info(f"  conf={conf:.3f}: {count} counters - {status}")
+
+if not any(2 <= count <= 5 for _, count in all_results):
+    logger.warning("\n⚠ No confidence level found 2-5 counters (expected ~3)")
     logger.info("\nPossible issues:")
     logger.info("  1. Camera view doesn't show counters")
     logger.info("  2. Lighting is different from training")
     logger.info("  3. Counters are too small/far away")
     logger.info("  4. Model needs retraining with more diverse images")
+    logger.info("\nTry adjusting confidence threshold manually (0.15-0.35 range)")
 
 logger.info("\n" + "="*60)
 
