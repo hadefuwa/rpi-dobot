@@ -240,11 +240,13 @@ class CameraService:
             }
 
         # Extract YOLO parameters
-        conf = params.get('conf', 0.25)
+        conf = params.get('conf', 0.001)  # Lower default for better detection
         iou = params.get('iou', 0.45)
         classes = params.get('classes', None)
-        crop_top_percent = params.get('crop_top_percent', 25)
-        crop_bottom_percent = params.get('crop_bottom_percent', 25)
+        crop_top_percent = params.get('crop_top_percent', 0)  # No cropping by default
+        crop_bottom_percent = params.get('crop_bottom_percent', 0)  # No cropping by default
+        
+        logger.info(f"YOLO detection params: conf={conf}, iou={iou}, crop_top={crop_top_percent}%, crop_bottom={crop_bottom_percent}%")
 
         # Crop the frame to remove top and bottom regions
         original_height = frame.shape[0]
@@ -257,7 +259,12 @@ class CameraService:
         logger.debug(f"Cropped frame from {original_height}x{original_width} to {cropped_frame.shape[0]}x{cropped_frame.shape[1]}")
 
         # Run inference on cropped frame
+        logger.debug(f"Running YOLO inference on frame shape: {cropped_frame.shape}")
         results = self.yolo_model(cropped_frame, conf=conf, iou=iou, classes=classes, verbose=False)
+        
+        # Log raw results for debugging
+        total_detections = sum(len(r.boxes) for r in results)
+        logger.debug(f"YOLO raw detection count: {total_detections}")
 
         objects = []
         for result in results:
@@ -299,6 +306,8 @@ class CameraService:
                 })
 
         logger.info(f"YOLO detected {len(objects)} objects")
+        if len(objects) == 0:
+            logger.warning(f"No objects detected - conf threshold may be too high (current: {conf})")
 
         return {
             'objects_found': len(objects) > 0,
