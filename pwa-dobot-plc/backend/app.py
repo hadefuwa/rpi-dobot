@@ -1067,11 +1067,20 @@ def vision_detect():
         # Run object detection if enabled
         if object_detection_enabled:
             object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
+            
+            # Check for errors in detection
+            if 'error' in object_results:
+                logger.error(f"Object detection error: {object_results['error']}")
+                results['detection_error'] = object_results['error']
+            
             detected_objects = object_results.get('objects', [])
             results['object_count'] = len(detected_objects)
             results['objects'] = detected_objects
             results['objects_found'] = len(detected_objects) > 0
             results['object_method'] = object_method
+            
+            # Log detection results for debugging
+            logger.info(f"Detection completed: {len(detected_objects)} objects found using {object_method} method")
 
         # Run defect detection if enabled (currently disabled)
         if defect_detection_enabled:

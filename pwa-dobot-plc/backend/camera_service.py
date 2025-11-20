@@ -231,22 +231,34 @@ class CameraService:
 
     def _detect_with_yolo(self, frame: np.ndarray, params: Dict) -> Dict:
         """Detect objects using YOLO"""
-        if not YOLO_AVAILABLE or self.yolo_model is None:
+        if not YOLO_AVAILABLE:
+            error_msg = 'YOLO library not available. Install with: pip install ultralytics'
+            logger.error(error_msg)
             return {
                 'objects_found': False,
                 'object_count': 0,
                 'objects': [],
-                'error': 'YOLO model not loaded. Call load_yolo_model() first.'
+                'error': error_msg
+            }
+        
+        if self.yolo_model is None:
+            error_msg = 'YOLO model not loaded. Call load_yolo_model() first.'
+            logger.error(error_msg)
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'error': error_msg
             }
 
         # Extract YOLO parameters
-        conf = params.get('conf', 0.001)  # Lower default for better detection
+        conf_threshold = params.get('conf', 0.25)  # Default confidence threshold (0.25 = 25%)
         iou = params.get('iou', 0.45)
         classes = params.get('classes', None)
         crop_top_percent = params.get('crop_top_percent', 0)  # No cropping by default
         crop_bottom_percent = params.get('crop_bottom_percent', 0)  # No cropping by default
         
-        logger.info(f"YOLO detection params: conf={conf}, iou={iou}, crop_top={crop_top_percent}%, crop_bottom={crop_bottom_percent}%")
+        logger.info(f"YOLO detection params: conf={conf_threshold}, iou={iou}, crop_top={crop_top_percent}%, crop_bottom={crop_bottom_percent}%")
 
         # Crop the frame to remove top and bottom regions
         original_height = frame.shape[0]
@@ -260,7 +272,7 @@ class CameraService:
 
         # Run inference on cropped frame
         logger.debug(f"Running YOLO inference on frame shape: {cropped_frame.shape}")
-        results = self.yolo_model(cropped_frame, conf=conf, iou=iou, classes=classes, verbose=False)
+        results = self.yolo_model(cropped_frame, conf=conf_threshold, iou=iou, classes=classes, verbose=False)
         
         # Log raw results for debugging
         total_detections = sum(len(r.boxes) for r in results)
@@ -272,7 +284,7 @@ class CameraService:
             for box in boxes:
                 # Extract box coordinates (relative to cropped frame)
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                conf = float(box.conf[0])
+                box_confidence = float(box.conf[0])  # Individual box confidence
                 cls = int(box.cls[0])
                 class_name = result.names[cls]
 
@@ -301,13 +313,13 @@ class CameraService:
                     'height': h,
                     'area': float(area),
                     'center': (center_x, center_y),
-                    'confidence': round(conf, 2),
+                    'confidence': round(box_confidence, 2),
                     'method': 'yolo'
                 })
 
         logger.info(f"YOLO detected {len(objects)} objects")
         if len(objects) == 0:
-            logger.warning(f"No objects detected - conf threshold may be too high (current: {conf})")
+            logger.warning(f"No objects detected - conf threshold may be too high (current: {conf_threshold})")
 
         return {
             'objects_found': len(objects) > 0,
