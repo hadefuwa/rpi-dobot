@@ -37,11 +37,34 @@ if not cap.isOpened():
     sys.exit(1)
 
 logger.info("✓ Camera opened")
+
+# Set camera properties (like camera_service does)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_FPS, 30)
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer for faster response
+
+# Warm up camera by reading a few frames first (this helps avoid timeout)
+logger.info("Warming up camera...")
+for i in range(3):
+    ret, _ = cap.read()
+    if not ret:
+        logger.warning(f"  Warm-up frame {i+1} failed, but continuing...")
+    else:
+        logger.info(f"  Warm-up frame {i+1} OK")
+
+# Now try to get the actual frame we'll use
+logger.info("Reading frame for detection...")
 ret, frame = cap.read()
 cap.release()
 
 if not ret or frame is None:
     logger.error("✗ Could not read frame from camera")
+    logger.info("\nTroubleshooting tips:")
+    logger.info("  1. Make sure camera is connected: lsusb")
+    logger.info("  2. Check if camera is in use by another process")
+    logger.info("  3. Try: sudo chmod 666 /dev/video0")
+    logger.info("  4. Try a different camera index (change 0 to 1 or 2)")
     sys.exit(1)
 
 logger.info(f"✓ Got frame: {frame.shape}")
