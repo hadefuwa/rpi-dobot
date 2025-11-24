@@ -905,13 +905,26 @@ class CameraService:
             radius = max(w, h) // 2
             cv2.circle(annotated, center, radius, color, 2)
 
-            # Draw label with counter info
+            # Draw label with counter number
+            counter_number = obj.get('counterNumber')
             confidence = obj.get('confidence', 0)
-            circularity = obj.get('circularity', 0)
-            label = f"Counter ({confidence*100:.0f}%, C:{circularity:.2f})"
+            
+            if counter_number:
+                label = f"Counter {counter_number}"
+                if confidence > 0:
+                    label += f" ({confidence*100:.0f}%)"
+            else:
+                # Fallback if no counter number assigned
+                circularity = obj.get('circularity', 0)
+                label = f"Counter ({confidence*100:.0f}%, C:{circularity:.2f})"
 
-            cv2.putText(annotated, label, (x, y - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            # Draw label background for better visibility
+            (text_width, text_height), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(annotated, (x, y - text_height - 10), (x + text_width + 4, y), color, -1)
+            
+            # Draw label text
+            cv2.putText(annotated, label, (x + 2, y - 5),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
         return annotated
     

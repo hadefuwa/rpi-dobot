@@ -1164,6 +1164,12 @@ def vision_analyze():
                 object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
                 detected_objects = object_results.get('objects', [])
             
+            # Assign counter numbers to detected objects (1, 2, 3, etc.)
+            # Sort by x position (left to right) for consistent numbering
+            detected_objects.sort(key=lambda obj: obj.get('x', 0))
+            for idx, obj in enumerate(detected_objects, start=1):
+                obj['counterNumber'] = idx
+            
             # Extract ROI regions from detected objects
             for obj in detected_objects:
                 x, y = obj['x'], obj['y']
