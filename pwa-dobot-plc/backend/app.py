@@ -102,7 +102,7 @@ logger.info("Counter tracker reset to 0 on startup")
 
 def get_next_counter_number() -> int:
     """Get the next available counter number, incrementing from the highest seen"""
-    # Check existing images to find the actual max
+    # Check existing images to find the actual max (but cap at reasonable number to prevent runaway)
     max_from_images = 0
     if os.path.exists(COUNTER_IMAGES_DIR):
         for filename in os.listdir(COUNTER_IMAGES_DIR):
@@ -110,12 +110,20 @@ def get_next_counter_number() -> int:
                 parts = filename.split('_')
                 if len(parts) >= 2:
                     try:
-                        max_from_images = max(max_from_images, int(parts[1]))
+                        counter_num = int(parts[1])
+                        # Cap at 20 to prevent runaway numbering from corrupted data
+                        if counter_num <= 20:
+                            max_from_images = max(max_from_images, counter_num)
                     except ValueError:
                         pass
     
-    # Use the higher of tracker or images
+    # Use the higher of tracker or images (but ensure tracker doesn't exceed 20)
     _counter_tracker['max_counter_number'] = max(_counter_tracker['max_counter_number'], max_from_images)
+    if _counter_tracker['max_counter_number'] >= 20:
+        # Reset if somehow we got a corrupted high number
+        logger.warning(f"Counter tracker had high value {_counter_tracker['max_counter_number']}, resetting to 0")
+        _counter_tracker['max_counter_number'] = 0
+    
     _counter_tracker['max_counter_number'] += 1
     return _counter_tracker['max_counter_number']
 
@@ -1831,16 +1839,16 @@ def detect_color_defects(image: np.ndarray) -> Dict:
         # Convert to grayscale for circle detection
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Detect circular counter using HoughCircles
+        # Detect circular counter using HoughCircles with more lenient parameters
         circles = cv2.HoughCircles(
             gray,
             cv2.HOUGH_GRADIENT,
             dp=1,
-            minDist=max(h, w) // 2,
+            minDist=max(h, w) // 3,  # More lenient - allow circles closer together
             param1=50,
-            param2=30,
-            minRadius=min(h, w) // 4,
-            maxRadius=min(h, w) // 2
+            param2=20,  # Lower threshold for circle detection
+            minRadius=min(h, w) // 5,  # Smaller minimum radius
+            maxRadius=int(min(h, w) * 0.48)  # Slightly larger max radius
         )
         
         # Create mask for circular counter area only
@@ -1848,14 +1856,18 @@ def detect_color_defects(image: np.ndarray) -> Dict:
         if circles is not None and len(circles[0]) > 0:
             # Use the largest circle found
             circles = np.uint16(np.around(circles))
-            largest_circle = circles[0][0]  # Get first (and likely only) circle
+            # Sort by radius and use the largest
+            circles_sorted = sorted(circles[0], key=lambda c: c[2], reverse=True)
+            largest_circle = circles_sorted[0]
             center_x, center_y, radius = largest_circle[0], largest_circle[1], largest_circle[2]
+            # Shrink radius slightly (90%) to exclude edge effects and conveyor belt
+            radius = int(radius * 0.9)
             # Draw filled circle on mask
             cv2.circle(counter_mask, (center_x, center_y), radius, 255, -1)
         else:
-            # Fallback: use center region as circular area (80% of image)
+            # Fallback: use center region as circular area (smaller to exclude edges)
             center_x, center_y = w // 2, h // 2
-            radius = int(min(w, h) * 0.4)
+            radius = int(min(w, h) * 0.35)  # Smaller radius to exclude conveyor belt
             cv2.circle(counter_mask, (center_x, center_y), radius, 255, -1)
         
         # Extract only the counter region (mask out conveyor belt and background)
