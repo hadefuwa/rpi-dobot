@@ -269,6 +269,7 @@
         let isDrawing = false;
         let startX, startY;
         let currentBox = null;
+        let firstAppearanceTimestamps = {}; // Track first appearance timestamp for each counter
 
         // Get elements
         const canvas = document.getElementById('canvas');
@@ -282,12 +283,13 @@
         const emptyState = document.getElementById('emptyState');
         const timelineList = document.getElementById('timelineList');
 
-        // Load images
+            // Load images
         imageInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             images = [];
             boxes = {};
             currentImageIndex = 0;
+            firstAppearanceTimestamps = {}; // Reset first appearance tracking
 
             let loadedCount = 0;
             files.forEach((file, index) => {
@@ -538,11 +540,23 @@
             return allBoxes;
         }
 
+        // Track first appearance timestamp for each counter number
+        const firstAppearanceTimestamps = {};
+
         function updateCounterNumbers() {
             const allBoxes = getAllBoxesWithMeta();
             allBoxes.sort((a, b) => new Date(a.box.timestamp) - new Date(b.box.timestamp));
             allBoxes.forEach((item, index) => {
-                item.box.counterNumber = index + 1;
+                const counterNum = index + 1;
+                item.box.counterNumber = counterNum;
+                
+                // Track first appearance timestamp for this counter number
+                if (!firstAppearanceTimestamps[counterNum]) {
+                    firstAppearanceTimestamps[counterNum] = item.box.timestamp;
+                }
+                
+                // Store the first appearance timestamp in the box
+                item.box.firstAppearanceTimestamp = firstAppearanceTimestamps[counterNum];
             });
             return allBoxes;
         }
@@ -559,10 +573,30 @@
                 return;
             }
 
-            timelineList.innerHTML = boxesForTimeline.map((item) => `
+            // Group by counter number and show first appearance
+            const counterMap = new Map();
+            boxesForTimeline.forEach((item) => {
+                const counterNum = item.box.counterNumber;
+                if (!counterMap.has(counterNum)) {
+                    counterMap.set(counterNum, {
+                        counterNumber: counterNum,
+                        firstAppearance: item.box.firstAppearanceTimestamp || item.box.timestamp,
+                        firstImage: item.imageName,
+                        totalAppearances: 1
+                    });
+                } else {
+                    counterMap.get(counterNum).totalAppearances++;
+                }
+            });
+
+            // Convert to array and sort by counter number
+            const timelineData = Array.from(counterMap.values()).sort((a, b) => a.counterNumber - b.counterNumber);
+
+            timelineList.innerHTML = timelineData.map((counter) => `
                 <div class="timeline-item">
-                    <span>Counter ${item.box.counterNumber} - ${item.imageName}</span>
-                    <span>${formatTimestamp(item.box.timestamp)}</span>
+                    <span><strong>Counter ${counter.counterNumber}</strong> - First appeared in ${counter.firstImage}</span>
+                    <span style="color: #60a5fa; font-weight: bold;">First detected: ${formatTimestamp(counter.firstAppearance)}</span>
+                    ${counter.totalAppearances > 1 ? `<span style="color: #9ca3af; font-size: 12px;">(${counter.totalAppearances} appearances)</span>` : ''}
                 </div>
             `).join('');
         }
