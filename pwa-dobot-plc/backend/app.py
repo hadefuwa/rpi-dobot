@@ -1503,6 +1503,18 @@ def vision_analyze():
                         }
                         matched_counters[counter_num] = updated_positions[counter_num]
                         obj['saved_image_path'] = saved_path
+                        
+                        # Check if we've now reached 16 counters - if so, clean up all images
+                        if len(existing_counter_numbers) >= 16:
+                            logger.info("16 counters detected - cleaning up all images to start fresh")
+                            cleanup_all_counter_images()
+                            # Also reset counter tracker and positions
+                            _counter_tracker['max_counter_number'] = 0
+                            if os.path.exists(COUNTER_POSITIONS_FILE):
+                                try:
+                                    os.remove(COUNTER_POSITIONS_FILE)
+                                except Exception as e:
+                                    logger.warning(f"Failed to delete counter positions file: {e}")
                     else:
                         # Image already exists (shouldn't happen with new number, but handle it)
                         _counter_tracker['max_counter_number'] = max(0, _counter_tracker['max_counter_number'] - 1)
