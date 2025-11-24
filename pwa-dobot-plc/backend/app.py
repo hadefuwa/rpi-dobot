@@ -1327,11 +1327,16 @@ def vision_analyze():
                 object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
                 detected_objects = object_results.get('objects', [])
             
-            # Assign counter numbers to detected objects (1, 2, 3, etc.)
-            # Sort by x position (left to right) for consistent numbering
+            # Assign counter numbers to detected objects
+            # Sort by x position (left to right) for consistent ordering
             detected_objects.sort(key=lambda obj: obj.get('x', 0))
-            for idx, obj in enumerate(detected_objects, start=1):
-                obj['counterNumber'] = idx
+            
+            # Assign new numbers incrementally - each counter gets a unique number that persists
+            # The image saving function will check if an image already exists and skip saving if it does
+            # This ensures counters keep their numbers even when they move off-screen
+            for obj in detected_objects:
+                if 'counterNumber' not in obj:
+                    obj['counterNumber'] = get_next_counter_number()
             
             # Save cropped images for each detected counter
             detection_timestamp = time.time()
