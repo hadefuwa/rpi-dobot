@@ -14,6 +14,8 @@ import json
 import subprocess
 import sys
 import cv2
+import requests
+import base64
 from plc_client import PLCClient
 from dobot_client import DobotClient
 from camera_service import CameraService
@@ -38,10 +40,85 @@ plc_client = None  # Will be None if snap7 fails
 dobot_client = None
 camera_service = None
 
+# Vision service configuration
+VISION_SERVICE_URL = os.getenv('VISION_SERVICE_URL', 'http://127.0.0.1:5001')
+VISION_SERVICE_TIMEOUT = 5.0  # 5 second timeout
+
 # Polling state
 poll_thread = None
 poll_running = False
 poll_interval = 0.1  # 100ms
+
+def call_vision_service(frame: np.ndarray, params: Dict) -> Dict:
+    """
+    Call the vision service for YOLO detection
+    
+    Args:
+        frame: Image frame (BGR format)
+        params: Detection parameters
+    
+    Returns:
+        Detection results dictionary
+    """
+    try:
+        # Encode frame as JPEG then base64
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
+        ret, buffer = cv2.imencode('.jpg', frame, encode_param)
+        if not ret:
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'error': 'Failed to encode frame'
+            }
+        
+        frame_base64 = base64.b64encode(buffer.tobytes()).decode('utf-8')
+        
+        # Call vision service
+        response = requests.post(
+            f"{VISION_SERVICE_URL}/detect",
+            json={
+                'frame_base64': frame_base64,
+                'params': params
+            },
+            timeout=VISION_SERVICE_TIMEOUT
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(f"Vision service returned error: {response.status_code} - {response.text}")
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'error': f'Vision service error: {response.status_code}'
+            }
+            
+    except requests.exceptions.Timeout:
+        logger.warning("Vision service timeout - service may be down or overloaded")
+        return {
+            'objects_found': False,
+            'object_count': 0,
+            'objects': [],
+            'error': 'Vision service timeout'
+        }
+    except requests.exceptions.ConnectionError:
+        logger.warning("Vision service connection error - service may be down")
+        return {
+            'objects_found': False,
+            'object_count': 0,
+            'objects': [],
+            'error': 'Vision service unavailable'
+        }
+    except Exception as e:
+        logger.error(f"Error calling vision service: {e}", exc_info=True)
+        return {
+            'objects_found': False,
+            'object_count': 0,
+            'objects': [],
+            'error': f'Vision service error: {str(e)}'
+        }
 
 def load_config():
     """Load configuration from config.json"""
@@ -1175,7 +1252,12 @@ def vision_detect():
 
         # Run object detection if enabled
         if object_detection_enabled:
-            object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
+            # If using YOLO, call vision service instead of direct YOLO
+            if object_method == 'yolo':
+                object_results = call_vision_service(frame, object_params)
+            else:
+                # Non-YOLO methods use camera_service directly
+                object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
             
             # Check for errors in detection
             if 'error' in object_results:
