@@ -57,10 +57,14 @@ class CameraService:
         self.yolo_model_path = None
         self.yolo_lock = threading.Lock()  # Lock to prevent concurrent YOLO calls (YOLO is not thread-safe)
         self.last_yolo_call_time = 0
-        self.min_yolo_interval = 0.5  # Minimum 500ms between YOLO calls to prevent crashes
+        self.min_yolo_interval = 1.0  # Minimum 1 second between YOLO calls to prevent crashes
         self.cached_yolo_result = None  # Cache last YOLO detection result
         self.cached_yolo_result_time = 0
         self.cached_yolo_frame_hash = None  # Hash of frame to detect if frame changed
+        self.yolo_crash_count = 0  # Track consecutive crashes
+        self.yolo_disabled_until = 0  # Timestamp when YOLO can be re-enabled after crashes
+        self.max_crashes = 3  # Disable YOLO after 3 consecutive crashes
+        self.disable_duration = 30  # Disable for 30 seconds after crashes
         
     def initialize_camera(self) -> bool:
         """Initialize and open camera"""
@@ -281,6 +285,26 @@ class CameraService:
         time_since_last_call = current_time - self.last_yolo_call_time
         cache_age = current_time - self.cached_yolo_result_time
         
+        # Circuit breaker: Check if YOLO is temporarily disabled due to crashes
+        if current_time < self.yolo_disabled_until:
+            remaining = self.yolo_disabled_until - current_time
+            logger.warning(f"YOLO temporarily disabled due to crashes (re-enable in {remaining:.1f}s)")
+            # Return cached result if available, otherwise empty
+            if self.cached_yolo_result is not None:
+                cached = self.cached_yolo_result.copy()
+                cached['timestamp'] = current_time
+                cached['cached'] = True
+                cached['error'] = f'YOLO disabled (crashed {self.yolo_crash_count} times)'
+                return cached
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'method': 'yolo',
+                'timestamp': current_time,
+                'error': f'YOLO disabled due to crashes (re-enable in {remaining:.1f}s)'
+            }
+
         # ALWAYS return cached result if available and recent (prevents crashes)
         # Return cached result if:
         # 1. Cache exists and is less than 2 seconds old, OR
@@ -338,83 +362,122 @@ class CameraService:
                 cropped_frame = frame[crop_top:crop_bottom, :]
                 logger.debug(f"Cropped frame from {original_height}x{original_width} to {cropped_frame.shape[0]}x{cropped_frame.shape[1]}")
 
-                # Run inference on cropped frame - wrap in try-except to catch crashes
+                # Run inference on cropped frame - wrap VERY defensively to catch C++ crashes
                 logger.debug(f"Running YOLO inference on frame shape: {cropped_frame.shape}")
-                results = self.yolo_model(cropped_frame, conf=conf_threshold, iou=iou, classes=classes, verbose=False)
                 
-                # Log raw results for debugging
-                total_detections = sum(len(r.boxes) for r in results)
-                logger.debug(f"YOLO raw detection count: {total_detections}")
-
-                objects = []
-                for result in results:
-                    boxes = result.boxes
-                    for box in boxes:
-                        # Extract box coordinates (relative to cropped frame)
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        box_confidence = float(box.conf[0])  # Individual box confidence
-                        cls = int(box.cls[0])
-                        class_name = result.names[cls]
-
-                        # Adjust coordinates back to original frame
-                        x1_original = x1
-                        y1_original = y1 + crop_top
-                        x2_original = x2
-                        y2_original = y2 + crop_top
-
-                        # Calculate center and dimensions
-                        x = int(x1_original)
-                        y = int(y1_original)
-                        w = int(x2_original - x1_original)
-                        h = int(y2_original - y1_original)
-                        center_x = int(x1_original + w / 2)
-                        center_y = int(y1_original + h / 2)
-                        area = w * h
-
-                        objects.append({
-                            'type': 'counter',
-                            'class': class_name,
-                            'class_id': cls,
-                            'x': x,
-                            'y': y,
-                            'width': w,
-                            'height': h,
-                            'area': float(area),
-                            'center': (center_x, center_y),
-                            'confidence': round(box_confidence, 2),
-                            'method': 'yolo'
-                        })
-
-                logger.debug(f"YOLO detected {len(objects)} objects")
-                if len(objects) == 0:
-                    logger.debug(f"No objects detected - conf threshold may be too high (current: {conf_threshold})")
-
-                # Cache the result
-                result = {
-                    'objects_found': len(objects) > 0,
-                    'object_count': len(objects),
-                    'objects': objects,
-                    'method': 'yolo',
-                    'timestamp': time.time(),
-                    'cached': False
-                }
-                self.cached_yolo_result = result
-                self.cached_yolo_result_time = time.time()
-                self.cached_yolo_frame_hash = frame_hash
+                # Reset crash count on successful call
+                self.yolo_crash_count = 0
                 
-                return result
-                
-            except Exception as e:
-                # Catch any YOLO crashes and return gracefully instead of crashing the app
-                logger.error(f"YOLO detection crashed: {e}", exc_info=True)
-                return {
-                    'objects_found': False,
-                    'object_count': 0,
-                    'objects': [],
-                    'method': 'yolo',
-                    'timestamp': time.time(),
-                    'error': f'YOLO detection failed: {str(e)}'
-                }
+                # Try to run YOLO inference - wrap everything in try-except
+                try:
+                    # Validate frame before calling YOLO
+                    if cropped_frame.size == 0 or cropped_frame.shape[0] == 0 or cropped_frame.shape[1] == 0:
+                        raise ValueError("Invalid frame dimensions")
+                    
+                    # Call YOLO model - this is where crashes happen
+                    results = self.yolo_model(cropped_frame, conf=conf_threshold, iou=iou, classes=classes, verbose=False)
+                    
+                    # Process results - also wrap in try-except in case results are corrupted
+                    try:
+                        # Log raw results for debugging
+                        total_detections = sum(len(r.boxes) for r in results)
+                        logger.debug(f"YOLO raw detection count: {total_detections}")
+
+                        objects = []
+                        for result in results:
+                            try:
+                                boxes = result.boxes
+                                for box in boxes:
+                                    try:
+                                        # Extract box coordinates (relative to cropped frame)
+                                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                                        box_confidence = float(box.conf[0])  # Individual box confidence
+                                        cls = int(box.cls[0])
+                                        class_name = result.names[cls]
+
+                                        # Adjust coordinates back to original frame
+                                        x1_original = x1
+                                        y1_original = y1 + crop_top
+                                        x2_original = x2
+                                        y2_original = y2 + crop_top
+
+                                        # Calculate center and dimensions
+                                        x = int(x1_original)
+                                        y = int(y1_original)
+                                        w = int(x2_original - x1_original)
+                                        h = int(y2_original - y1_original)
+                                        center_x = int(x1_original + w / 2)
+                                        center_y = int(y1_original + h / 2)
+                                        area = w * h
+
+                                        objects.append({
+                                            'type': 'counter',
+                                            'class': class_name,
+                                            'class_id': cls,
+                                            'x': x,
+                                            'y': y,
+                                            'width': w,
+                                            'height': h,
+                                            'area': float(area),
+                                            'center': (center_x, center_y),
+                                            'confidence': round(box_confidence, 2),
+                                            'method': 'yolo'
+                                        })
+                                    except Exception as box_error:
+                                        logger.warning(f"Error processing YOLO box: {box_error}")
+                                        continue  # Skip this box, continue with others
+                            except Exception as result_error:
+                                logger.warning(f"Error processing YOLO result: {result_error}")
+                                continue  # Skip this result, continue with others
+
+                        logger.debug(f"YOLO detected {len(objects)} objects")
+                        if len(objects) == 0:
+                            logger.debug(f"No objects detected - conf threshold may be too high (current: {conf_threshold})")
+
+                        # Cache the result
+                        result = {
+                            'objects_found': len(objects) > 0,
+                            'object_count': len(objects),
+                            'objects': objects,
+                            'method': 'yolo',
+                            'timestamp': time.time(),
+                            'cached': False
+                        }
+                        self.cached_yolo_result = result
+                        self.cached_yolo_result_time = time.time()
+                        self.cached_yolo_frame_hash = frame_hash
+                        
+                        return result
+                    except Exception as process_error:
+                        logger.error(f"Error processing YOLO results: {process_error}", exc_info=True)
+                        raise  # Re-raise to be caught by outer exception handler
+                        
+                except (Exception, SystemError, RuntimeError, MemoryError) as e:
+                    # Catch ALL exceptions including C++ exceptions that might bypass normal Python exceptions
+                    self.yolo_crash_count += 1
+                    logger.error(f"YOLO detection crashed (crash #{self.yolo_crash_count}): {e}", exc_info=True)
+                    
+                    # If too many crashes, disable YOLO temporarily
+                    if self.yolo_crash_count >= self.max_crashes:
+                        self.yolo_disabled_until = time.time() + self.disable_duration
+                        logger.error(f"YOLO disabled for {self.disable_duration}s after {self.yolo_crash_count} consecutive crashes")
+                    
+                    # Return cached result if available, otherwise empty
+                    if self.cached_yolo_result is not None:
+                        cached = self.cached_yolo_result.copy()
+                        cached['timestamp'] = time.time()
+                        cached['cached'] = True
+                        cached['error'] = f'YOLO crashed (attempt {self.yolo_crash_count})'
+                        return cached
+                    
+                    return {
+                        'objects_found': False,
+                        'object_count': 0,
+                        'objects': [],
+                        'method': 'yolo',
+                        'timestamp': time.time(),
+                        'error': f'YOLO detection failed: {str(e)} (crash #{self.yolo_crash_count})'
+                    }
 
     def _detect_with_blob(self, frame: np.ndarray, params: Dict) -> Dict:
         """Detect objects using SimpleBlobDetector"""
