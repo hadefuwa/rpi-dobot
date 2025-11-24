@@ -56,7 +56,10 @@ class CameraService:
         self.yolo_model_path = None
         self.yolo_lock = threading.Lock()  # Lock to prevent concurrent YOLO calls (YOLO is not thread-safe)
         self.last_yolo_call_time = 0
-        self.min_yolo_interval = 0.1  # Minimum 100ms between YOLO calls to prevent crashes
+        self.min_yolo_interval = 0.5  # Minimum 500ms between YOLO calls to prevent crashes
+        self.cached_yolo_result = None  # Cache last YOLO detection result
+        self.cached_yolo_result_time = 0
+        self.cached_yolo_frame_hash = None  # Hash of frame to detect if frame changed
         
     def initialize_camera(self) -> bool:
         """Initialize and open camera"""
@@ -248,7 +251,7 @@ class CameraService:
             }
 
     def _detect_with_yolo(self, frame: np.ndarray, params: Dict) -> Dict:
-        """Detect objects using YOLO - thread-safe with locking and rate limiting"""
+        """Detect objects using YOLO - thread-safe with locking, rate limiting, and result caching"""
         if not YOLO_AVAILABLE:
             error_msg = 'YOLO library not available. Install with: pip install ultralytics'
             logger.error(error_msg)
@@ -269,20 +272,47 @@ class CameraService:
                 'error': error_msg
             }
 
-        # Rate limiting: prevent YOLO calls too close together (prevents crashes)
+        # Calculate frame hash to detect if frame changed
+        import hashlib
+        frame_hash = hashlib.md5(frame.tobytes()).hexdigest()
+        
+        # Rate limiting and caching: return cached result if called too soon or same frame
         current_time = time.time()
         time_since_last_call = current_time - self.last_yolo_call_time
+        cache_age = current_time - self.cached_yolo_result_time
+        
+        # Return cached result if:
+        # 1. Same frame and cache is less than 0.5 seconds old, OR
+        # 2. Called too soon (less than min interval) and cache exists
+        if (self.cached_yolo_result is not None and 
+            ((frame_hash == self.cached_yolo_frame_hash and cache_age < 0.5) or
+             (time_since_last_call < self.min_yolo_interval and cache_age < 1.0))):
+            logger.debug(f"YOLO returning cached result (cache age: {cache_age:.3f}s, time since last: {time_since_last_call:.3f}s)")
+            # Return cached result with updated timestamp
+            cached = self.cached_yolo_result.copy()
+            cached['timestamp'] = current_time
+            cached['cached'] = True
+            return cached
+
+        # Rate limiting: prevent YOLO calls too close together (prevents crashes)
         if time_since_last_call < self.min_yolo_interval:
-            # Return cached/empty result if called too soon
-            logger.debug(f"YOLO call rate-limited (last call {time_since_last_call:.3f}s ago, min {self.min_yolo_interval}s)")
-            return {
-                'objects_found': False,
-                'object_count': 0,
-                'objects': [],
-                'method': 'yolo',
-                'timestamp': current_time,
-                'error': 'Rate limited - too many calls'
-            }
+            # Return cached result if available, otherwise empty
+            if self.cached_yolo_result is not None:
+                logger.debug(f"YOLO call rate-limited, returning cached result")
+                cached = self.cached_yolo_result.copy()
+                cached['timestamp'] = current_time
+                cached['cached'] = True
+                return cached
+            else:
+                logger.debug(f"YOLO call rate-limited (last call {time_since_last_call:.3f}s ago, min {self.min_yolo_interval}s)")
+                return {
+                    'objects_found': False,
+                    'object_count': 0,
+                    'objects': [],
+                    'method': 'yolo',
+                    'timestamp': current_time,
+                    'error': 'Rate limited - too many calls'
+                }
 
         # Use lock to prevent concurrent YOLO calls (YOLO is NOT thread-safe)
         with self.yolo_lock:
