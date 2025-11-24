@@ -71,31 +71,52 @@ class CameraService:
         try:
             with self.lock:
                 if self.camera is not None:
-                    self.camera.release()
+                    try:
+                        self.camera.release()
+                    except Exception:
+                        pass  # Ignore errors when releasing
                 
                 self.camera = cv2.VideoCapture(self.camera_index)
                 
                 if not self.camera.isOpened():
                     logger.error(f"Failed to open camera at index {self.camera_index}")
+                    self.camera = None
                     return False
                 
-                # Set camera properties
-                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-                self.camera.set(cv2.CAP_PROP_FPS, 30)
-                self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer for faster response
+                # Set camera properties (these may fail silently, which is okay)
+                try:
+                    self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+                    self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+                    self.camera.set(cv2.CAP_PROP_FPS, 30)
+                    self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Reduce buffer for faster response
+                except Exception as e:
+                    logger.warning(f"Could not set some camera properties: {e}")
 
                 # Quick warm up camera (reduced from 5 to 2 frames)
-                for _ in range(2):
-                    ret, _ = self.camera.read()
-                    if not ret:
-                        break
+                # If read() fails, camera may not be ready - that's okay, we'll try again later
+                try:
+                    for _ in range(2):
+                        ret, _ = self.camera.read()
+                        if not ret:
+                            logger.warning(f"Camera read() failed during warm-up - camera may not be ready")
+                            break
+                except Exception as e:
+                    logger.warning(f"Camera read() error during initialization: {e} - camera may not be ready")
+                    # Don't fail completely - camera might work later
+                    # Keep self.camera set so we can try again
                 
-                logger.info(f"Camera initialized successfully at index {self.camera_index}")
+                logger.info(f"Camera initialized at index {self.camera_index} (may need warm-up)")
                 return True
                 
         except Exception as e:
-            logger.error(f"Error initializing camera: {e}")
+            logger.error(f"Error initializing camera: {e}", exc_info=True)
+            # Make sure camera is set to None on error
+            try:
+                if self.camera is not None:
+                    self.camera.release()
+            except Exception:
+                pass
+            self.camera = None
             return False
     
     def release_camera(self):
