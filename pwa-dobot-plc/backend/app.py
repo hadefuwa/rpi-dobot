@@ -90,6 +90,10 @@ try:
 except Exception as e:
     logger.warning(f"Error cleaning up counter positions file: {e}")
 
+# Reset counter tracker to start fresh
+_counter_tracker['max_counter_number'] = 0
+logger.info("Counter tracker reset to 0 on startup")
+
 logger.info(f"Counter images will be saved to: {COUNTER_IMAGES_DIR}")
 
 # Global counter tracking - tracks the highest counter number ever assigned
