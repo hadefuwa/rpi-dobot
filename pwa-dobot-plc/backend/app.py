@@ -167,9 +167,46 @@ def load_config():
             "server": {"port": 8080}
         }
 
+def delete_old_counter_images(counter_number: int):
+    """
+    Delete all old images for a specific counter number, keeping only the most recent one
+    
+    Args:
+        counter_number: Counter number to clean up
+    """
+    try:
+        if not os.path.exists(COUNTER_IMAGES_DIR):
+            return
+        
+        # Find all images for this counter
+        prefix = f"counter_{counter_number}_"
+        counter_images = []
+        
+        for filename in os.listdir(COUNTER_IMAGES_DIR):
+            if filename.startswith(prefix) and filename.endswith('.jpg'):
+                filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+                stat = os.stat(filepath)
+                counter_images.append((filepath, stat.st_mtime, filename))
+        
+        # Sort by modification time (most recent first)
+        counter_images.sort(key=lambda x: x[1], reverse=True)
+        
+        # Delete all except the most recent one
+        if len(counter_images) > 1:
+            for filepath, _, filename in counter_images[1:]:  # Skip first (most recent)
+                try:
+                    os.remove(filepath)
+                    logger.debug(f"Deleted old counter {counter_number} image: {filename}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete {filename}: {e}")
+    
+    except Exception as e:
+        logger.error(f"Error deleting old counter images: {e}", exc_info=True)
+
 def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timestamp: float) -> str:
     """
     Crop and save a detected counter image with timestamp
+    Only keeps the most recent image per counter (deletes old ones)
     
     Args:
         frame: Original camera frame
@@ -181,6 +218,9 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         Path to saved image file, or None if failed
     """
     try:
+        # Delete old images for this counter before saving new one
+        delete_old_counter_images(counter_number)
+        
         # Get bounding box coordinates
         x = obj.get('x', 0)
         y = obj.get('y', 0)
@@ -208,7 +248,7 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         
         # Save the cropped image
         cv2.imwrite(filepath, cropped)
-        logger.info(f"Saved counter {counter_number} image: {filename}")
+        logger.info(f"Saved counter {counter_number} image: {filename} (deleted old images for this counter)")
         
         return filepath
         
@@ -1432,6 +1472,55 @@ def serve_counter_image(filename):
         return send_from_directory(COUNTER_IMAGES_DIR, filename)
     except Exception as e:
         logger.error(f"Error serving counter image: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/counter-images/cleanup', methods=['POST'])
+def cleanup_counter_images():
+    """Clean up duplicate counter images - keep only most recent per counter"""
+    try:
+        if not os.path.exists(COUNTER_IMAGES_DIR):
+            return jsonify({'message': 'No images directory found', 'deleted': 0})
+        
+        deleted_count = 0
+        
+        # Group images by counter number
+        counter_groups = {}
+        for filename in os.listdir(COUNTER_IMAGES_DIR):
+            if filename.startswith('counter_') and filename.endswith('.jpg'):
+                # Parse counter number from filename: counter_1_20241124_141530_123.jpg
+                parts = filename.replace('.jpg', '').split('_')
+                if len(parts) >= 2:
+                    try:
+                        counter_num = int(parts[1])
+                        if counter_num not in counter_groups:
+                            counter_groups[counter_num] = []
+                        filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+                        stat = os.stat(filepath)
+                        counter_groups[counter_num].append((filepath, stat.st_mtime, filename))
+                    except ValueError:
+                        continue
+        
+        # For each counter, keep only the most recent image
+        for counter_num, images in counter_groups.items():
+            if len(images) > 1:
+                # Sort by modification time (most recent first)
+                images.sort(key=lambda x: x[1], reverse=True)
+                # Delete all except the first (most recent)
+                for filepath, _, filename in images[1:]:
+                    try:
+                        os.remove(filepath)
+                        deleted_count += 1
+                        logger.info(f"Cleaned up old counter {counter_num} image: {filename}")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete {filename}: {e}")
+        
+        logger.info(f"Cleanup complete: Deleted {deleted_count} duplicate counter images")
+        return jsonify({
+            'message': f'Cleanup complete: Deleted {deleted_count} duplicate images',
+            'deleted': deleted_count
+        })
+    except Exception as e:
+        logger.error(f"Error cleaning up counter images: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ==================================================
