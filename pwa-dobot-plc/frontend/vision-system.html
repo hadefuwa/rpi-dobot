@@ -1450,7 +1450,7 @@
         // Object detection parameters - YOLO
         let objectDetectionEnabled = true;  // Enabled by default
         const objectParams = Object.freeze({
-            conf: 0.25,  // Confidence threshold (0.25 = 25%) - adjust if too many/few detections
+            conf: 0.1,  // Confidence threshold (0.1 = 10%) - reduced to detect more counters
             iou: 0.45,
             crop_top_percent: 0,
             crop_bottom_percent: 0
