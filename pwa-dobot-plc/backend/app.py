@@ -440,8 +440,8 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         w = obj.get('width', 0)
         h = obj.get('height', 0)
         
-        # Add padding around the counter
-        padding = 20
+        # Add minimal padding around the counter (reduced from 20 to 5 for tighter crop)
+        padding = 5
         x1 = max(0, x - padding)
         y1 = max(0, y - padding)
         x2 = min(frame.shape[1], x + w + padding)
