@@ -1468,6 +1468,86 @@
             document.body.appendChild(modal);
         }
 
+        async function analyzeAllCountersForDefects() {
+            const resultsList = document.getElementById('defectResultsList');
+            if (!resultsList) return;
+            
+            try {
+                resultsList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px;">Analyzing counters for defects...</div>';
+                
+                // Get all saved counter images
+                const imagesResponse = await fetch(`${API_BASE}/api/counter-images`);
+                const imagesData = await imagesResponse.json();
+                
+                if (imagesData.error || !imagesData.images || imagesData.images.length === 0) {
+                    resultsList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px;">No counter images to analyze</div>';
+                    return;
+                }
+                
+                // Analyze each counter
+                const analysisResults = [];
+                for (const img of imagesData.images) {
+                    try {
+                        const response = await fetch(`${API_BASE}/api/counter-images/${img.counter_number}/analyze-defects`, {
+                            method: 'POST'
+                        });
+                        const result = await response.json();
+                        analysisResults.push(result);
+                    } catch (error) {
+                        console.error(`Error analyzing counter ${img.counter_number}:`, error);
+                        analysisResults.push({
+                            counter_number: img.counter_number,
+                            error: error.message
+                        });
+                    }
+                }
+                
+                // Display results
+                if (analysisResults.length === 0) {
+                    resultsList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px;">No analysis results</div>';
+                    return;
+                }
+                
+                resultsList.innerHTML = analysisResults.map(result => {
+                    if (result.error) {
+                        return `
+                            <div style="background: rgba(30, 41, 59, 0.6); border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 3px solid #ef4444;">
+                                <div style="color: #ef4444; font-weight: 600; font-size: 12px;">Counter ${result.counter_number}</div>
+                                <div style="color: #94a3b8; font-size: 11px;">Error: ${result.error}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    const hasDefects = result.defects_found;
+                    const borderColor = hasDefects ? '#ef4444' : '#10b981';
+                    const statusText = hasDefects ? 'DEFECTS FOUND' : 'NO DEFECTS';
+                    const statusColor = hasDefects ? '#ef4444' : '#10b981';
+                    
+                    return `
+                        <div style="background: rgba(30, 41, 59, 0.6); border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 3px solid ${borderColor};">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <div style="color: #60a5fa; font-weight: 600; font-size: 12px;">Counter ${result.counter_number}</div>
+                                <div style="color: ${statusColor}; font-weight: 600; font-size: 11px;">${statusText}</div>
+                            </div>
+                            <div style="color: #cbd5e1; font-size: 11px; margin-bottom: 4px;">
+                                Defects: ${result.defect_count} | Confidence: ${result.confidence.toFixed(1)}% | Variance: ${result.color_variance.toFixed(1)}
+                            </div>
+                            ${hasDefects && result.defects && result.defects.length > 0 ? `
+                                <div style="color: #fca5a5; font-size: 10px; margin-top: 4px;">
+                                    ${result.defects.map((d, i) => `Defect ${i+1}: ${d.area.toFixed(0)}px² (${d.confidence.toFixed(1)}%)`).join(', ')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+                
+                addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed`, 'info');
+            } catch (error) {
+                console.error('Error analyzing counters for defects:', error);
+                resultsList.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px; font-size: 12px;">Error: ${error.message}</div>`;
+            }
+        }
+
         function toggleInfoPanel() {
             const content = document.getElementById('infoContent');
             const icon = document.getElementById('infoToggleIcon');
