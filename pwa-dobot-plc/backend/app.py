@@ -90,15 +90,15 @@ try:
 except Exception as e:
     logger.warning(f"Error cleaning up counter positions file: {e}")
 
-# Reset counter tracker to start fresh
-_counter_tracker['max_counter_number'] = 0
-logger.info("Counter tracker reset to 0 on startup")
-
 logger.info(f"Counter images will be saved to: {COUNTER_IMAGES_DIR}")
 
 # Global counter tracking - tracks the highest counter number ever assigned
 # This ensures counters keep their numbers even when they move off-screen
 _counter_tracker = {'max_counter_number': 0}
+
+# Reset counter tracker to start fresh (after definition)
+_counter_tracker['max_counter_number'] = 0
+logger.info("Counter tracker reset to 0 on startup")
 
 def get_next_counter_number() -> int:
     """Get the next available counter number, incrementing from the highest seen"""
