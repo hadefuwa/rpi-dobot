@@ -17,7 +17,8 @@ import cv2
 import numpy as np
 import requests
 import base64
-from typing import Dict
+from typing import Dict, List
+from datetime import datetime
 from plc_client import PLCClient
 from dobot_client import DobotClient
 from camera_service import CameraService
@@ -1169,6 +1170,15 @@ def vision_analyze():
             detected_objects.sort(key=lambda obj: obj.get('x', 0))
             for idx, obj in enumerate(detected_objects, start=1):
                 obj['counterNumber'] = idx
+            
+            # Save cropped images for each detected counter
+            detection_timestamp = time.time()
+            for obj in detected_objects:
+                counter_num = obj.get('counterNumber', 0)
+                if counter_num > 0:
+                    saved_path = save_counter_image(frame, obj, counter_num, detection_timestamp)
+                    if saved_path:
+                        obj['saved_image_path'] = saved_path
             
             # Extract ROI regions from detected objects
             for obj in detected_objects:
