@@ -607,6 +607,19 @@
                             <div style="color: #64748b; text-align: center; padding: 10px; font-size: 12px;">No counters detected yet</div>
                         </div>
                     </div>
+                    
+                    <!-- Saved Counter Images Gallery -->
+                    <div id="counterImagesGallery" style="margin-top: 15px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; display: block;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4 style="color: #60a5fa; font-size: 14px; margin: 0;">Saved Counter Images</h4>
+                            <button class="btn btn-primary" onclick="refreshCounterImages()" style="font-size: 11px; padding: 4px 8px;">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                        <div id="counterImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto;">
+                            <div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">Loading images...</div>
+                        </div>
+                    </div>
 
                     <!-- Hidden inputs for method -->
                     <input type="hidden" id="objectDetectionMethod" value="yolo">
@@ -1348,6 +1361,60 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        async function refreshCounterImages() {
+            const imagesList = document.getElementById('counterImagesList');
+            if (!imagesList) return;
+            
+            try {
+                imagesList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">Loading images...</div>';
+                
+                const response = await fetch(`${API_BASE}/api/counter-images`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    imagesList.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">Error: ${data.error}</div>`;
+                    return;
+                }
+                
+                const images = data.images || [];
+                
+                if (images.length === 0) {
+                    imagesList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">No counter images saved yet</div>';
+                    return;
+                }
+                
+                imagesList.innerHTML = images.map(img => {
+                    return `
+                        <div style="background: rgba(30, 41, 59, 0.6); border-radius: 8px; padding: 8px; border: 1px solid rgba(148, 163, 184, 0.1); cursor: pointer;" onclick="openImageModal('${img.url}')">
+                            <img src="${img.url}" alt="Counter ${img.counter_number}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-bottom: 6px;">
+                            <div style="color: #60a5fa; font-weight: 600; font-size: 11px; margin-bottom: 4px;">Counter ${img.counter_number}</div>
+                            <div style="color: #94a3b8; font-size: 10px;">${img.formatted_time}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                addSerialLog(`Loaded ${images.length} counter images`, 'info');
+            } catch (error) {
+                console.error('Error loading counter images:', error);
+                imagesList.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">Error loading images: ${error.message}</div>`;
+            }
+        }
+
+        function openImageModal(imageUrl) {
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; cursor: pointer;';
+            modal.onclick = () => document.body.removeChild(modal);
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.cssText = 'max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 8px;';
+            img.onclick = (e) => e.stopPropagation();
+            
+            modal.appendChild(img);
+            document.body.appendChild(modal);
         }
 
         function toggleInfoPanel() {

@@ -1368,6 +1368,72 @@ def vision_detect():
         logger.error(f"Error in vision detection: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/counter-images', methods=['GET'])
+def list_counter_images():
+    """List all saved counter images"""
+    try:
+        if not os.path.exists(COUNTER_IMAGES_DIR):
+            return jsonify({'images': [], 'count': 0})
+        
+        # Get all counter image files
+        image_files = []
+        for filename in sorted(os.listdir(COUNTER_IMAGES_DIR), reverse=True):  # Most recent first
+            if filename.startswith('counter_') and filename.endswith('.jpg'):
+                filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+                stat = os.stat(filepath)
+                
+                # Parse filename: counter_1_20241124_141530_123.jpg
+                parts = filename.replace('.jpg', '').split('_')
+                if len(parts) >= 5:
+                    counter_num = parts[1]
+                    date_str = parts[2]
+                    time_str = parts[3]
+                    ms_str = parts[4] if len(parts) > 4 else '000'
+                    
+                    # Parse timestamp
+                    try:
+                        dt = datetime.strptime(f"{date_str}_{time_str}_{ms_str}", "%Y%m%d_%H%M%S_%f")
+                        timestamp = dt.timestamp()
+                    except:
+                        timestamp = stat.st_mtime
+                else:
+                    counter_num = '?'
+                    timestamp = stat.st_mtime
+                
+                image_files.append({
+                    'filename': filename,
+                    'counter_number': int(counter_num) if counter_num.isdigit() else 0,
+                    'timestamp': timestamp,
+                    'formatted_time': datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'),
+                    'size': stat.st_size,
+                    'url': f'/api/counter-images/{filename}'
+                })
+        
+        return jsonify({
+            'images': image_files,
+            'count': len(image_files)
+        })
+    except Exception as e:
+        logger.error(f"Error listing counter images: {e}")
+        return jsonify({'error': str(e), 'images': [], 'count': 0}), 500
+
+@app.route('/api/counter-images/<filename>', methods=['GET'])
+def serve_counter_image(filename):
+    """Serve a specific counter image"""
+    try:
+        # Security: only allow counter_*.jpg files
+        if not filename.startswith('counter_') or not filename.endswith('.jpg'):
+            return jsonify({'error': 'Invalid filename'}), 400
+        
+        filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+        if not os.path.exists(filepath):
+            return jsonify({'error': 'Image not found'}), 404
+        
+        return send_from_directory(COUNTER_IMAGES_DIR, filename)
+    except Exception as e:
+        logger.error(f"Error serving counter image: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # ==================================================
 # Serve PWA Frontend
 # ==================================================
