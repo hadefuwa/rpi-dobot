@@ -612,9 +612,14 @@
                     <div id="counterImagesGallery" style="margin-top: 15px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; display: block;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                             <h4 style="color: #60a5fa; font-size: 14px; margin: 0;">Saved Counter Images</h4>
-                            <button class="btn btn-primary" onclick="refreshCounterImages()" style="font-size: 11px; padding: 4px 8px;">
-                                🔄 Refresh
-                            </button>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-danger" onclick="deleteAllCounterImages()" style="font-size: 11px; padding: 4px 8px;">
+                                    🗑️ Delete All
+                                </button>
+                                <button class="btn btn-primary" onclick="refreshCounterImages()" style="font-size: 11px; padding: 4px 8px;">
+                                    🔄 Refresh
+                                </button>
+                            </div>
                         </div>
                         <div id="counterImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto;">
                             <div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">Loading images...</div>
@@ -1412,6 +1417,44 @@
         function updateCounterTimeline() {
             // Legacy function - now uses updateCounterTimelineFromImages
             updateCounterTimelineFromImages();
+        }
+
+        async function deleteAllCounterImages() {
+            if (!confirm('Are you sure you want to delete all counter images and reset the timeline? This cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                addSerialLog('Deleting all counter images and resetting timeline...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/counter-images/delete-all`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    addSerialLog(`Error deleting images: ${data.error}`, 'error');
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+                
+                addSerialLog(`Successfully deleted ${data.deleted || 0} counter images and reset counter tracker`, 'success');
+                
+                // Refresh the images list and timeline
+                await refreshCounterImages();
+                await updateCounterTimelineFromImages();
+                
+                // Clear defect results
+                const defectResultsList = document.getElementById('defectResultsList');
+                if (defectResultsList) {
+                    defectResultsList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px;">No defect analysis performed yet. Click "Analyze All" to check all counters.</div>';
+                }
+            } catch (error) {
+                console.error('Error deleting counter images:', error);
+                addSerialLog(`Error deleting images: ${error.message}`, 'error');
+                alert(`Error: ${error.message}`);
+            }
         }
 
         async function refreshCounterImages() {

@@ -1959,6 +1959,41 @@ def detect_color_defects(image: np.ndarray) -> Dict:
             'error': str(e)
         }
 
+@app.route('/api/counter-images/delete-all', methods=['POST'])
+def delete_all_counter_images():
+    """Delete all counter images and reset counter tracker"""
+    try:
+        deleted_count = 0
+        
+        if os.path.exists(COUNTER_IMAGES_DIR):
+            for filename in os.listdir(COUNTER_IMAGES_DIR):
+                if filename.startswith('counter_') and filename.endswith('.jpg'):
+                    filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+                    try:
+                        os.remove(filepath)
+                        deleted_count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to delete {filename}: {e}")
+        
+        # Reset counter tracker
+        _counter_tracker['max_counter_number'] = 0
+        
+        # Delete counter positions file
+        if os.path.exists(COUNTER_POSITIONS_FILE):
+            try:
+                os.remove(COUNTER_POSITIONS_FILE)
+            except Exception as e:
+                logger.warning(f"Failed to delete counter positions file: {e}")
+        
+        logger.info(f"Deleted all counter images ({deleted_count} images) and reset counter tracker")
+        return jsonify({
+            'message': f'Deleted all counter images and reset timeline',
+            'deleted': deleted_count
+        })
+    except Exception as e:
+        logger.error(f"Error deleting all counter images: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/counter-images/cleanup', methods=['POST'])
 def cleanup_counter_images():
     """Clean up duplicate counter images - keep only most recent per counter"""
