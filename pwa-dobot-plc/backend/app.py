@@ -59,6 +59,42 @@ def cleanup_all_counter_images():
 cleanup_all_counter_images()
 logger.info(f"Counter images will be saved to: {COUNTER_IMAGES_DIR}")
 
+# Global counter tracking - tracks the highest counter number ever assigned
+# This ensures counters keep their numbers even when they move off-screen
+_counter_tracker = {'max_counter_number': 0}
+
+def get_next_counter_number() -> int:
+    """Get the next available counter number, incrementing from the highest seen"""
+    _counter_tracker['max_counter_number'] += 1
+    return _counter_tracker['max_counter_number']
+
+def get_max_counter_number() -> int:
+    """Get the maximum counter number that has been assigned"""
+    return _counter_tracker['max_counter_number']
+
+def initialize_counter_tracker():
+    """Initialize counter tracker by checking existing saved images"""
+    try:
+        if os.path.exists(COUNTER_IMAGES_DIR):
+            max_num = 0
+            for filename in os.listdir(COUNTER_IMAGES_DIR):
+                if filename.startswith('counter_') and filename.endswith('.jpg'):
+                    # Parse counter number from filename: counter_1_*.jpg
+                    parts = filename.split('_')
+                    if len(parts) >= 2:
+                        try:
+                            counter_num = int(parts[1])
+                            max_num = max(max_num, counter_num)
+                        except ValueError:
+                            continue
+            _counter_tracker['max_counter_number'] = max_num
+            logger.info(f"Initialized counter tracker: max counter number = {max_num}")
+    except Exception as e:
+        logger.error(f"Error initializing counter tracker: {e}")
+
+# Initialize counter tracker on startup
+initialize_counter_tracker()
+
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend')
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -1405,10 +1441,27 @@ def vision_detect():
             detected_objects = object_results.get('objects', [])
             
             # Assign counter numbers (images are saved in /api/vision/analyze endpoint to avoid duplicates)
+            # Use the same counter tracking logic as /api/vision/analyze
             if detected_objects:
+                # Check which counters already have images (have been seen before)
+                existing_counter_numbers = set()
+                if os.path.exists(COUNTER_IMAGES_DIR):
+                    for filename in os.listdir(COUNTER_IMAGES_DIR):
+                        if filename.startswith('counter_') and filename.endswith('.jpg'):
+                            parts = filename.split('_')
+                            if len(parts) >= 2:
+                                try:
+                                    existing_counter_numbers.add(int(parts[1]))
+                                except ValueError:
+                                    pass
+                
+                # Sort by x position (left to right) for consistent ordering
                 detected_objects.sort(key=lambda obj: obj.get('x', 0))
-                for idx, obj in enumerate(detected_objects, start=1):
-                    obj['counterNumber'] = idx
+                
+                # Assign new numbers incrementally
+                for obj in detected_objects:
+                    if 'counterNumber' not in obj:
+                        obj['counterNumber'] = get_next_counter_number()
             
             results['object_count'] = len(detected_objects)
             results['objects'] = detected_objects
