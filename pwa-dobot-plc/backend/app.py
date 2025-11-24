@@ -1817,6 +1817,7 @@ def analyze_counter_defects(counter_number: int):
 def detect_color_defects(image: np.ndarray) -> Dict:
     """
     Detect defects on counter surface by finding large areas with significantly different colors
+    Only analyzes the circular counter, excluding conveyor belt and background
     
     Args:
         image: Counter image (BGR format)
@@ -1827,19 +1828,64 @@ def detect_color_defects(image: np.ndarray) -> Dict:
     try:
         h, w = image.shape[:2]
         
-        # Focus on center region (80% of image) to avoid edge effects
-        margin_x = int(w * 0.1)
-        margin_y = int(h * 0.1)
-        center_region = image[margin_y:h-margin_y, margin_x:w-margin_x]
+        # Convert to grayscale for circle detection
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Find the dominant/main color of the counter
-        # Use k-means clustering to find the most common color
-        pixels = center_region.reshape(-1, 3).astype(np.float32)
+        # Detect circular counter using HoughCircles
+        circles = cv2.HoughCircles(
+            gray,
+            cv2.HOUGH_GRADIENT,
+            dp=1,
+            minDist=max(h, w) // 2,
+            param1=50,
+            param2=30,
+            minRadius=min(h, w) // 4,
+            maxRadius=min(h, w) // 2
+        )
+        
+        # Create mask for circular counter area only
+        counter_mask = np.zeros((h, w), dtype=np.uint8)
+        if circles is not None and len(circles[0]) > 0:
+            # Use the largest circle found
+            circles = np.uint16(np.around(circles))
+            largest_circle = circles[0][0]  # Get first (and likely only) circle
+            center_x, center_y, radius = largest_circle[0], largest_circle[1], largest_circle[2]
+            # Draw filled circle on mask
+            cv2.circle(counter_mask, (center_x, center_y), radius, 255, -1)
+        else:
+            # Fallback: use center region as circular area (80% of image)
+            center_x, center_y = w // 2, h // 2
+            radius = int(min(w, h) * 0.4)
+            cv2.circle(counter_mask, (center_x, center_y), radius, 255, -1)
+        
+        # Extract only the counter region (mask out conveyor belt and background)
+        counter_region = cv2.bitwise_and(image, image, mask=counter_mask)
+        
+        # Find the dominant/main color of the counter (only within the mask)
+        counter_pixels = counter_region[counter_mask > 0].reshape(-1, 3).astype(np.float32)
+        
+        if len(counter_pixels) == 0:
+            return {
+                'defects_found': False,
+                'defect_count': 0,
+                'defects': [],
+                'confidence': 0.0,
+                'error': 'Could not extract counter region'
+            }
         
         # Use k-means to find dominant colors (try 3 clusters)
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
-        k = 3
-        _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+        k = min(3, len(counter_pixels))
+        if k < 2:
+            return {
+                'defects_found': False,
+                'defect_count': 0,
+                'defects': [],
+                'confidence': 0.0,
+                'error': 'Not enough pixels for analysis'
+            }
+        
+        _, labels, centers = cv2.kmeans(counter_pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
         
         # Find the most common color (dominant color)
         unique, counts = np.unique(labels, return_counts=True)
@@ -1847,14 +1893,15 @@ def detect_color_defects(image: np.ndarray) -> Dict:
         dominant_color = centers[dominant_idx].astype(np.uint8)
         
         # Calculate color difference threshold - defects must be significantly different
-        # Use Euclidean distance in RGB space
         COLOR_DIFFERENCE_THRESHOLD = 110  # Minimum color difference to be considered a defect
         MIN_DEFECT_AREA_PERCENT = 2.0  # Defect must be at least 2% of counter area
-        min_defect_area = int((h * w) * (MIN_DEFECT_AREA_PERCENT / 100))
+        counter_area = np.sum(counter_mask > 0)  # Total counter area in pixels
+        min_defect_area = int(counter_area * (MIN_DEFECT_AREA_PERCENT / 100))
         
-        # Create mask for pixels that differ significantly from dominant color
-        color_diff = np.linalg.norm(center_region.astype(np.float32) - dominant_color.astype(np.float32), axis=2)
-        defect_mask = color_diff > COLOR_DIFFERENCE_THRESHOLD
+        # Create mask for pixels that differ significantly from dominant color (only within counter mask)
+        counter_region_float = counter_region.astype(np.float32)
+        color_diff = np.linalg.norm(counter_region_float - dominant_color.astype(np.float32), axis=2)
+        defect_mask = (color_diff > COLOR_DIFFERENCE_THRESHOLD) & (counter_mask > 0)
         
         # Convert to uint8 for morphological operations
         defect_mask_uint8 = (defect_mask * 255).astype(np.uint8)
@@ -1874,9 +1921,6 @@ def detect_color_defects(image: np.ndarray) -> Dict:
             area = cv2.contourArea(contour)
             if area > min_defect_area:
                 x, y, w_rect, h_rect = cv2.boundingRect(contour)
-                # Adjust coordinates back to full image
-                x += margin_x
-                y += margin_y
                 
                 # Get the defect region
                 defect_region = image[y:y+h_rect, x:x+w_rect]
@@ -1887,7 +1931,7 @@ def detect_color_defects(image: np.ndarray) -> Dict:
                 confidence = min(100, (color_diff_value / 255.0) * 100)
                 
                 # Calculate percentage of counter covered by this defect
-                defect_percentage = (area / (h * w)) * 100
+                defect_percentage = (area / counter_area) * 100 if counter_area > 0 else 0
                 
                 defects.append({
                     'x': int(x),
@@ -1904,7 +1948,7 @@ def detect_color_defects(image: np.ndarray) -> Dict:
         
         # Determine if defects were found
         defects_found = len(defects) > 0
-        total_defect_percentage = (total_defect_area / (h * w)) * 100 if defects_found else 0
+        total_defect_percentage = (total_defect_area / counter_area) * 100 if defects_found and counter_area > 0 else 0
         overall_confidence = min(100, total_defect_percentage * 2) if defects_found else 0
         
         return {
