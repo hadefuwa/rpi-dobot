@@ -1530,11 +1530,11 @@
                                 <div style="color: ${statusColor}; font-weight: 600; font-size: 11px;">${statusText}</div>
                             </div>
                             <div style="color: #cbd5e1; font-size: 11px; margin-bottom: 4px;">
-                                Defects: ${result.defect_count} | Confidence: ${result.confidence.toFixed(1)}% | Variance: ${result.color_variance.toFixed(1)}
+                                Defects: ${result.defect_count} | Coverage: ${result.total_defect_area_percentage ? result.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${result.confidence.toFixed(1)}%
                             </div>
                             ${hasDefects && result.defects && result.defects.length > 0 ? `
                                 <div style="color: #fca5a5; font-size: 10px; margin-top: 4px;">
-                                    ${result.defects.map((d, i) => `Defect ${i+1}: ${d.area.toFixed(0)}px² (${d.confidence.toFixed(1)}%)`).join(', ')}
+                                    ${result.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
                                 </div>
                             ` : ''}
                         </div>

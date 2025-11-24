@@ -1747,7 +1747,7 @@ def analyze_counter_defects(counter_number: int):
 
 def detect_color_defects(image: np.ndarray) -> Dict:
     """
-    Detect defects on counter surface by analyzing color variations
+    Detect defects on counter surface by finding large areas with significantly different colors
     
     Args:
         image: Counter image (BGR format)
@@ -1756,104 +1756,99 @@ def detect_color_defects(image: np.ndarray) -> Dict:
         Dictionary with defect detection results
     """
     try:
-        # Convert to HSV for better color analysis
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        
-        # Calculate average color of the entire image
-        avg_color_bgr = np.mean(image.reshape(-1, 3), axis=0)
-        avg_color_hsv = np.mean(hsv.reshape(-1, 3), axis=0)
-        
-        # Calculate color variance (standard deviation)
-        color_variance = np.std(image.reshape(-1, 3), axis=0)
-        color_variance_avg = np.mean(color_variance)
-        
-        # Threshold for defect detection - if variance is too high, there are color variations
-        # Higher variance = more color variation = potential defects
-        VARIANCE_THRESHOLD = 30  # Adjustable threshold
-        
-        # Create a mask to focus on the counter surface (exclude edges/background)
-        # Use the center 80% of the image to avoid edge effects
         h, w = image.shape[:2]
+        
+        # Focus on center region (80% of image) to avoid edge effects
         margin_x = int(w * 0.1)
         margin_y = int(h * 0.1)
         center_region = image[margin_y:h-margin_y, margin_x:w-margin_x]
-        center_hsv = hsv[margin_y:h-margin_y, margin_x:w-margin_x]
         
-        # Calculate variance in center region
-        center_variance = np.std(center_region.reshape(-1, 3), axis=0)
-        center_variance_avg = np.mean(center_variance)
+        # Find the dominant/main color of the counter
+        # Use k-means clustering to find the most common color
+        pixels = center_region.reshape(-1, 3).astype(np.float32)
         
-        # Detect color anomalies (areas significantly different from average)
-        # Use adaptive thresholding to find color variations
-        hsv_v = center_hsv[:, :, 2]  # Value channel (brightness)
-        hsv_s = center_hsv[:, :, 1]  # Saturation channel
+        # Use k-means to find dominant colors (try 3 clusters)
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
+        k = 3
+        _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
         
-        # Calculate mean and std for value channel
-        v_mean = np.mean(hsv_v)
-        v_std = np.std(hsv_v)
+        # Find the most common color (dominant color)
+        unique, counts = np.unique(labels, return_counts=True)
+        dominant_idx = unique[np.argmax(counts)]
+        dominant_color = centers[dominant_idx].astype(np.uint8)
         
-        # Find pixels that deviate significantly from the mean (potential defects)
-        # Use 2 standard deviations as threshold
-        defect_mask = np.abs(hsv_v - v_mean) > (2 * v_std)
+        # Calculate color difference threshold - defects must be significantly different
+        # Use Euclidean distance in RGB space
+        COLOR_DIFFERENCE_THRESHOLD = 80  # Minimum color difference to be considered a defect
+        MIN_DEFECT_AREA_PERCENT = 2.0  # Defect must be at least 2% of counter area
+        min_defect_area = int((h * w) * (MIN_DEFECT_AREA_PERCENT / 100))
         
-        # Also check saturation variations
-        s_mean = np.mean(hsv_s)
-        s_std = np.std(hsv_s)
-        defect_mask_s = np.abs(hsv_s - s_mean) > (2 * s_std)
+        # Create mask for pixels that differ significantly from dominant color
+        color_diff = np.linalg.norm(center_region.astype(np.float32) - dominant_color.astype(np.float32), axis=2)
+        defect_mask = color_diff > COLOR_DIFFERENCE_THRESHOLD
         
-        # Combine both masks
-        combined_mask = defect_mask | defect_mask_s
+        # Convert to uint8 for morphological operations
+        defect_mask_uint8 = (defect_mask * 255).astype(np.uint8)
+        
+        # Apply morphological operations to connect nearby defect pixels and remove noise
+        kernel = np.ones((5, 5), np.uint8)
+        defect_mask_uint8 = cv2.morphologyEx(defect_mask_uint8, cv2.MORPH_CLOSE, kernel)  # Connect nearby defects
+        defect_mask_uint8 = cv2.morphologyEx(defect_mask_uint8, cv2.MORPH_OPEN, kernel)   # Remove small noise
         
         # Find contours of defect regions
-        defect_mask_uint8 = (combined_mask * 255).astype(np.uint8)
-        kernel = np.ones((3, 3), np.uint8)
-        defect_mask_uint8 = cv2.morphologyEx(defect_mask_uint8, cv2.MORPH_CLOSE, kernel)
-        defect_mask_uint8 = cv2.morphologyEx(defect_mask_uint8, cv2.MORPH_OPEN, kernel)
-        
         contours, _ = cv2.findContours(defect_mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         defects = []
-        min_defect_area = 50  # Minimum area to consider as a defect
+        total_defect_area = 0
         
         for contour in contours:
             area = cv2.contourArea(contour)
             if area > min_defect_area:
-                x, y, w, h = cv2.boundingRect(contour)
+                x, y, w_rect, h_rect = cv2.boundingRect(contour)
                 # Adjust coordinates back to full image
                 x += margin_x
                 y += margin_y
                 
-                # Calculate defect confidence based on area and deviation
-                defect_region = image[y:y+h, x:x+w]
+                # Get the defect region
+                defect_region = image[y:y+h_rect, x:x+w_rect]
                 defect_color_avg = np.mean(defect_region.reshape(-1, 3), axis=0)
-                color_diff = np.linalg.norm(defect_color_avg - avg_color_bgr)
-                confidence = min(100, (color_diff / 255.0) * 100)
+                
+                # Calculate color difference from dominant color
+                color_diff_value = np.linalg.norm(defect_color_avg - dominant_color)
+                confidence = min(100, (color_diff_value / 255.0) * 100)
+                
+                # Calculate percentage of counter covered by this defect
+                defect_percentage = (area / (h * w)) * 100
                 
                 defects.append({
                     'x': int(x),
                     'y': int(y),
-                    'width': int(w),
-                    'height': int(h),
+                    'width': int(w_rect),
+                    'height': int(h_rect),
                     'area': float(area),
+                    'area_percentage': round(defect_percentage, 2),
                     'confidence': round(confidence, 2),
+                    'color_difference': round(float(color_diff_value), 2),
                     'type': 'color_variation'
                 })
+                total_defect_area += area
         
         # Determine if defects were found
-        defects_found = len(defects) > 0 or center_variance_avg > VARIANCE_THRESHOLD
-        overall_confidence = min(100, (center_variance_avg / VARIANCE_THRESHOLD) * 50) if defects_found else 0
+        defects_found = len(defects) > 0
+        total_defect_percentage = (total_defect_area / (h * w)) * 100 if defects_found else 0
+        overall_confidence = min(100, total_defect_percentage * 2) if defects_found else 0
         
         return {
             'defects_found': defects_found,
             'defect_count': len(defects),
             'defects': defects,
             'confidence': round(overall_confidence, 2),
-            'average_color': {
-                'b': int(avg_color_bgr[0]),
-                'g': int(avg_color_bgr[1]),
-                'r': int(avg_color_bgr[2])
+            'dominant_color': {
+                'b': int(dominant_color[0]),
+                'g': int(dominant_color[1]),
+                'r': int(dominant_color[2])
             },
-            'color_variance': round(float(center_variance_avg), 2),
+            'total_defect_area_percentage': round(total_defect_percentage, 2),
             'method': 'color_variation'
         }
     except Exception as e:
