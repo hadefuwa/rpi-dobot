@@ -65,6 +65,20 @@ _counter_tracker = {'max_counter_number': 0}
 
 def get_next_counter_number() -> int:
     """Get the next available counter number, incrementing from the highest seen"""
+    # Check existing images to find the actual max
+    max_from_images = 0
+    if os.path.exists(COUNTER_IMAGES_DIR):
+        for filename in os.listdir(COUNTER_IMAGES_DIR):
+            if filename.startswith('counter_') and filename.endswith('.jpg'):
+                parts = filename.split('_')
+                if len(parts) >= 2:
+                    try:
+                        max_from_images = max(max_from_images, int(parts[1]))
+                    except ValueError:
+                        pass
+    
+    # Use the higher of tracker or images
+    _counter_tracker['max_counter_number'] = max(_counter_tracker['max_counter_number'], max_from_images)
     _counter_tracker['max_counter_number'] += 1
     return _counter_tracker['max_counter_number']
 
@@ -1331,21 +1345,49 @@ def vision_analyze():
             # Sort by x position (left to right) for consistent ordering
             detected_objects.sort(key=lambda obj: obj.get('x', 0))
             
-            # Assign new numbers incrementally - each counter gets a unique number that persists
-            # The image saving function will check if an image already exists and skip saving if it does
-            # This ensures counters keep their numbers even when they move off-screen
-            for obj in detected_objects:
-                if 'counterNumber' not in obj:
-                    obj['counterNumber'] = get_next_counter_number()
+            # Check which counters already have images saved
+            existing_counter_numbers = set()
+            if os.path.exists(COUNTER_IMAGES_DIR):
+                for filename in os.listdir(COUNTER_IMAGES_DIR):
+                    if filename.startswith('counter_') and filename.endswith('.jpg'):
+                        parts = filename.split('_')
+                        if len(parts) >= 2:
+                            try:
+                                existing_counter_numbers.add(int(parts[1]))
+                            except ValueError:
+                                pass
             
-            # Save cropped images for each detected counter
+            # Only assign new numbers to counters that don't have images yet
+            # This prevents creating hundreds of counter numbers for the same physical counters
             detection_timestamp = time.time()
             for obj in detected_objects:
-                counter_num = obj.get('counterNumber', 0)
-                if counter_num > 0:
-                    saved_path = save_counter_image(frame, obj, counter_num, detection_timestamp)
-                    if saved_path:
-                        obj['saved_image_path'] = saved_path
+                if 'counterNumber' not in obj:
+                    # Try to save image - this will assign a number only if image doesn't exist
+                    # We'll use a temporary number to check, then save will handle the actual assignment
+                    # Actually, let's check if we should assign a new number
+                    # Only assign if we have fewer than 16 counters and this is a new detection
+                    if len(existing_counter_numbers) < 16:
+                        # Assign next number and try to save
+                        counter_num = get_next_counter_number()
+                        saved_path = save_counter_image(frame, obj, counter_num, detection_timestamp)
+                        if saved_path:
+                            obj['counterNumber'] = counter_num
+                            existing_counter_numbers.add(counter_num)
+                        else:
+                            # Image already exists or save failed, don't assign number
+                            # Decrement the counter since we didn't use it
+                            _counter_tracker['max_counter_number'] = max(0, _counter_tracker['max_counter_number'] - 1)
+                    else:
+                        # Already have 16 counters, don't assign new numbers
+                        # Try to match to existing counter (for now, skip)
+                        pass
+                else:
+                    # Counter number already assigned, just try to save image (will skip if exists)
+                    counter_num = obj.get('counterNumber', 0)
+                    if counter_num > 0:
+                        saved_path = save_counter_image(frame, obj, counter_num, detection_timestamp)
+                        if saved_path:
+                            obj['saved_image_path'] = saved_path
             
             # Extract ROI regions from detected objects
             for obj in detected_objects:

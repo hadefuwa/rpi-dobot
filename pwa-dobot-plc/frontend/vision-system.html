@@ -1305,12 +1305,19 @@
                         }
 
                         // Track first appearance of each counter
+                        // Only track counters that have saved images (to avoid duplicates)
                         const currentTime = new Date().toISOString();
                         objects.forEach((obj, idx) => {
-                            // Use counterNumber from backend if available, otherwise use index + 1
-                            const counterNum = obj.counterNumber !== undefined ? obj.counterNumber : (idx + 1);
-                            if (!counterFirstAppearance[counterNum]) {
-                                counterFirstAppearance[counterNum] = currentTime;
+                            // Use counterNumber from backend if available
+                            const counterNum = obj.counterNumber;
+                            // Only track if counter number exists and we haven't seen it before
+                            // Also check if counter has a saved image path (meaning it's a real, saved counter)
+                            if (counterNum !== undefined && counterNum !== null && 
+                                (obj.saved_image_path || !counterFirstAppearance[counterNum])) {
+                                // Only add if we haven't tracked it before, or if it has a saved image
+                                if (!counterFirstAppearance[counterNum]) {
+                                    counterFirstAppearance[counterNum] = currentTime;
+                                }
                             }
                         });
                         
