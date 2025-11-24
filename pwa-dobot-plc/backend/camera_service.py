@@ -119,17 +119,32 @@ class CameraService:
             logger.error(f"Error reading frame: {e}")
             return None
     
-    def get_frame_jpeg(self, quality: int = 85) -> Optional[bytes]:
+    def get_frame_jpeg(self, quality: int = 85, use_cache: bool = True, max_cache_age: float = 0.5) -> Optional[bytes]:
         """
         Get current frame as JPEG bytes
         
         Args:
             quality: JPEG quality (0-100)
+            use_cache: If True, use cached frame if recent enough (reduces camera reads)
+            max_cache_age: Maximum age of cached frame in seconds before reading new one
             
         Returns:
             JPEG bytes or None if frame not available
         """
-        frame = self.read_frame()
+        frame = None
+        
+        # Use cached frame if available and recent enough (optimization for snapshot mode)
+        if use_cache and self.last_frame is not None:
+            cache_age = time.time() - self.frame_time
+            if cache_age < max_cache_age:
+                frame = self.last_frame.copy()
+            else:
+                # Cache is too old, read new frame
+                frame = self.read_frame()
+        else:
+            # No cache or cache disabled, read new frame
+            frame = self.read_frame()
+        
         if frame is None:
             return None
         
