@@ -1068,9 +1068,28 @@ def vision_analyze():
         roi_regions = []
         
         # Run object detection first if enabled
+        # NOTE: For /api/vision/analyze, we skip YOLO to prevent crashes
+        # YOLO is only called from /api/vision/detect endpoint
+        # This endpoint just uses cached results or skips detection for image annotation
+        detected_objects = []
         if use_object_detection:
-            object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
-            detected_objects = object_results.get('objects', [])
+            # Only use YOLO if method is not 'yolo' (use blob/contour instead)
+            # OR if we have cached YOLO results
+            if object_method == 'yolo':
+                # Check for cached YOLO results instead of calling YOLO again
+                if camera_service.cached_yolo_result is not None:
+                    cache_age = time.time() - camera_service.cached_yolo_result_time
+                    if cache_age < 2.0:  # Use cached result if less than 2 seconds old
+                        detected_objects = camera_service.cached_yolo_result.get('objects', [])
+                        logger.debug(f"Using cached YOLO results for analyze endpoint (age: {cache_age:.2f}s)")
+                    else:
+                        logger.debug(f"Cached YOLO results too old ({cache_age:.2f}s), skipping detection")
+                else:
+                    logger.debug("No cached YOLO results available, skipping detection")
+            else:
+                # Non-YOLO methods are safe to call
+                object_results = camera_service.detect_objects(frame, method=object_method, params=object_params)
+                detected_objects = object_results.get('objects', [])
             
             # Extract ROI regions from detected objects
             for obj in detected_objects:
