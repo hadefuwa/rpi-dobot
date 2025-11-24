@@ -1333,6 +1333,18 @@ def vision_detect():
                 results['detection_error'] = object_results['error']
             
             detected_objects = object_results.get('objects', [])
+            
+            # Assign counter numbers and save cropped images
+            if detected_objects:
+                detected_objects.sort(key=lambda obj: obj.get('x', 0))
+                detection_timestamp = time.time()
+                for idx, obj in enumerate(detected_objects, start=1):
+                    obj['counterNumber'] = idx
+                    # Save cropped image
+                    saved_path = save_counter_image(frame, obj, idx, detection_timestamp)
+                    if saved_path:
+                        obj['saved_image_path'] = saved_path
+            
             results['object_count'] = len(detected_objects)
             results['objects'] = detected_objects
             results['objects_found'] = len(detected_objects) > 0
