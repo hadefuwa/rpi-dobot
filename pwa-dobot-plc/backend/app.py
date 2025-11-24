@@ -30,6 +30,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Directory for saving counter images
+COUNTER_IMAGES_DIR = os.path.expanduser('~/counter_images')
+
+# Create directory if it doesn't exist
+os.makedirs(COUNTER_IMAGES_DIR, exist_ok=True)
+logger.info(f"Counter images will be saved to: {COUNTER_IMAGES_DIR}")
+
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend')
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -159,6 +166,55 @@ def load_config():
             },
             "server": {"port": 8080}
         }
+
+def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timestamp: float) -> str:
+    """
+    Crop and save a detected counter image with timestamp
+    
+    Args:
+        frame: Original camera frame
+        obj: Detected object dictionary with x, y, width, height
+        counter_number: Counter number (1, 2, 3, etc.)
+        timestamp: Detection timestamp
+    
+    Returns:
+        Path to saved image file, or None if failed
+    """
+    try:
+        # Get bounding box coordinates
+        x = obj.get('x', 0)
+        y = obj.get('y', 0)
+        w = obj.get('width', 0)
+        h = obj.get('height', 0)
+        
+        # Add padding around the counter
+        padding = 20
+        x1 = max(0, x - padding)
+        y1 = max(0, y - padding)
+        x2 = min(frame.shape[1], x + w + padding)
+        y2 = min(frame.shape[0], y + h + padding)
+        
+        # Crop the image
+        cropped = frame[y1:y2, x1:x2]
+        
+        if cropped.size == 0:
+            logger.warning(f"Empty crop for counter {counter_number}")
+            return None
+        
+        # Create filename with timestamp
+        dt = datetime.fromtimestamp(timestamp)
+        filename = f"counter_{counter_number}_{dt.strftime('%Y%m%d_%H%M%S_%f')[:-3]}.jpg"
+        filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+        
+        # Save the cropped image
+        cv2.imwrite(filepath, cropped)
+        logger.info(f"Saved counter {counter_number} image: {filename}")
+        
+        return filepath
+        
+    except Exception as e:
+        logger.error(f"Error saving counter image: {e}", exc_info=True)
+        return None
 
 def save_config(config):
     """Save configuration to config.json"""
