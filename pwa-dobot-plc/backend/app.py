@@ -35,6 +35,28 @@ COUNTER_IMAGES_DIR = os.path.expanduser('~/counter_images')
 
 # Create directory if it doesn't exist
 os.makedirs(COUNTER_IMAGES_DIR, exist_ok=True)
+
+# Delete all existing counter images on startup for a fresh start
+def cleanup_all_counter_images():
+    """Delete all counter images on startup"""
+    try:
+        if os.path.exists(COUNTER_IMAGES_DIR):
+            deleted_count = 0
+            for filename in os.listdir(COUNTER_IMAGES_DIR):
+                if filename.startswith('counter_') and filename.endswith('.jpg'):
+                    filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+                    try:
+                        os.remove(filepath)
+                        deleted_count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to delete {filename}: {e}")
+            if deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} counter images on startup")
+    except Exception as e:
+        logger.error(f"Error cleaning up counter images on startup: {e}")
+
+# Clean up all images on startup
+cleanup_all_counter_images()
 logger.info(f"Counter images will be saved to: {COUNTER_IMAGES_DIR}")
 
 # Initialize Flask app
@@ -206,7 +228,7 @@ def delete_old_counter_images(counter_number: int):
 def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timestamp: float) -> str:
     """
     Crop and save a detected counter image with timestamp
-    Only keeps the most recent image per counter (deletes old ones)
+    Only saves if no image exists for this counter yet (to avoid duplicates)
     
     Args:
         frame: Original camera frame
@@ -215,12 +237,20 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         timestamp: Detection timestamp
     
     Returns:
-        Path to saved image file, or None if failed
+        Path to saved image file, or None if failed or already exists
     """
     try:
-        # Delete old images for this counter before saving new one
-        delete_old_counter_images(counter_number)
+        # Check if an image already exists for this counter
+        prefix = f"counter_{counter_number}_"
+        if os.path.exists(COUNTER_IMAGES_DIR):
+            for filename in os.listdir(COUNTER_IMAGES_DIR):
+                if filename.startswith(prefix) and filename.endswith('.jpg'):
+                    # Image already exists for this counter, skip saving
+                    logger.debug(f"Counter {counter_number} image already exists, skipping save")
+                    filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+                    return filepath
         
+        # No existing image, proceed with saving
         # Get bounding box coordinates
         x = obj.get('x', 0)
         y = obj.get('y', 0)
@@ -248,7 +278,7 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         
         # Save the cropped image
         cv2.imwrite(filepath, cropped)
-        logger.info(f"Saved counter {counter_number} image: {filename} (deleted old images for this counter)")
+        logger.info(f"Saved counter {counter_number} image: {filename}")
         
         return filepath
         
