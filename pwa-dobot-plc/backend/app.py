@@ -1374,16 +1374,11 @@ def vision_detect():
             
             detected_objects = object_results.get('objects', [])
             
-            # Assign counter numbers and save cropped images
+            # Assign counter numbers (images are saved in /api/vision/analyze endpoint to avoid duplicates)
             if detected_objects:
                 detected_objects.sort(key=lambda obj: obj.get('x', 0))
-                detection_timestamp = time.time()
                 for idx, obj in enumerate(detected_objects, start=1):
                     obj['counterNumber'] = idx
-                    # Save cropped image
-                    saved_path = save_counter_image(frame, obj, idx, detection_timestamp)
-                    if saved_path:
-                        obj['saved_image_path'] = saved_path
             
             results['object_count'] = len(detected_objects)
             results['objects'] = detected_objects
