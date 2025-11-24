@@ -1704,6 +1704,168 @@ def serve_counter_image(filename):
         logger.error(f"Error serving counter image: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/counter-images/<int:counter_number>/analyze-defects', methods=['POST'])
+def analyze_counter_defects(counter_number: int):
+    """Analyze a saved counter image for defects (color changes on surface)"""
+    try:
+        if not os.path.exists(COUNTER_IMAGES_DIR):
+            return jsonify({'error': 'Counter images directory not found'}), 404
+        
+        # Find the image file for this counter
+        prefix = f"counter_{counter_number}_"
+        image_file = None
+        for filename in os.listdir(COUNTER_IMAGES_DIR):
+            if filename.startswith(prefix) and filename.endswith('.jpg'):
+                image_file = os.path.join(COUNTER_IMAGES_DIR, filename)
+                break
+        
+        if not image_file or not os.path.exists(image_file):
+            return jsonify({'error': f'Counter {counter_number} image not found'}), 404
+        
+        # Read the image
+        image = cv2.imread(image_file)
+        if image is None:
+            return jsonify({'error': 'Failed to read image file'}), 500
+        
+        # Analyze for color variations (defects)
+        defect_results = detect_color_defects(image)
+        
+        return jsonify({
+            'counter_number': counter_number,
+            'image_file': os.path.basename(image_file),
+            'defects_found': defect_results['defects_found'],
+            'defect_count': defect_results['defect_count'],
+            'defects': defect_results['defects'],
+            'confidence': defect_results['confidence'],
+            'average_color': defect_results['average_color'],
+            'color_variance': defect_results['color_variance'],
+            'timestamp': time.time()
+        })
+    except Exception as e:
+        logger.error(f"Error analyzing counter defects: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+def detect_color_defects(image: np.ndarray) -> Dict:
+    """
+    Detect defects on counter surface by analyzing color variations
+    
+    Args:
+        image: Counter image (BGR format)
+    
+    Returns:
+        Dictionary with defect detection results
+    """
+    try:
+        # Convert to HSV for better color analysis
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        
+        # Calculate average color of the entire image
+        avg_color_bgr = np.mean(image.reshape(-1, 3), axis=0)
+        avg_color_hsv = np.mean(hsv.reshape(-1, 3), axis=0)
+        
+        # Calculate color variance (standard deviation)
+        color_variance = np.std(image.reshape(-1, 3), axis=0)
+        color_variance_avg = np.mean(color_variance)
+        
+        # Threshold for defect detection - if variance is too high, there are color variations
+        # Higher variance = more color variation = potential defects
+        VARIANCE_THRESHOLD = 30  # Adjustable threshold
+        
+        # Create a mask to focus on the counter surface (exclude edges/background)
+        # Use the center 80% of the image to avoid edge effects
+        h, w = image.shape[:2]
+        margin_x = int(w * 0.1)
+        margin_y = int(h * 0.1)
+        center_region = image[margin_y:h-margin_y, margin_x:w-margin_x]
+        center_hsv = hsv[margin_y:h-margin_y, margin_x:w-margin_x]
+        
+        # Calculate variance in center region
+        center_variance = np.std(center_region.reshape(-1, 3), axis=0)
+        center_variance_avg = np.mean(center_variance)
+        
+        # Detect color anomalies (areas significantly different from average)
+        # Use adaptive thresholding to find color variations
+        hsv_v = center_hsv[:, :, 2]  # Value channel (brightness)
+        hsv_s = center_hsv[:, :, 1]  # Saturation channel
+        
+        # Calculate mean and std for value channel
+        v_mean = np.mean(hsv_v)
+        v_std = np.std(hsv_v)
+        
+        # Find pixels that deviate significantly from the mean (potential defects)
+        # Use 2 standard deviations as threshold
+        defect_mask = np.abs(hsv_v - v_mean) > (2 * v_std)
+        
+        # Also check saturation variations
+        s_mean = np.mean(hsv_s)
+        s_std = np.std(hsv_s)
+        defect_mask_s = np.abs(hsv_s - s_mean) > (2 * s_std)
+        
+        # Combine both masks
+        combined_mask = defect_mask | defect_mask_s
+        
+        # Find contours of defect regions
+        defect_mask_uint8 = (combined_mask * 255).astype(np.uint8)
+        kernel = np.ones((3, 3), np.uint8)
+        defect_mask_uint8 = cv2.morphologyEx(defect_mask_uint8, cv2.MORPH_CLOSE, kernel)
+        defect_mask_uint8 = cv2.morphologyEx(defect_mask_uint8, cv2.MORPH_OPEN, kernel)
+        
+        contours, _ = cv2.findContours(defect_mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        defects = []
+        min_defect_area = 50  # Minimum area to consider as a defect
+        
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area > min_defect_area:
+                x, y, w, h = cv2.boundingRect(contour)
+                # Adjust coordinates back to full image
+                x += margin_x
+                y += margin_y
+                
+                # Calculate defect confidence based on area and deviation
+                defect_region = image[y:y+h, x:x+w]
+                defect_color_avg = np.mean(defect_region.reshape(-1, 3), axis=0)
+                color_diff = np.linalg.norm(defect_color_avg - avg_color_bgr)
+                confidence = min(100, (color_diff / 255.0) * 100)
+                
+                defects.append({
+                    'x': int(x),
+                    'y': int(y),
+                    'width': int(w),
+                    'height': int(h),
+                    'area': float(area),
+                    'confidence': round(confidence, 2),
+                    'type': 'color_variation'
+                })
+        
+        # Determine if defects were found
+        defects_found = len(defects) > 0 or center_variance_avg > VARIANCE_THRESHOLD
+        overall_confidence = min(100, (center_variance_avg / VARIANCE_THRESHOLD) * 50) if defects_found else 0
+        
+        return {
+            'defects_found': defects_found,
+            'defect_count': len(defects),
+            'defects': defects,
+            'confidence': round(overall_confidence, 2),
+            'average_color': {
+                'b': int(avg_color_bgr[0]),
+                'g': int(avg_color_bgr[1]),
+                'r': int(avg_color_bgr[2])
+            },
+            'color_variance': round(float(center_variance_avg), 2),
+            'method': 'color_variation'
+        }
+    except Exception as e:
+        logger.error(f"Error in color defect detection: {e}", exc_info=True)
+        return {
+            'defects_found': False,
+            'defect_count': 0,
+            'defects': [],
+            'confidence': 0.0,
+            'error': str(e)
+        }
+
 @app.route('/api/counter-images/cleanup', methods=['POST'])
 def cleanup_counter_images():
     """Clean up duplicate counter images - keep only most recent per counter"""

@@ -620,6 +620,22 @@
                             <div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">Loading images...</div>
                         </div>
                     </div>
+                    
+                    <!-- Defect Detection Section -->
+                    <div id="defectDetectionSection" style="margin-top: 15px; padding: 15px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; display: block;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4 style="color: #60a5fa; font-size: 14px; margin: 0;">Defect Detection</h4>
+                            <button class="btn btn-success" onclick="analyzeAllCountersForDefects()" style="font-size: 11px; padding: 4px 8px;">
+                                🔍 Analyze All
+                            </button>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 10px;">
+                            Analyzes saved counter images to detect color changes on the counter surface
+                        </div>
+                        <div id="defectResultsList" style="max-height: 300px; overflow-y: auto;">
+                            <div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px;">No defect analysis performed yet. Click "Analyze All" to check all counters.</div>
+                        </div>
+                    </div>
 
                     <!-- Hidden inputs for method -->
                     <input type="hidden" id="objectDetectionMethod" value="yolo">
