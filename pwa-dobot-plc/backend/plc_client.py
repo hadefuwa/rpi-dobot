@@ -37,7 +37,7 @@ class PLCClient:
         self.connection_attempt_interval = 5.0
 
     def connect(self) -> bool:
-        """Connect to PLC with retry logic"""
+        """Connect to PLC with retry logic - gracefully handles failures without crashing"""
         try:
             current_time = time.time()
 
@@ -47,9 +47,13 @@ class PLCClient:
 
             self.last_connection_attempt = current_time
 
-            # Check if already connected
-            if self.connected and self.client.get_connected():
-                return True
+            # Check if already connected (with error handling)
+            try:
+                if self.connected and self.client.get_connected():
+                    return True
+            except Exception:
+                # If get_connected() fails, assume disconnected
+                self.connected = False
 
             logger.info(f"Connecting to PLC at {self.ip}, rack {self.rack}, slot {self.slot}")
 
@@ -58,26 +62,33 @@ class PLCClient:
                 try:
                     self.client.connect(self.ip, self.rack, self.slot)
 
-                    if self.client.get_connected():
-                        self.connected = True
-                        self.last_error = ""
-                        logger.info(f"✅ Connected to S7 PLC at {self.ip}")
-                        return True
+                    # Check connection status with error handling
+                    try:
+                        if self.client.get_connected():
+                            self.connected = True
+                            self.last_error = ""
+                            logger.info(f"✅ Connected to S7 PLC at {self.ip}")
+                            return True
+                    except Exception as check_error:
+                        logger.warning(f"Connection check failed: {check_error}")
+                        self.connected = False
 
                 except Exception as e:
                     self.last_error = f"Connection error: {str(e)}"
                     logger.error(f"{self.last_error} (attempt {attempt + 1}/{self.max_retries})")
+                    self.connected = False
 
                 # Wait before retry
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
 
             self.connected = False
+            logger.warning(f"PLC unreachable at {self.ip} - continuing without PLC connection")
             return False
 
         except Exception as e:
             self.last_error = f"Connection error: {str(e)}"
-            logger.error(self.last_error)
+            logger.error(f"PLC connection failed: {self.last_error}")
             self.connected = False
             return False
 
@@ -92,8 +103,14 @@ class PLCClient:
             logger.error(f"Error disconnecting: {e}")
 
     def is_connected(self) -> bool:
-        """Check if connected to PLC"""
-        return self.connected and self.client.get_connected()
+        """Check if connected to PLC - gracefully handles errors"""
+        try:
+            return self.connected and self.client.get_connected()
+        except Exception as e:
+            # If check fails, assume disconnected
+            logger.debug(f"PLC connection check failed: {e}")
+            self.connected = False
+            return False
 
     def read_db_real(self, db_number: int, offset: int) -> Optional[float]:
         """Read REAL (float) value from data block"""

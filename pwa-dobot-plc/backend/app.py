@@ -140,18 +140,32 @@ def health_check():
 @app.route('/api/data', methods=['GET'])
 def get_all_data():
     """Get all data in a single request to minimize PLC load"""
-    # Connect if needed
-    if not plc_client.is_connected():
-        plc_client.connect()
+    # Connect if needed (gracefully handle failures)
+    try:
+        if not plc_client.is_connected():
+            plc_client.connect()
+    except Exception as e:
+        logger.error(f"PLC connection attempt failed: {e}")
 
     # Get all PLC data in optimized way with small delays between operations
-    plc_status = plc_client.get_status()
+    try:
+        plc_status = plc_client.get_status()
 
-    if plc_status['connected']:
-        target_pose = plc_client.read_target_pose()
-        time.sleep(0.15)  # 150ms delay to avoid job pending with S7-1200
-        control_bits = plc_client.read_control_bits()
-    else:
+        if plc_status['connected']:
+            try:
+                target_pose = plc_client.read_target_pose()
+                time.sleep(0.15)  # 150ms delay to avoid job pending with S7-1200
+                control_bits = plc_client.read_control_bits()
+            except Exception as e:
+                logger.error(f"PLC read error: {e}")
+                target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+                control_bits = {}
+        else:
+            target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+            control_bits = {}
+    except Exception as e:
+        logger.error(f"PLC status check failed: {e}")
+        plc_status = {'connected': False, 'ip': plc_client.ip if plc_client else 'unknown', 'last_error': str(e)}
         target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
         control_bits = {}
 
@@ -198,45 +212,71 @@ def plc_disconnect():
 @app.route('/api/plc/pose', methods=['GET'])
 def get_plc_pose():
     """Get target pose from PLC"""
-    if not plc_client.is_connected():
-        plc_client.connect()
+    try:
+        if not plc_client.is_connected():
+            plc_client.connect()
 
-    pose = plc_client.read_target_pose()
-    return jsonify(pose)
+        pose = plc_client.read_target_pose()
+        return jsonify(pose)
+    except Exception as e:
+        logger.error(f"PLC pose read error: {e}")
+        return jsonify({'x': 0.0, 'y': 0.0, 'z': 0.0, 'error': str(e)})
 
 @app.route('/api/plc/pose', methods=['POST'])
 def set_plc_pose():
     """Write current pose to PLC"""
-    data = request.json
-    if not all(k in data for k in ['x', 'y', 'z']):
-        return jsonify({'error': 'Missing x, y, or z'}), 400
+    try:
+        data = request.json
+        if not all(k in data for k in ['x', 'y', 'z']):
+            return jsonify({'error': 'Missing x, y, or z'}), 400
 
-    if not plc_client.is_connected():
-        plc_client.connect()
+        if not plc_client.is_connected():
+            plc_client.connect()
 
-    plc_client.write_current_pose(data)
-    return jsonify({'success': True})
+        if plc_client.is_connected():
+            success = plc_client.write_current_pose(data)
+            return jsonify({'success': success})
+        else:
+            return jsonify({'success': False, 'error': 'PLC not connected'})
+    except Exception as e:
+        logger.error(f"PLC pose write error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/plc/control', methods=['GET'])
 def get_control_bits():
     """Get all control bits"""
-    if not plc_client.is_connected():
-        plc_client.connect()
+    try:
+        if not plc_client.is_connected():
+            plc_client.connect()
 
-    bits = plc_client.read_control_bits()
-    return jsonify(bits)
+        bits = plc_client.read_control_bits()
+        return jsonify(bits)
+    except Exception as e:
+        logger.error(f"PLC control bits read error: {e}")
+        return jsonify({
+            'start': False, 'stop': False, 'home': False, 'estop': False,
+            'suction': False, 'ready': False, 'busy': False, 'error': False,
+            'error': str(e)
+        })
 
 @app.route('/api/plc/control/<bit_name>', methods=['POST'])
 def set_control_bit(bit_name):
     """Set a single control bit"""
-    data = request.json
-    value = data.get('value', False)
+    try:
+        data = request.json
+        value = data.get('value', False)
 
-    if not plc_client.is_connected():
-        plc_client.connect()
+        if not plc_client.is_connected():
+            plc_client.connect()
 
-    success = plc_client.write_control_bit(bit_name, value)
-    return jsonify({'success': success})
+        if plc_client.is_connected():
+            success = plc_client.write_control_bit(bit_name, value)
+            return jsonify({'success': success})
+        else:
+            return jsonify({'success': False, 'error': 'PLC not connected'})
+    except Exception as e:
+        logger.error(f"PLC control bit write error: {e}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/dobot/status', methods=['GET'])
 def dobot_status():
@@ -422,15 +462,25 @@ def emergency_stop():
     results = {}
 
     # Stop Dobot
-    if dobot_client.connected:
-        dobot_client.stop_queue()  # Stop queue execution first
-        dobot_client.clear_queue()  # Then clear queued commands
-        results['dobot'] = 'stopped'
+    try:
+        if dobot_client.connected:
+            dobot_client.stop_queue()  # Stop queue execution first
+            dobot_client.clear_queue()  # Then clear queued commands
+            results['dobot'] = 'stopped'
+    except Exception as e:
+        logger.error(f"Dobot emergency stop error: {e}")
+        results['dobot'] = 'error'
 
-    # Signal PLC
-    if plc_client.is_connected():
-        plc_client.write_control_bit('estop', True)
-        results['plc'] = 'signaled'
+    # Signal PLC (gracefully handle if PLC is offline)
+    try:
+        if plc_client.is_connected():
+            plc_client.write_control_bit('estop', True)
+            results['plc'] = 'signaled'
+        else:
+            results['plc'] = 'not_connected'
+    except Exception as e:
+        logger.error(f"PLC emergency stop error: {e}")
+        results['plc'] = 'error'
 
     return jsonify({'success': True, **results})
 
@@ -710,31 +760,55 @@ def poll_loop():
 
     while poll_running:
         try:
-            # Ensure PLC connection
-            if not plc_client.is_connected():
-                plc_client.connect()
+            # Ensure PLC connection (gracefully handle failures)
+            try:
+                if not plc_client.is_connected():
+                    plc_client.connect()
+            except Exception as e:
+                logger.debug(f"PLC connection attempt in polling: {e}")
 
-            # Read PLC data
-            control_bits = plc_client.read_control_bits()
-            target_pose = plc_client.read_target_pose()
+            # Read PLC data (gracefully handle failures)
+            try:
+                if plc_client.is_connected():
+                    control_bits = plc_client.read_control_bits()
+                    target_pose = plc_client.read_target_pose()
+                else:
+                    control_bits = {
+                        'start': False, 'stop': False, 'home': False, 'estop': False,
+                        'suction': False, 'ready': False, 'busy': False, 'error': False
+                    }
+                    target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+            except Exception as e:
+                logger.debug(f"PLC read error in polling: {e}")
+                control_bits = {
+                    'start': False, 'stop': False, 'home': False, 'estop': False,
+                    'suction': False, 'ready': False, 'busy': False, 'error': False
+                }
+                target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
 
             # Read Dobot data
             dobot_pose = None
-            if dobot_client.connected:
-                dobot_pose = dobot_client.get_pose()
+            try:
+                if dobot_client.connected:
+                    dobot_pose = dobot_client.get_pose()
+            except Exception as e:
+                logger.debug(f"Dobot read error in polling: {e}")
 
             # Emit data to all connected clients
-            socketio.emit('plc_data', {
-                'control_bits': control_bits,
-                'target_pose': target_pose,
-                'timestamp': time.time()
-            })
-
-            if dobot_pose:
-                socketio.emit('dobot_data', {
-                    'pose': dobot_pose,
+            try:
+                socketio.emit('plc_data', {
+                    'control_bits': control_bits,
+                    'target_pose': target_pose,
                     'timestamp': time.time()
                 })
+
+                if dobot_pose:
+                    socketio.emit('dobot_data', {
+                        'pose': dobot_pose,
+                        'timestamp': time.time()
+                    })
+            except Exception as e:
+                logger.debug(f"Socket emit error: {e}")
 
         except Exception as e:
             logger.error(f"Polling error: {e}")
@@ -748,7 +822,7 @@ def poll_loop():
 # ==================================================
 
 def write_plc_fault_bit(defects_found: bool):
-    """Write vision fault status to PLC memory bit"""
+    """Write vision fault status to PLC memory bit - gracefully handles PLC offline"""
     try:
         config = load_config()
         vision_config = config.get('vision', {})
@@ -761,24 +835,32 @@ def write_plc_fault_bit(defects_found: bool):
         byte_offset = vision_config.get('fault_bit_byte', 1)
         bit_offset = vision_config.get('fault_bit_bit', 0)
         
-        # Ensure PLC is connected
-        if not plc_client.is_connected():
-            plc_client.connect()
+        # Ensure PLC is connected (gracefully handle failures)
+        try:
+            if not plc_client.is_connected():
+                plc_client.connect()
+        except Exception as e:
+            logger.debug(f"PLC connection attempt failed in write_plc_fault_bit: {e}")
+            return {'written': False, 'reason': 'plc_not_connected', 'error': str(e)}
         
         # Write fault bit (True = defects found, False = no defects)
-        if plc_client.is_connected():
-            success = plc_client.write_m_bit(byte_offset, bit_offset, defects_found)
-            if success:
-                logger.info(f"Vision fault bit M{byte_offset}.{bit_offset} set to {defects_found}")
-                return {'written': True, 'address': f'M{byte_offset}.{bit_offset}', 'value': defects_found}
+        try:
+            if plc_client.is_connected():
+                success = plc_client.write_m_bit(byte_offset, bit_offset, defects_found)
+                if success:
+                    logger.info(f"Vision fault bit M{byte_offset}.{bit_offset} set to {defects_found}")
+                    return {'written': True, 'address': f'M{byte_offset}.{bit_offset}', 'value': defects_found}
+                else:
+                    logger.warning(f"Failed to write vision fault bit M{byte_offset}.{bit_offset}")
+                    return {'written': False, 'reason': 'write_failed', 'address': f'M{byte_offset}.{bit_offset}'}
             else:
-                logger.warning(f"Failed to write vision fault bit M{byte_offset}.{bit_offset}")
-                return {'written': False, 'reason': 'write_failed', 'address': f'M{byte_offset}.{bit_offset}'}
-        else:
-            logger.warning("PLC not connected, cannot write vision fault bit")
-            return {'written': False, 'reason': 'plc_not_connected'}
+                logger.debug("PLC not connected, cannot write vision fault bit")
+                return {'written': False, 'reason': 'plc_not_connected'}
+        except Exception as e:
+            logger.error(f"Error writing vision fault bit: {e}")
+            return {'written': False, 'reason': 'write_error', 'error': str(e)}
     except Exception as e:
-        logger.error(f"Error writing vision fault bit to PLC: {e}")
+        logger.error(f"Error in write_plc_fault_bit: {e}")
         return {'written': False, 'reason': str(e)}
 
 def generate_frames():
@@ -1117,8 +1199,15 @@ def serve_pwa(path):
 if __name__ == '__main__':
     init_clients()
 
-    # Auto-connect to PLC
-    plc_client.connect()
+    # Auto-connect to PLC (gracefully handle failures - don't crash if PLC is offline)
+    try:
+        plc_client.connect()
+        if plc_client.is_connected():
+            logger.info("✅ PLC connected successfully")
+        else:
+            logger.warning(f"⚠️ PLC not available at {plc_client.ip} - app will continue without PLC")
+    except Exception as e:
+        logger.error(f"PLC connection failed on startup: {e} - app will continue without PLC")
 
     # Auto-connect to Dobot
     logger.info("🤖 Attempting to connect to Dobot robot...")
