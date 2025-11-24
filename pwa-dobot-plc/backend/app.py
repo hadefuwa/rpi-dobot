@@ -1199,15 +1199,9 @@ def serve_pwa(path):
 if __name__ == '__main__':
     init_clients()
 
-    # Auto-connect to PLC (gracefully handle failures - don't crash if PLC is offline)
-    try:
-        plc_client.connect()
-        if plc_client.is_connected():
-            logger.info("✅ PLC connected successfully")
-        else:
-            logger.warning(f"⚠️ PLC not available at {plc_client.ip} - app will continue without PLC")
-    except Exception as e:
-        logger.error(f"PLC connection failed on startup: {e} - app will continue without PLC")
+    # Don't auto-connect to PLC on startup - let it connect when needed
+    # This prevents snap7 crashes from killing the app if PLC is offline
+    logger.info(f"PLC client initialized for {plc_client.ip} - will connect when needed")
 
     # Auto-connect to Dobot
     logger.info("🤖 Attempting to connect to Dobot robot...")
