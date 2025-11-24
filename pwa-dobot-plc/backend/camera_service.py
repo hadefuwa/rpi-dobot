@@ -274,7 +274,6 @@ class CameraService:
             }
 
         # Calculate frame hash to detect if frame changed
-        import hashlib
         frame_hash = hashlib.md5(frame.tobytes()).hexdigest()
         
         # Rate limiting and caching: return cached result if called too soon or same frame
