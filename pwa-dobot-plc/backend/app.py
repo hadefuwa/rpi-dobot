@@ -87,7 +87,20 @@ def call_vision_service(frame: np.ndarray, params: Dict) -> Dict:
         )
         
         if response.status_code == 200:
-            return response.json()
+            try:
+                result = response.json()
+                # Validate result structure
+                if not isinstance(result, dict):
+                    raise ValueError("Vision service returned invalid response format")
+                return result
+            except (ValueError, json.JSONDecodeError) as e:
+                logger.error(f"Error parsing vision service response: {e}")
+                return {
+                    'objects_found': False,
+                    'object_count': 0,
+                    'objects': [],
+                    'error': 'Invalid response from vision service'
+                }
         else:
             logger.error(f"Vision service returned error: {response.status_code} - {response.text}")
             return {
@@ -198,16 +211,9 @@ def init_clients():
     except Exception as e:
         logger.warning(f"Camera initialization failed (may not be connected): {e}")
 
-    # Load YOLO model if available
-    model_path = os.path.expanduser('~/counter_detector.pt')
-    if os.path.exists(model_path):
-        try:
-            camera_service.load_yolo_model(model_path)
-            logger.info(f"YOLO model loaded: {model_path}")
-        except Exception as e:
-            logger.warning(f"Failed to load YOLO model: {e}")
-    else:
-        logger.info(f"YOLO model not found at {model_path} - using fallback detection")
+    # YOLO model is now loaded in the separate vision-service process
+    # No need to load it here - all YOLO calls go through vision service
+    logger.info("YOLO detection will be handled by vision-service (separate process)")
 
     logger.info(f"Clients initialized - PLC: {plc_config['ip']}, Dobot USB: {dobot_config.get('usb_path', 'auto-detect')}")
 
