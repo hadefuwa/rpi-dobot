@@ -134,21 +134,26 @@ class CameraService:
                 logger.info("Background subtractor reset")
     
     def read_frame(self) -> Optional[np.ndarray]:
-        """Read a single frame from camera"""
+        """Read a frame from camera"""
         try:
             with self.lock:
-                if self.camera is None or not self.camera.isOpened():
+                if self.camera is None:
+                    return None
+                
+                # Check if camera is still opened
+                if not self.camera.isOpened():
+                    logger.warning("Camera is no longer opened")
                     return None
                 
                 ret, frame = self.camera.read()
-                if ret:
-                    self.last_frame = frame.copy()
+                if ret and frame is not None:
+                    self.last_frame = frame
                     self.frame_time = time.time()
                     return frame
-                return None
-                
+                else:
+                    return None
         except Exception as e:
-            logger.error(f"Error reading frame: {e}")
+            logger.warning(f"Error reading camera frame: {e}")
             return None
     
     def get_frame_jpeg(self, quality: int = 85, use_cache: bool = True, max_cache_age: float = 0.5) -> Optional[bytes]:
