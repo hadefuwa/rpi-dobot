@@ -14,8 +14,10 @@ import json
 import subprocess
 import sys
 import cv2
+import numpy as np
 import requests
 import base64
+from typing import Dict
 from plc_client import PLCClient
 from dobot_client import DobotClient
 from camera_service import CameraService
