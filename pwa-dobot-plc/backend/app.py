@@ -1079,7 +1079,7 @@ def vision_analyze():
                 # Check for cached YOLO results instead of calling YOLO again
                 if camera_service.cached_yolo_result is not None:
                     cache_age = time.time() - camera_service.cached_yolo_result_time
-                    if cache_age < 2.0:  # Use cached result if less than 2 seconds old
+                    if cache_age < 5.0:  # Use cached result if less than 5 seconds old
                         detected_objects = camera_service.cached_yolo_result.get('objects', [])
                         logger.debug(f"Using cached YOLO results for analyze endpoint (age: {cache_age:.2f}s)")
                     else:

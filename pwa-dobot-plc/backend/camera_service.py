@@ -57,14 +57,14 @@ class CameraService:
         self.yolo_model_path = None
         self.yolo_lock = threading.Lock()  # Lock to prevent concurrent YOLO calls (YOLO is not thread-safe)
         self.last_yolo_call_time = 0
-        self.min_yolo_interval = 1.0  # Minimum 1 second between YOLO calls to prevent crashes
+        self.min_yolo_interval = 3.0  # Minimum 3 seconds between YOLO calls to prevent crashes
         self.cached_yolo_result = None  # Cache last YOLO detection result
         self.cached_yolo_result_time = 0
         self.cached_yolo_frame_hash = None  # Hash of frame to detect if frame changed
         self.yolo_crash_count = 0  # Track consecutive crashes
         self.yolo_disabled_until = 0  # Timestamp when YOLO can be re-enabled after crashes
-        self.max_crashes = 3  # Disable YOLO after 3 consecutive crashes
-        self.disable_duration = 30  # Disable for 30 seconds after crashes
+        self.max_crashes = 2  # Disable YOLO after 2 consecutive crashes (more aggressive)
+        self.disable_duration = 60  # Disable for 60 seconds after crashes (longer cooldown)
         
     def initialize_camera(self) -> bool:
         """Initialize and open camera"""
@@ -307,10 +307,10 @@ class CameraService:
 
         # ALWAYS return cached result if available and recent (prevents crashes)
         # Return cached result if:
-        # 1. Cache exists and is less than 2 seconds old, OR
+        # 1. Cache exists and is less than 5 seconds old, OR
         # 2. Called too soon (less than min interval)
         if self.cached_yolo_result is not None:
-            if cache_age < 2.0 or time_since_last_call < self.min_yolo_interval:
+            if cache_age < 5.0 or time_since_last_call < self.min_yolo_interval:
                 logger.debug(f"YOLO returning cached result (cache age: {cache_age:.3f}s, time since last: {time_since_last_call:.3f}s)")
                 # Return cached result with updated timestamp
                 cached = self.cached_yolo_result.copy()
