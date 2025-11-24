@@ -1502,13 +1502,16 @@
                     }
                 }
                 
-                // Display results
-                if (analysisResults.length === 0) {
-                    resultsList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px;">No analysis results</div>';
+                // Filter to only show counters with defects
+                const countersWithDefects = analysisResults.filter(result => result.defects_found === true);
+                
+                // Display results - only show counters with defects
+                if (countersWithDefects.length === 0) {
+                    resultsList.innerHTML = '<div style="color: #10b981; text-align: center; padding: 20px; font-size: 12px;">✓ No defects found - all counters are good!</div>';
                     return;
                 }
                 
-                resultsList.innerHTML = analysisResults.map(result => {
+                resultsList.innerHTML = countersWithDefects.map(result => {
                     if (result.error) {
                         return `
                             <div style="background: rgba(30, 41, 59, 0.6); border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 3px solid #ef4444;">
@@ -1541,7 +1544,7 @@
                     `;
                 }).join('');
                 
-                addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed`, 'info');
+                addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed, ${countersWithDefects.length} with defects found`, 'info');
             } catch (error) {
                 console.error('Error analyzing counters for defects:', error);
                 resultsList.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px; font-size: 12px;">Error: ${error.message}</div>`;
