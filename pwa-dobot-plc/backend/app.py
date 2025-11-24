@@ -34,7 +34,7 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Initialize clients
-plc_client = None
+plc_client = None  # Will be None if snap7 fails
 dobot_client = None
 camera_service = None
 
@@ -79,13 +79,20 @@ def init_clients():
 
     config = load_config()
 
-    # PLC settings
+    # PLC settings - only create if snap7 is available (gracefully handle if not)
     plc_config = config['plc']
-    plc_client = PLCClient(
-        plc_config['ip'],
-        plc_config['rack'],
-        plc_config['slot']
-    )
+    try:
+        plc_client = PLCClient(
+            plc_config['ip'],
+            plc_config['rack'],
+            plc_config['slot']
+        )
+        # Check if snap7 client was actually created
+        if plc_client.client is None:
+            logger.warning("PLC client created but snap7 not available - PLC features disabled")
+    except Exception as e:
+        logger.error(f"Failed to initialize PLC client: {e} - PLC features will be disabled")
+        plc_client = None
 
     # Dobot settings
     dobot_config = config['dobot']
@@ -143,7 +150,10 @@ def get_all_data():
     # Default values - don't try to connect to PLC
     target_pose = {'x': 0.0, 'y': 0.0, 'z': 0.0}
     control_bits = {}
-    plc_status = {'connected': False, 'ip': plc_client.ip if plc_client else 'unknown', 'last_error': 'PLC not available'}
+    plc_ip = 'unknown'
+    if plc_client and hasattr(plc_client, 'ip'):
+        plc_ip = plc_client.ip
+    plc_status = {'connected': False, 'ip': plc_ip, 'last_error': 'PLC not available'}
     
     # Only try PLC operations if snap7 is available and client exists
     if plc_client and hasattr(plc_client, 'client') and plc_client.client is not None:
@@ -161,7 +171,10 @@ def get_all_data():
                     control_bits = {}
         except Exception as e:
             logger.debug(f"PLC status check failed: {e}")
-            plc_status = {'connected': False, 'ip': plc_client.ip if plc_client else 'unknown', 'last_error': str(e)}
+            plc_ip = 'unknown'
+            if plc_client and hasattr(plc_client, 'ip'):
+                plc_ip = plc_client.ip
+            plc_status = {'connected': False, 'ip': plc_ip, 'last_error': str(e)}
 
     # Get Dobot data
     dobot_status_data = {
@@ -185,11 +198,19 @@ def get_all_data():
 @app.route('/api/plc/status', methods=['GET'])
 def plc_status():
     """Get PLC connection status"""
+    if plc_client is None:
+        return jsonify({'connected': False, 'ip': 'unknown', 'last_error': 'PLC client not initialized'})
     return jsonify(plc_client.get_status())
 
 @app.route('/api/plc/connect', methods=['POST'])
 def plc_connect():
     """Connect to PLC"""
+    if plc_client is None:
+        return jsonify({
+            'success': False,
+            'connected': False,
+            'error': 'PLC client not initialized'
+        })
     success = plc_client.connect()
     return jsonify({
         'success': success,
@@ -200,7 +221,8 @@ def plc_connect():
 @app.route('/api/plc/disconnect', methods=['POST'])
 def plc_disconnect():
     """Disconnect from PLC"""
-    plc_client.disconnect()
+    if plc_client is not None:
+        plc_client.disconnect()
     return jsonify({'success': True})
 
 @app.route('/api/plc/pose', methods=['GET'])
@@ -965,12 +987,13 @@ def camera_disconnect():
 
 @app.route('/api/camera/capture', methods=['GET'])
 def camera_capture():
-    """Capture a single frame as JPEG"""
+    """Capture a single frame as JPEG - uses cached frame if recent to reduce camera load"""
     if camera_service is None:
         return jsonify({'error': 'Camera service not initialized'}), 503
     
     try:
-        frame_bytes = camera_service.get_frame_jpeg(quality=95)
+        # Use cached frame if less than 0.5 seconds old (optimization for 1-second snapshot updates)
+        frame_bytes = camera_service.get_frame_jpeg(quality=85, use_cache=True, max_cache_age=0.5)
         if frame_bytes is None:
             return jsonify({'error': 'Failed to capture frame'}), 500
         
@@ -1186,7 +1209,11 @@ if __name__ == '__main__':
 
     # Don't auto-connect to PLC on startup - let it connect when needed
     # This prevents snap7 crashes from killing the app if PLC is offline
-    logger.info(f"PLC client initialized for {plc_client.ip} - will connect when needed")
+    if plc_client:
+        plc_ip = plc_client.ip if hasattr(plc_client, 'ip') else 'unknown'
+        logger.info(f"PLC client initialized for {plc_ip} - will connect when needed")
+    else:
+        logger.info("PLC client not initialized - PLC features disabled")
 
     # Auto-connect to Dobot
     logger.info("🤖 Attempting to connect to Dobot robot...")
