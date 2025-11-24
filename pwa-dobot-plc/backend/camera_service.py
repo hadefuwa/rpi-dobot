@@ -281,18 +281,18 @@ class CameraService:
         time_since_last_call = current_time - self.last_yolo_call_time
         cache_age = current_time - self.cached_yolo_result_time
         
+        # ALWAYS return cached result if available and recent (prevents crashes)
         # Return cached result if:
-        # 1. Same frame and cache is less than 0.5 seconds old, OR
-        # 2. Called too soon (less than min interval) and cache exists
-        if (self.cached_yolo_result is not None and 
-            ((frame_hash == self.cached_yolo_frame_hash and cache_age < 0.5) or
-             (time_since_last_call < self.min_yolo_interval and cache_age < 1.0))):
-            logger.debug(f"YOLO returning cached result (cache age: {cache_age:.3f}s, time since last: {time_since_last_call:.3f}s)")
-            # Return cached result with updated timestamp
-            cached = self.cached_yolo_result.copy()
-            cached['timestamp'] = current_time
-            cached['cached'] = True
-            return cached
+        # 1. Cache exists and is less than 2 seconds old, OR
+        # 2. Called too soon (less than min interval)
+        if self.cached_yolo_result is not None:
+            if cache_age < 2.0 or time_since_last_call < self.min_yolo_interval:
+                logger.debug(f"YOLO returning cached result (cache age: {cache_age:.3f}s, time since last: {time_since_last_call:.3f}s)")
+                # Return cached result with updated timestamp
+                cached = self.cached_yolo_result.copy()
+                cached['timestamp'] = current_time
+                cached['cached'] = True
+                return cached
 
         # Rate limiting: prevent YOLO calls too close together (prevents crashes)
         if time_since_last_call < self.min_yolo_interval:
