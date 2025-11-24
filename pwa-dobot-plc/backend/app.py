@@ -74,14 +74,13 @@ def count_existing_counter_images() -> int:
         logger.error(f"Error counting counter images: {e}")
         return 0
 
-# Don't delete images on startup - only delete when 16 counters are detected
-# Check if we already have 16 counters, and if so, clean up to start fresh
+# Delete all counter images on startup for a fresh start
 existing_counter_count = count_existing_counter_images()
-if existing_counter_count >= 16:
-    logger.info(f"Found {existing_counter_count} counter images - cleaning up to start fresh")
+if existing_counter_count > 0:
+    logger.info(f"Found {existing_counter_count} counter images - cleaning up on startup")
     cleanup_all_counter_images()
 else:
-    logger.info(f"Found {existing_counter_count} counter images - keeping them (will delete when 16 counters detected)")
+    logger.info("No counter images found - starting fresh")
 
 # Also clean up counter positions file on startup
 try:
