@@ -101,30 +101,16 @@ _counter_tracker['max_counter_number'] = 0
 logger.info("Counter tracker reset to 0 on startup")
 
 def get_next_counter_number() -> int:
-    """Get the next available counter number, incrementing from the highest seen"""
-    # Check existing images to find the actual max (but cap at reasonable number to prevent runaway)
-    max_from_images = 0
-    if os.path.exists(COUNTER_IMAGES_DIR):
-        for filename in os.listdir(COUNTER_IMAGES_DIR):
-            if filename.startswith('counter_') and filename.endswith('.jpg'):
-                parts = filename.split('_')
-                if len(parts) >= 2:
-                    try:
-                        counter_num = int(parts[1])
-                        # Cap at 20 to prevent runaway numbering from corrupted data
-                        if counter_num <= 20:
-                            max_from_images = max(max_from_images, counter_num)
-                    except ValueError:
-                        pass
-    
-    # Use the higher of tracker or images (but ensure tracker doesn't exceed 20)
-    _counter_tracker['max_counter_number'] = max(_counter_tracker['max_counter_number'], max_from_images)
-    if _counter_tracker['max_counter_number'] >= 20:
-        # Reset if somehow we got a corrupted high number
-        logger.warning(f"Counter tracker had high value {_counter_tracker['max_counter_number']}, resetting to 0")
-        _counter_tracker['max_counter_number'] = 0
-    
+    """Get the next available counter number, incrementing sequentially"""
+    # Simply increment from the tracker (don't check existing images to avoid jumps)
     _counter_tracker['max_counter_number'] += 1
+    
+    # Safety cap: reset if somehow we exceed 20 (shouldn't happen with proper cleanup)
+    if _counter_tracker['max_counter_number'] > 20:
+        logger.warning(f"Counter tracker exceeded 20 ({_counter_tracker['max_counter_number']}), resetting to 0")
+        _counter_tracker['max_counter_number'] = 0
+        _counter_tracker['max_counter_number'] += 1
+    
     return _counter_tracker['max_counter_number']
 
 def get_max_counter_number() -> int:
@@ -132,24 +118,11 @@ def get_max_counter_number() -> int:
     return _counter_tracker['max_counter_number']
 
 def initialize_counter_tracker():
-    """Initialize counter tracker by checking existing saved images"""
-    try:
-        if os.path.exists(COUNTER_IMAGES_DIR):
-            max_num = 0
-            for filename in os.listdir(COUNTER_IMAGES_DIR):
-                if filename.startswith('counter_') and filename.endswith('.jpg'):
-                    # Parse counter number from filename: counter_1_*.jpg
-                    parts = filename.split('_')
-                    if len(parts) >= 2:
-                        try:
-                            counter_num = int(parts[1])
-                            max_num = max(max_num, counter_num)
-                        except ValueError:
-                            continue
-            _counter_tracker['max_counter_number'] = max_num
-            logger.info(f"Initialized counter tracker: max counter number = {max_num}")
-    except Exception as e:
-        logger.error(f"Error initializing counter tracker: {e}")
+    """Initialize counter tracker - start fresh since images are deleted on startup"""
+    # Don't check existing images - start from 0 since we delete images on startup
+    # This ensures sequential numbering: 1, 2, 3, 4, etc.
+    _counter_tracker['max_counter_number'] = 0
+    logger.info("Initialized counter tracker: starting from 0 (images deleted on startup)")
 
 # Initialize counter tracker on startup
 initialize_counter_tracker()
