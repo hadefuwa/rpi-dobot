@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 # Directory for saving counter images
 COUNTER_IMAGES_DIR = os.path.expanduser('~/counter_images')
+COUNTER_POSITIONS_FILE = os.path.join(COUNTER_IMAGES_DIR, 'counter_positions.json')
 
 # Create directory if it doesn't exist
 os.makedirs(COUNTER_IMAGES_DIR, exist_ok=True)
@@ -344,8 +345,6 @@ def find_matching_counter(obj: Dict, existing_counters: Dict[int, Dict]) -> int:
             best_distance = distance
     
     return best_match
-
-COUNTER_POSITIONS_FILE = os.path.join(COUNTER_IMAGES_DIR, 'counter_positions.json')
 
 def load_existing_counter_positions() -> Dict[int, Dict]:
     """
@@ -1799,12 +1798,13 @@ def analyze_counter_defects(counter_number: int):
         return jsonify({
             'counter_number': counter_number,
             'image_file': os.path.basename(image_file),
-            'defects_found': defect_results['defects_found'],
-            'defect_count': defect_results['defect_count'],
-            'defects': defect_results['defects'],
-            'confidence': defect_results['confidence'],
-            'average_color': defect_results['average_color'],
-            'color_variance': defect_results['color_variance'],
+            'defects_found': defect_results.get('defects_found', False),
+            'defect_count': defect_results.get('defect_count', 0),
+            'defects': defect_results.get('defects', []),
+            'confidence': defect_results.get('confidence', 0.0),
+            'dominant_color': defect_results.get('dominant_color', {'b': 0, 'g': 0, 'r': 0}),
+            'total_defect_area_percentage': defect_results.get('total_defect_area_percentage', 0.0),
+            'color_variance': defect_results.get('total_defect_area_percentage', 0.0),  # Keep for backward compatibility
             'timestamp': time.time()
         })
     except Exception as e:
