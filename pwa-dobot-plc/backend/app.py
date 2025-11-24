@@ -385,6 +385,27 @@ def save_counter_positions(counter_positions: Dict[int, Dict]):
     except Exception as e:
         logger.error(f"Error saving counter positions: {e}")
 
+def counter_image_exists(counter_number: int) -> bool:
+    """
+    Check if an image already exists for a counter number
+    
+    Args:
+        counter_number: Counter number to check
+    
+    Returns:
+        True if image exists, False otherwise
+    """
+    try:
+        prefix = f"counter_{counter_number}_"
+        if os.path.exists(COUNTER_IMAGES_DIR):
+            for filename in os.listdir(COUNTER_IMAGES_DIR):
+                if filename.startswith(prefix) and filename.endswith('.jpg'):
+                    return True
+        return False
+    except Exception as e:
+        logger.error(f"Error checking if counter image exists: {e}")
+        return False
+
 def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timestamp: float) -> str:
     """
     Crop and save a detected counter image with timestamp
@@ -1482,10 +1503,19 @@ def vision_analyze():
                         'last_seen_timestamp': detection_timestamp
                     }
                     matched_counters[matched_counter_num] = updated_positions[matched_counter_num]
-                    # Try to save image (will skip if already exists)
-                    saved_path = save_counter_image(frame, obj, matched_counter_num, detection_timestamp)
-                    if saved_path:
-                        obj['saved_image_path'] = saved_path
+                    # Only save image if it doesn't already exist (persist existing images)
+                    if not counter_image_exists(matched_counter_num):
+                        saved_path = save_counter_image(frame, obj, matched_counter_num, detection_timestamp)
+                        if saved_path:
+                            obj['saved_image_path'] = saved_path
+                    else:
+                        # Image already exists, just get the path for reference
+                        prefix = f"counter_{matched_counter_num}_"
+                        if os.path.exists(COUNTER_IMAGES_DIR):
+                            for filename in os.listdir(COUNTER_IMAGES_DIR):
+                                if filename.startswith(prefix) and filename.endswith('.jpg'):
+                                    obj['saved_image_path'] = os.path.join(COUNTER_IMAGES_DIR, filename)
+                                    break
                 elif len(existing_counter_numbers) < 16:
                     # No match found and we have room for new counters
                     # Assign new number and save image
