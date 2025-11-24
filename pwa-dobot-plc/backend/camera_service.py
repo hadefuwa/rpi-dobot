@@ -478,6 +478,9 @@ class CameraService:
                         'timestamp': time.time(),
                         'error': f'YOLO detection failed: {str(e)} (crash #{self.yolo_crash_count})'
                     }
+            finally:
+                # Ensure lock is released even if there's an error
+                pass
 
     def _detect_with_blob(self, frame: np.ndarray, params: Dict) -> Dict:
         """Detect objects using SimpleBlobDetector"""
