@@ -91,7 +91,7 @@ def detect_with_yolo(frame: np.ndarray, params: Dict) -> Dict:
     with yolo_lock:
         try:
             # Extract parameters
-            conf_threshold = params.get('conf', 0.1)  # Default reduced to 0.1 (10%) for better detection
+            conf_threshold = params.get('conf', 0.15)  # Default 0.15 (15%) confidence threshold
             iou = params.get('iou', 0.45)
             classes = params.get('classes', None)
             crop_top_percent = params.get('crop_top_percent', 0)

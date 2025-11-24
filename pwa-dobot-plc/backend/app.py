@@ -1848,7 +1848,7 @@ def detect_color_defects(image: np.ndarray) -> Dict:
         
         # Calculate color difference threshold - defects must be significantly different
         # Use Euclidean distance in RGB space
-        COLOR_DIFFERENCE_THRESHOLD = 80  # Minimum color difference to be considered a defect
+        COLOR_DIFFERENCE_THRESHOLD = 110  # Minimum color difference to be considered a defect
         MIN_DEFECT_AREA_PERCENT = 2.0  # Defect must be at least 2% of counter area
         min_defect_area = int((h * w) * (MIN_DEFECT_AREA_PERCENT / 100))
         
