@@ -36,9 +36,8 @@ COUNTER_IMAGES_DIR = os.path.expanduser('~/counter_images')
 # Create directory if it doesn't exist
 os.makedirs(COUNTER_IMAGES_DIR, exist_ok=True)
 
-# Delete all existing counter images on startup for a fresh start
 def cleanup_all_counter_images():
-    """Delete all counter images on startup"""
+    """Delete all counter images - only call this when 16 counters have been detected"""
     try:
         if os.path.exists(COUNTER_IMAGES_DIR):
             deleted_count = 0
@@ -51,12 +50,37 @@ def cleanup_all_counter_images():
                     except Exception as e:
                         logger.warning(f"Failed to delete {filename}: {e}")
             if deleted_count > 0:
-                logger.info(f"Cleaned up {deleted_count} counter images on startup")
+                logger.info(f"Cleaned up {deleted_count} counter images (16 counters detected)")
     except Exception as e:
-        logger.error(f"Error cleaning up counter images on startup: {e}")
+        logger.error(f"Error cleaning up counter images: {e}")
 
-# Clean up all images on startup
-cleanup_all_counter_images()
+def count_existing_counter_images() -> int:
+    """Count how many unique counter images exist"""
+    try:
+        if not os.path.exists(COUNTER_IMAGES_DIR):
+            return 0
+        counter_numbers = set()
+        for filename in os.listdir(COUNTER_IMAGES_DIR):
+            if filename.startswith('counter_') and filename.endswith('.jpg'):
+                parts = filename.split('_')
+                if len(parts) >= 2:
+                    try:
+                        counter_numbers.add(int(parts[1]))
+                    except ValueError:
+                        pass
+        return len(counter_numbers)
+    except Exception as e:
+        logger.error(f"Error counting counter images: {e}")
+        return 0
+
+# Don't delete images on startup - only delete when 16 counters are detected
+# Check if we already have 16 counters, and if so, clean up to start fresh
+existing_counter_count = count_existing_counter_images()
+if existing_counter_count >= 16:
+    logger.info(f"Found {existing_counter_count} counter images - cleaning up to start fresh")
+    cleanup_all_counter_images()
+else:
+    logger.info(f"Found {existing_counter_count} counter images - keeping them (will delete when 16 counters detected)")
 
 # Also clean up counter positions file on startup
 try:
