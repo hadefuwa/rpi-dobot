@@ -1304,25 +1304,11 @@
                             }
                         }
 
-                        // Track first appearance of each counter
-                        // Only track counters that have saved images (to avoid duplicates)
-                        const currentTime = new Date().toISOString();
-                        objects.forEach((obj, idx) => {
-                            // Use counterNumber from backend if available
-                            const counterNum = obj.counterNumber;
-                            // Only track if counter number exists and we haven't seen it before
-                            // Also check if counter has a saved image path (meaning it's a real, saved counter)
-                            if (counterNum !== undefined && counterNum !== null && 
-                                (obj.saved_image_path || !counterFirstAppearance[counterNum])) {
-                                // Only add if we haven't tracked it before, or if it has a saved image
-                                if (!counterFirstAppearance[counterNum]) {
-                                    counterFirstAppearance[counterNum] = currentTime;
-                                }
-                            }
-                        });
+                        // Don't track counters here - we'll sync from saved images instead
+                        // This prevents duplicates from repeated detections
                         
-                        // Update counter timeline display
-                        updateCounterTimeline();
+                        // Update counter timeline display from saved images
+                        updateCounterTimelineFromImages();
 
                         addSerialLog(`Counter detection complete: Found ${objectCount} counters`, objectCount > 0 ? 'info' : 'detection');
                     } else {
@@ -1352,29 +1338,60 @@
             addSerialLog('Full analysis stopped', 'info');
         }
 
-        function updateCounterTimeline() {
+        async function updateCounterTimelineFromImages() {
             const timelineList = document.getElementById('counterTimelineList');
             if (!timelineList) return;
             
-            const counterNumbers = Object.keys(counterFirstAppearance).map(Number).sort((a, b) => a - b);
-            
-            if (counterNumbers.length === 0) {
-                timelineList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 10px; font-size: 12px;">No counters detected yet</div>';
-                return;
-            }
-            
-            timelineList.innerHTML = counterNumbers.map(counterNum => {
-                const timestamp = counterFirstAppearance[counterNum];
-                const date = new Date(timestamp);
-                const formattedTime = date.toLocaleString();
+            try {
+                // Fetch saved counter images to get the actual counters
+                const response = await fetch(`${API_BASE}/api/counter-images`);
+                const data = await response.json();
                 
-                return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
-                        <span style="color: #60a5fa; font-weight: 600; font-size: 13px;">Counter ${counterNum}</span>
-                        <span style="color: #94a3b8; font-size: 11px;">${formattedTime}</span>
-                    </div>
-                `;
-            }).join('');
+                if (data.error) {
+                    timelineList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 10px; font-size: 12px;">No counters detected yet</div>';
+                    return;
+                }
+                
+                const images = data.images || [];
+                
+                if (images.length === 0) {
+                    timelineList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 10px; font-size: 12px;">No counters detected yet</div>';
+                    return;
+                }
+                
+                // Group by counter number and get first appearance
+                const counterMap = {};
+                images.forEach(img => {
+                    const counterNum = img.counter_number;
+                    if (!counterMap[counterNum] || new Date(img.timestamp) < new Date(counterMap[counterNum].timestamp)) {
+                        counterMap[counterNum] = img;
+                    }
+                });
+                
+                // Sort by counter number
+                const counterNumbers = Object.keys(counterMap).map(Number).sort((a, b) => a - b);
+                
+                timelineList.innerHTML = counterNumbers.map(counterNum => {
+                    const img = counterMap[counterNum];
+                    const date = new Date(img.timestamp * 1000); // Convert Unix timestamp to Date
+                    const formattedTime = date.toLocaleString();
+                    
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+                            <span style="color: #60a5fa; font-weight: 600; font-size: 13px;">Counter ${counterNum}</span>
+                            <span style="color: #94a3b8; font-size: 11px;">${formattedTime}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error updating counter timeline:', error);
+                timelineList.innerHTML = '<div style="color: #ef4444; text-align: center; padding: 10px; font-size: 12px;">Error loading timeline</div>';
+            }
+        }
+
+        function updateCounterTimeline() {
+            // Legacy function - now uses updateCounterTimelineFromImages
+            updateCounterTimelineFromImages();
         }
 
         async function refreshCounterImages() {
