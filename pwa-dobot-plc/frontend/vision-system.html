@@ -759,11 +759,15 @@
             // Check camera status in background
             checkCameraStatus();
 
-            // Load counter images on page load
+            // Load counter images and timeline on page load
             setTimeout(() => {
                 refreshCounterImages();
-                // Refresh images every 5 seconds
-                setInterval(refreshCounterImages, 5000);
+                updateCounterTimelineFromImages();
+                // Refresh images and timeline every 5 seconds
+                setInterval(() => {
+                    refreshCounterImages();
+                    updateCounterTimelineFromImages();
+                }, 5000);
             }, 1000);
 
             // Initialize serial monitor
