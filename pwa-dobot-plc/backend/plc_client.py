@@ -3,13 +3,22 @@ PLC Communication Module using python-snap7
 Handles S7 protocol communication with Siemens S7-1200/1500 PLCs
 """
 
-import snap7
-from snap7.util import get_bool, get_real, get_int, set_bool, set_real
 import time
 import logging
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# Try to import snap7, but handle gracefully if it fails or crashes
+snap7_available = False
+snap7 = None
+try:
+    import snap7
+    from snap7.util import get_bool, get_real, get_int, set_bool, set_real
+    snap7_available = True
+except Exception as e:
+    logger.warning(f"snap7 library not available or failed to import: {e}")
+    snap7_available = False
 
 class PLCClient:
     """S7 PLC Communication Client"""
@@ -26,9 +35,20 @@ class PLCClient:
         self.ip = ip
         self.rack = rack
         self.slot = slot
-        self.client = snap7.client.Client()
         self.connected = False
         self.last_error = ""
+        self.client = None
+        
+        # Only create snap7 client if library is available
+        if snap7_available:
+            try:
+                self.client = snap7.client.Client()
+            except Exception as e:
+                logger.error(f"Failed to create snap7 client: {e}")
+                self.client = None
+                self.last_error = f"snap7 client creation failed: {str(e)}"
+        else:
+            self.last_error = "snap7 library not available"
 
         # Connection retry settings
         self.max_retries = 3
@@ -38,6 +58,12 @@ class PLCClient:
 
     def connect(self) -> bool:
         """Connect to PLC with retry logic - gracefully handles failures without crashing"""
+        # If snap7 is not available, don't try to connect
+        if not snap7_available or self.client is None:
+            self.connected = False
+            self.last_error = "snap7 library not available"
+            return False
+            
         try:
             current_time = time.time()
 
@@ -49,7 +75,7 @@ class PLCClient:
 
             # Check if already connected (with error handling)
             try:
-                if self.connected and self.client.get_connected():
+                if self.connected and self.client and self.client.get_connected():
                     return True
             except Exception:
                 # If get_connected() fails, assume disconnected
@@ -60,18 +86,19 @@ class PLCClient:
             # Try to connect with retries
             for attempt in range(self.max_retries):
                 try:
-                    self.client.connect(self.ip, self.rack, self.slot)
+                    if self.client:
+                        self.client.connect(self.ip, self.rack, self.slot)
 
-                    # Check connection status with error handling
-                    try:
-                        if self.client.get_connected():
-                            self.connected = True
-                            self.last_error = ""
-                            logger.info(f"✅ Connected to S7 PLC at {self.ip}")
-                            return True
-                    except Exception as check_error:
-                        logger.warning(f"Connection check failed: {check_error}")
-                        self.connected = False
+                        # Check connection status with error handling
+                        try:
+                            if self.client.get_connected():
+                                self.connected = True
+                                self.last_error = ""
+                                logger.info(f"✅ Connected to S7 PLC at {self.ip}")
+                                return True
+                        except Exception as check_error:
+                            logger.warning(f"Connection check failed: {check_error}")
+                            self.connected = False
 
                 except Exception as e:
                     self.last_error = f"Connection error: {str(e)}"
@@ -94,8 +121,10 @@ class PLCClient:
 
     def disconnect(self):
         """Disconnect from PLC"""
+        if not snap7_available or self.client is None:
+            return
         try:
-            if self.connected:
+            if self.connected and self.client:
                 self.client.disconnect()
                 self.connected = False
                 logger.info("Disconnected from PLC")
@@ -104,6 +133,8 @@ class PLCClient:
 
     def is_connected(self) -> bool:
         """Check if connected to PLC - gracefully handles errors"""
+        if not snap7_available or self.client is None:
+            return False
         try:
             return self.connected and self.client.get_connected()
         except Exception as e:
@@ -114,6 +145,8 @@ class PLCClient:
 
     def read_db_real(self, db_number: int, offset: int) -> Optional[float]:
         """Read REAL (float) value from data block"""
+        if not snap7_available or self.client is None:
+            return None
         try:
             if not self.is_connected():
                 return None
@@ -127,6 +160,8 @@ class PLCClient:
 
     def write_db_real(self, db_number: int, offset: int, value: float) -> bool:
         """Write REAL (float) value to data block"""
+        if not snap7_available or self.client is None:
+            return False
         try:
             if not self.is_connected():
                 return False
@@ -142,6 +177,8 @@ class PLCClient:
 
     def read_db_bool(self, db_number: int, byte_offset: int, bit_offset: int) -> Optional[bool]:
         """Read BOOL value from data block"""
+        if not snap7_available or self.client is None:
+            return None
         try:
             if not self.is_connected():
                 return None
@@ -155,6 +192,8 @@ class PLCClient:
 
     def write_db_bool(self, db_number: int, byte_offset: int, bit_offset: int, value: bool) -> bool:
         """Write BOOL value to data block"""
+        if not snap7_available or self.client is None:
+            return False
         try:
             if not self.is_connected():
                 return False
@@ -171,6 +210,8 @@ class PLCClient:
 
     def read_m_bit(self, byte_offset: int, bit_offset: int) -> Optional[bool]:
         """Read Merker (M memory) bit"""
+        if not snap7_available or self.client is None:
+            return None
         try:
             if not self.is_connected():
                 return None
@@ -184,6 +225,8 @@ class PLCClient:
 
     def write_m_bit(self, byte_offset: int, bit_offset: int, value: bool) -> bool:
         """Write Merker (M memory) bit"""
+        if not snap7_available or self.client is None:
+            return False
         try:
             if not self.is_connected():
                 return False
@@ -202,6 +245,8 @@ class PLCClient:
 
     def read_target_pose(self, db_number: int = 1) -> Dict[str, float]:
         """Read target X, Y, Z position from PLC (offset 0, 4, 8) in one operation"""
+        if not snap7_available or self.client is None:
+            return {'x': 0.0, 'y': 0.0, 'z': 0.0}
         try:
             if not self.is_connected():
                 return {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -220,6 +265,8 @@ class PLCClient:
 
     def read_current_pose(self, db_number: int = 1) -> Dict[str, float]:
         """Read current X, Y, Z position from PLC (offset 12, 16, 20) in one operation"""
+        if not snap7_available or self.client is None:
+            return {'x': 0.0, 'y': 0.0, 'z': 0.0}
         try:
             if not self.is_connected():
                 return {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -238,6 +285,8 @@ class PLCClient:
 
     def write_current_pose(self, pose: Dict[str, float], db_number: int = 1) -> bool:
         """Write current X, Y, Z position to PLC (offset 12, 16, 20) in one operation"""
+        if not snap7_available or self.client is None:
+            return False
         try:
             if not self.is_connected():
                 return False
@@ -256,6 +305,11 @@ class PLCClient:
 
     def read_control_bits(self) -> Dict[str, bool]:
         """Read all control bits from M0.0 - M0.7 in one operation"""
+        if not snap7_available or self.client is None:
+            return {
+                'start': False, 'stop': False, 'home': False, 'estop': False,
+                'suction': False, 'ready': False, 'busy': False, 'error': False
+            }
         try:
             if not self.is_connected():
                 return {
