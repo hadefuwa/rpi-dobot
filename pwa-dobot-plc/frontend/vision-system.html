@@ -759,6 +759,13 @@
             // Check camera status in background
             checkCameraStatus();
 
+            // Load counter images on page load
+            setTimeout(() => {
+                refreshCounterImages();
+                // Refresh images every 5 seconds
+                setInterval(refreshCounterImages, 5000);
+            }, 1000);
+
             // Initialize serial monitor
             setTimeout(() => {
                 addSerialLog('Vision System initialized', 'info');
