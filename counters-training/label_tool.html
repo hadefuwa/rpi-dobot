@@ -155,7 +155,7 @@
             background: #000;
         }
 
-        .labels-list {
+        .labels-list, .timeline {
             background: #2a2a2a;
             padding: 20px;
             border-radius: 8px;
@@ -164,7 +164,7 @@
             overflow-y: auto;
         }
 
-        .labels-list h3 {
+        .labels-list h3, .timeline h3 {
             color: #60a5fa;
             margin-bottom: 10px;
         }
@@ -182,6 +182,21 @@
         .label-item button {
             padding: 4px 12px;
             font-size: 14px;
+        }
+
+        .timeline {
+            max-height: none;
+        }
+
+        .timeline-item {
+            background: #374151;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .empty-state {
@@ -238,6 +253,11 @@
             <h3>Current Image Boxes:</h3>
             <div id="labelsList"></div>
         </div>
+
+        <div class="timeline">
+            <h3>Detected Counters Timeline:</h3>
+            <div id="timelineList"></div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -260,6 +280,7 @@
         const clearBtn = document.getElementById('clearBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const emptyState = document.getElementById('emptyState');
+        const timelineList = document.getElementById('timelineList');
 
         // Load images
         imageInput.addEventListener('change', (e) => {
@@ -289,6 +310,7 @@
                             displayImage(0);
                             updateStatus();
                             enableButtons();
+                            updateCounterTimeline([]);
                         }
                     };
                     img.src = event.target.result;
@@ -303,6 +325,9 @@
 
             currentImageIndex = index;
             const imageData = images[index];
+
+            const sortedBoxes = updateCounterNumbers();
+            updateCounterTimeline(sortedBoxes);
             
             // Set canvas size to match image
             canvas.width = imageData.width;
@@ -327,17 +352,18 @@
             const imageName = images[currentImageIndex].name;
             const imageBoxes = boxes[imageName] || [];
             
-            imageBoxes.forEach((box, index) => {
+            imageBoxes.forEach((box) => {
                 ctx.strokeStyle = '#10b981';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(box.x, box.y, box.width, box.height);
                 
                 // Draw label
                 ctx.fillStyle = '#10b981';
-                ctx.fillRect(box.x, box.y - 25, 80, 25);
+                ctx.fillRect(box.x, box.y - 25, 110, 25);
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 14px Arial';
-                ctx.fillText('counter', box.x + 5, box.y - 8);
+                const labelText = box.counterNumber ? `counter ${box.counterNumber}` : 'counter';
+                ctx.fillText(labelText, box.x + 5, box.y - 8);
             });
             
             updateLabelsList();
@@ -388,7 +414,7 @@
             // Only add box if it has some size
             if (width > 10 && height > 10) {
                 const imageName = images[currentImageIndex].name;
-                boxes[imageName].push({ x, y, width, height });
+                boxes[imageName].push({ x, y, width, height, timestamp: new Date().toISOString() });
                 displayImage(currentImageIndex);
             }
             
@@ -485,7 +511,8 @@
             
             listDiv.innerHTML = imageBoxes.map((box, index) => `
                 <div class="label-item">
-                    <span>Box ${index + 1}: counter (${Math.round(box.width)}x${Math.round(box.height)}px)</span>
+                    <span>Counter ${box.counterNumber || (index + 1)} · ${Math.round(box.width)}x${Math.round(box.height)}px</span>
+                    <span style="font-size: 12px; color: #d1d5db;">${formatTimestamp(box.timestamp)}</span>
                     <button class="btn-danger" onclick="deleteBox(${index})">Delete</button>
                 </div>
             `).join('');
@@ -497,6 +524,48 @@
             boxes[imageName].splice(index, 1);
             displayImage(currentImageIndex);
         };
+
+        function getAllBoxesWithMeta() {
+            const allBoxes = [];
+            Object.keys(boxes).forEach((imageName) => {
+                (boxes[imageName] || []).forEach((box) => {
+                    if (!box.timestamp) {
+                        box.timestamp = new Date().toISOString();
+                    }
+                    allBoxes.push({ imageName, box });
+                });
+            });
+            return allBoxes;
+        }
+
+        function updateCounterNumbers() {
+            const allBoxes = getAllBoxesWithMeta();
+            allBoxes.sort((a, b) => new Date(a.box.timestamp) - new Date(b.box.timestamp));
+            allBoxes.forEach((item, index) => {
+                item.box.counterNumber = index + 1;
+            });
+            return allBoxes;
+        }
+
+        function formatTimestamp(value) {
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? 'No timestamp' : date.toLocaleString();
+        }
+
+        function updateCounterTimeline(sortedBoxes) {
+            const boxesForTimeline = sortedBoxes && sortedBoxes.length ? sortedBoxes : updateCounterNumbers();
+            if (boxesForTimeline.length === 0) {
+                timelineList.innerHTML = '<div style="color: #9ca3af; text-align: center;">No counters detected yet</div>';
+                return;
+            }
+
+            timelineList.innerHTML = boxesForTimeline.map((item) => `
+                <div class="timeline-item">
+                    <span>Counter ${item.box.counterNumber} - ${item.imageName}</span>
+                    <span>${formatTimestamp(item.box.timestamp)}</span>
+                </div>
+            `).join('');
+        }
 
         // Enable buttons
         function enableButtons() {
