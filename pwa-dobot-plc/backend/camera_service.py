@@ -54,6 +54,9 @@ class CameraService:
         # YOLO model
         self.yolo_model = None
         self.yolo_model_path = None
+        self.yolo_lock = threading.Lock()  # Lock to prevent concurrent YOLO calls (YOLO is not thread-safe)
+        self.last_yolo_call_time = 0
+        self.min_yolo_interval = 0.1  # Minimum 100ms between YOLO calls to prevent crashes
         
     def initialize_camera(self) -> bool:
         """Initialize and open camera"""
@@ -245,7 +248,7 @@ class CameraService:
             }
 
     def _detect_with_yolo(self, frame: np.ndarray, params: Dict) -> Dict:
-        """Detect objects using YOLO"""
+        """Detect objects using YOLO - thread-safe with locking and rate limiting"""
         if not YOLO_AVAILABLE:
             error_msg = 'YOLO library not available. Install with: pip install ultralytics'
             logger.error(error_msg)
@@ -266,83 +269,115 @@ class CameraService:
                 'error': error_msg
             }
 
-        # Extract YOLO parameters
-        conf_threshold = params.get('conf', 0.25)  # Default confidence threshold (0.25 = 25%)
-        iou = params.get('iou', 0.45)
-        classes = params.get('classes', None)
-        crop_top_percent = params.get('crop_top_percent', 0)  # No cropping by default
-        crop_bottom_percent = params.get('crop_bottom_percent', 0)  # No cropping by default
-        
-        logger.info(f"YOLO detection params: conf={conf_threshold}, iou={iou}, crop_top={crop_top_percent}%, crop_bottom={crop_bottom_percent}%")
+        # Rate limiting: prevent YOLO calls too close together (prevents crashes)
+        current_time = time.time()
+        time_since_last_call = current_time - self.last_yolo_call_time
+        if time_since_last_call < self.min_yolo_interval:
+            # Return cached/empty result if called too soon
+            logger.debug(f"YOLO call rate-limited (last call {time_since_last_call:.3f}s ago, min {self.min_yolo_interval}s)")
+            return {
+                'objects_found': False,
+                'object_count': 0,
+                'objects': [],
+                'method': 'yolo',
+                'timestamp': current_time,
+                'error': 'Rate limited - too many calls'
+            }
 
-        # Crop the frame to remove top and bottom regions
-        original_height = frame.shape[0]
-        original_width = frame.shape[1]
+        # Use lock to prevent concurrent YOLO calls (YOLO is NOT thread-safe)
+        with self.yolo_lock:
+            try:
+                self.last_yolo_call_time = time.time()
+                
+                # Extract YOLO parameters
+                conf_threshold = params.get('conf', 0.25)  # Default confidence threshold (0.25 = 25%)
+                iou = params.get('iou', 0.45)
+                classes = params.get('classes', None)
+                crop_top_percent = params.get('crop_top_percent', 0)  # No cropping by default
+                crop_bottom_percent = params.get('crop_bottom_percent', 0)  # No cropping by default
+                
+                logger.debug(f"YOLO detection params: conf={conf_threshold}, iou={iou}, crop_top={crop_top_percent}%, crop_bottom={crop_bottom_percent}%")
 
-        crop_top = int(original_height * crop_top_percent / 100)
-        crop_bottom = int(original_height * (100 - crop_bottom_percent) / 100)
+                # Crop the frame to remove top and bottom regions
+                original_height = frame.shape[0]
+                original_width = frame.shape[1]
 
-        cropped_frame = frame[crop_top:crop_bottom, :]
-        logger.debug(f"Cropped frame from {original_height}x{original_width} to {cropped_frame.shape[0]}x{cropped_frame.shape[1]}")
+                crop_top = int(original_height * crop_top_percent / 100)
+                crop_bottom = int(original_height * (100 - crop_bottom_percent) / 100)
 
-        # Run inference on cropped frame
-        logger.debug(f"Running YOLO inference on frame shape: {cropped_frame.shape}")
-        results = self.yolo_model(cropped_frame, conf=conf_threshold, iou=iou, classes=classes, verbose=False)
-        
-        # Log raw results for debugging
-        total_detections = sum(len(r.boxes) for r in results)
-        logger.debug(f"YOLO raw detection count: {total_detections}")
+                cropped_frame = frame[crop_top:crop_bottom, :]
+                logger.debug(f"Cropped frame from {original_height}x{original_width} to {cropped_frame.shape[0]}x{cropped_frame.shape[1]}")
 
-        objects = []
-        for result in results:
-            boxes = result.boxes
-            for box in boxes:
-                # Extract box coordinates (relative to cropped frame)
-                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                box_confidence = float(box.conf[0])  # Individual box confidence
-                cls = int(box.cls[0])
-                class_name = result.names[cls]
+                # Run inference on cropped frame - wrap in try-except to catch crashes
+                logger.debug(f"Running YOLO inference on frame shape: {cropped_frame.shape}")
+                results = self.yolo_model(cropped_frame, conf=conf_threshold, iou=iou, classes=classes, verbose=False)
+                
+                # Log raw results for debugging
+                total_detections = sum(len(r.boxes) for r in results)
+                logger.debug(f"YOLO raw detection count: {total_detections}")
 
-                # Adjust coordinates back to original frame
-                x1_original = x1
-                y1_original = y1 + crop_top
-                x2_original = x2
-                y2_original = y2 + crop_top
+                objects = []
+                for result in results:
+                    boxes = result.boxes
+                    for box in boxes:
+                        # Extract box coordinates (relative to cropped frame)
+                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                        box_confidence = float(box.conf[0])  # Individual box confidence
+                        cls = int(box.cls[0])
+                        class_name = result.names[cls]
 
-                # Calculate center and dimensions
-                x = int(x1_original)
-                y = int(y1_original)
-                w = int(x2_original - x1_original)
-                h = int(y2_original - y1_original)
-                center_x = int(x1_original + w / 2)
-                center_y = int(y1_original + h / 2)
-                area = w * h
+                        # Adjust coordinates back to original frame
+                        x1_original = x1
+                        y1_original = y1 + crop_top
+                        x2_original = x2
+                        y2_original = y2 + crop_top
 
-                objects.append({
-                    'type': 'counter',
-                    'class': class_name,
-                    'class_id': cls,
-                    'x': x,
-                    'y': y,
-                    'width': w,
-                    'height': h,
-                    'area': float(area),
-                    'center': (center_x, center_y),
-                    'confidence': round(box_confidence, 2),
-                    'method': 'yolo'
-                })
+                        # Calculate center and dimensions
+                        x = int(x1_original)
+                        y = int(y1_original)
+                        w = int(x2_original - x1_original)
+                        h = int(y2_original - y1_original)
+                        center_x = int(x1_original + w / 2)
+                        center_y = int(y1_original + h / 2)
+                        area = w * h
 
-        logger.info(f"YOLO detected {len(objects)} objects")
-        if len(objects) == 0:
-            logger.warning(f"No objects detected - conf threshold may be too high (current: {conf_threshold})")
+                        objects.append({
+                            'type': 'counter',
+                            'class': class_name,
+                            'class_id': cls,
+                            'x': x,
+                            'y': y,
+                            'width': w,
+                            'height': h,
+                            'area': float(area),
+                            'center': (center_x, center_y),
+                            'confidence': round(box_confidence, 2),
+                            'method': 'yolo'
+                        })
 
-        return {
-            'objects_found': len(objects) > 0,
-            'object_count': len(objects),
-            'objects': objects,
-            'method': 'yolo',
-            'timestamp': time.time()
-        }
+                logger.debug(f"YOLO detected {len(objects)} objects")
+                if len(objects) == 0:
+                    logger.debug(f"No objects detected - conf threshold may be too high (current: {conf_threshold})")
+
+                return {
+                    'objects_found': len(objects) > 0,
+                    'object_count': len(objects),
+                    'objects': objects,
+                    'method': 'yolo',
+                    'timestamp': time.time()
+                }
+                
+            except Exception as e:
+                # Catch any YOLO crashes and return gracefully instead of crashing the app
+                logger.error(f"YOLO detection crashed: {e}", exc_info=True)
+                return {
+                    'objects_found': False,
+                    'object_count': 0,
+                    'objects': [],
+                    'method': 'yolo',
+                    'timestamp': time.time(),
+                    'error': f'YOLO detection failed: {str(e)}'
+                }
 
     def _detect_with_blob(self, frame: np.ndarray, params: Dict) -> Dict:
         """Detect objects using SimpleBlobDetector"""
