@@ -8,6 +8,7 @@ import numpy as np
 import logging
 import threading
 import time
+import hashlib
 from typing import Optional, Dict, List, Tuple
 import io
 import os
@@ -389,13 +390,20 @@ class CameraService:
                 if len(objects) == 0:
                     logger.debug(f"No objects detected - conf threshold may be too high (current: {conf_threshold})")
 
-                return {
+                # Cache the result
+                result = {
                     'objects_found': len(objects) > 0,
                     'object_count': len(objects),
                     'objects': objects,
                     'method': 'yolo',
-                    'timestamp': time.time()
+                    'timestamp': time.time(),
+                    'cached': False
                 }
+                self.cached_yolo_result = result
+                self.cached_yolo_result_time = time.time()
+                self.cached_yolo_frame_hash = frame_hash
+                
+                return result
                 
             except Exception as e:
                 # Catch any YOLO crashes and return gracefully instead of crashing the app
