@@ -684,65 +684,53 @@
                     <div id="infoContent" style="display: none;">
                         <div style="color: #cbd5e1; line-height: 1.8; font-size: 14px;">
                             <p style="margin-bottom: 15px;">
-                                The Vision System automatically detects and counts circular objects (counters) on colored backgrounds. 
-                                It uses optimized circle detection algorithms to reliably find round objects.
+                                Every second the camera grabs a snapshot, the YOLO microservice finds circular counters,
+                                the backend saves any new counters with a tight crop, and defect detection runs instantly.
+                                The timeline, saved image gallery, and defect list update themselves as soon as this happens.
                             </p>
-                            
-                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#127909; Camera Connection</h4>
+
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#127909; Camera Snapshots</h4>
                             <ul style="margin-left: 20px; margin-bottom: 15px;">
-                                <li>Connect a USB camera to the Raspberry Pi</li>
-                                <li>The camera feed starts automatically when the page loads</li>
-                                <li>The system automatically detects the first available USB camera (index 0)</li>
-                                <li>Camera resolution is set to 640×480 pixels at 20 FPS</li>
-                                <li>Live stream is displayed in MJPEG format for efficient transmission</li>
+                                <li>USB camera (index 0) captures a JPEG every second at 640×480</li>
+                                <li>The raw snapshot feeds the analyzed image and the saved counter crops</li>
+                                <li>The analyzed image you see is refreshed once per second (no stream required)</li>
                             </ul>
-                            
-                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128269; Circle Detection Method</h4>
-                            <div style="margin-bottom: 15px;">
-                                <p style="font-weight: 600; color: #a78bfa; margin-bottom: 8px;">🎯 Circle Detection</p>
-                                <p style="margin-left: 20px; margin-bottom: 10px;">
-                                    The system uses HoughCircles algorithm with optimized preprocessing to reliably detect circular shapes. 
-                                    It applies Gaussian blur and adaptive thresholding to enhance circle edges before detection.
-                                </p>
-                                <p style="margin-left: 20px; margin-bottom: 10px;">
-                                    This method works best for detecting round counters on colored backgrounds (like blue conveyor belts).
-                                </p>
-                            </div>
-                            
-                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#9881;&#65039; How It Works</h4>
+
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128269; Counter Tracking Flow</h4>
                             <ol style="margin-left: 20px; margin-bottom: 15px;">
-                                <li><strong>Image Capture:</strong> The system continuously captures frames from the USB camera</li>
-                                <li><strong>Preprocessing:</strong> Converts to grayscale, applies Gaussian blur, and adaptive thresholding to enhance circle edges</li>
-                                <li><strong>Circle Detection:</strong> Uses HoughCircles algorithm with optimized parameters to find circular shapes</li>
-                                <li><strong>Filtering:</strong> Filters detections by size and confidence to remove false positives</li>
-                                <li><strong>Display:</strong> Shows the count and draws bounding boxes around detected counters on the analyzed image</li>
+                                <li><strong>YOLO Detection:</strong> Snapshot goes to the vision microservice (15% confidence, 0.45 IOU)</li>
+                                <li><strong>Position Matching:</strong> Each detection is compared with the last seen position so counters keep their number</li>
+                                <li><strong>Saving:</strong> New numbers trigger a tight crop (5 px padding) stored in <code>~/counter_images</code></li>
+                                <li><strong>Auto Defect Detection:</strong> Each saved image is analyzed right away; results are stored for the defect list</li>
+                                <li><strong>UI Update:</strong> Timeline, gallery, and defect panel pull the latest info every few seconds</li>
                             </ol>
-                            
-                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128202; Results Display</h4>
+
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#9881;&#65039; Automatic Defect Detection</h4>
                             <ul style="margin-left: 20px; margin-bottom: 15px;">
-                                <li><strong>Objects Detected:</strong> Shows the total number of circular counters found in the current frame</li>
-                                <li><strong>Last Updated:</strong> Shows when the detection was last performed</li>
-                                <li><strong>Analyzed Image:</strong> Shows the camera frame with green bounding boxes and labels around detected counters</li>
+                                <li>When a counter image is saved, the backend isolates the circular surface and checks for color changes &gt; 110</li>
+                                <li>The stored defect results feed the “Defect Detection” card without needing to press “Analyze All”</li>
+                                <li>“Analyze All” simply re-runs checks if you want to double‑check the latest images</li>
                             </ul>
-                            
+
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128465;&#65039; Resetting</h4>
+                            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                                <li>The red “Delete All” button wipes saved images, defect data, and the detection timeline</li>
+                                <li>After deleting, the next detections start again at Counter 1</li>
+                            </ul>
+
                             <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128161; Tips for Best Results</h4>
                             <ul style="margin-left: 20px; margin-bottom: 15px;">
-                                <li>Ensure good, even lighting so circles are clearly visible</li>
-                                <li>Use a colored background (blue works best) to contrast with the circular counters</li>
-                                <li>Keep the camera at a consistent distance from the objects</li>
-                                <li>Make sure the circular objects are clearly visible and not overlapping</li>
-                                <li>The system automatically runs detection every second - no manual controls needed</li>
-                                <li>Check the analyzed image to see which objects were detected</li>
+                                <li>Keep lighting even so color-based defect checks stay accurate</li>
+                                <li>Use a contrasting belt color (blue works best for white counters)</li>
+                                <li>Keep counters fully in frame when you want them saved</li>
+                                <li>If YOLO misses one, move it back into frame; the number will be reused automatically</li>
                             </ul>
-                            
-                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128295; Technical Details</h4>
+
+                            <h4 style="color: #8b5cf6; margin-top: 20px; margin-bottom: 10px;">&#128295; Technical Notes</h4>
                             <ul style="margin-left: 20px; margin-bottom: 15px;">
-                                <li><strong>Library:</strong> OpenCV (cv2) for image processing</li>
-                                <li><strong>Detection Method:</strong> HoughCircles algorithm with optimized preprocessing for reliable circle detection</li>
-                                <li><strong>Frame Rate:</strong> 20 FPS for live stream, detection runs every 1 second</li>
-                                <li><strong>Resolution:</strong> 640×480 pixels</li>
-                                <li><strong>Stream Format:</strong> MJPEG (Motion JPEG) for efficient web streaming</li>
-                                <li><strong>Processing:</strong> Automatic - no manual controls needed</li>
+                                <li>Backend: Flask + OpenCV + YOLO microservice (Ultralytics) managed by PM2</li>
+                                <li>Saved data lives in <code>~/counter_images</code> (images + JSON logs)</li>
+                                <li>All API routes are documented in <code>app.py</code> if you need custom tooling</li>
                             </ul>
                         </div>
                     </div>
