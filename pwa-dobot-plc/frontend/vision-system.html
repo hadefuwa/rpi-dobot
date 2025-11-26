@@ -1476,6 +1476,8 @@
                 
                 if (images.length === 0) {
                     imagesList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">No counter images saved yet</div>';
+                    // Clear defect list if no images
+                    loadStoredDefectResults();
                     return;
                 }
                 
@@ -1490,9 +1492,61 @@
                 }).join('');
                 
                 addSerialLog(`Loaded ${images.length} counter images`, 'info');
+                // Load stored defect results after refreshing images
+                loadStoredDefectResults();
             } catch (error) {
                 console.error('Error loading counter images:', error);
                 imagesList.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px; font-size: 12px; grid-column: 1 / -1;">Error loading images: ${error.message}</div>`;
+            }
+        }
+
+        async function loadStoredDefectResults() {
+            const resultsList = document.getElementById('defectResultsList');
+            if (!resultsList) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/counter-images/defects`);
+                const data = await response.json();
+
+                if (data.error) {
+                    resultsList.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px; font-size: 12px;">Error loading defect results: ${data.error}</div>`;
+                    return;
+                }
+
+                const defects = data.defects || [];
+                if (defects.length === 0) {
+                    resultsList.innerHTML = '<div style="color: #64748b; text-align: center; padding: 20px; font-size: 12px;">No defect analysis results yet</div>';
+                    return;
+                }
+
+                resultsList.innerHTML = defects
+                    .sort((a, b) => a.counter_number - b.counter_number)
+                    .map(result => {
+                        const data = result.defect_results || {};
+                        const hasDefects = data.defects_found;
+                        if (!hasDefects) {
+                            return '';
+                        }
+                        return `
+                            <div style="background: rgba(30, 41, 59, 0.6); border-radius: 8px; padding: 10px; margin-bottom: 8px; border-left: 3px solid #ef4444;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <div style="color: #60a5fa; font-weight: 600; font-size: 12px;">Counter ${result.counter_number}</div>
+                                    <div style="color: #ef4444; font-weight: 600; font-size: 11px;">DEFECTS FOUND</div>
+                                </div>
+                                <div style="color: #cbd5e1; font-size: 11px; margin-bottom: 4px;">
+                                    Defects: ${data.defect_count} | Coverage: ${data.total_defect_area_percentage ? data.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${data.confidence ? data.confidence.toFixed(1) : '0.0'}%
+                                </div>
+                                ${data.defects && data.defects.length > 0 ? `
+                                    <div style="color: #fca5a5; font-size: 10px; margin-top: 4px;">
+                                        ${data.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('') || '<div style="color: #10b981; text-align: center; padding: 20px; font-size: 12px;">✓ No defects found - all counters are good!</div>';
+            } catch (error) {
+                console.error('Error loading stored defect results:', error);
+                resultsList.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px; font-size: 12px;">Error loading defect results: ${error.message}</div>`;
             }
         }
 

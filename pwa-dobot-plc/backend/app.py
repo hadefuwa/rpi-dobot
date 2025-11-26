@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # Directory for saving counter images
 COUNTER_IMAGES_DIR = os.path.expanduser('~/counter_images')
 COUNTER_POSITIONS_FILE = os.path.join(COUNTER_IMAGES_DIR, 'counter_positions.json')
+COUNTER_DEFECTS_FILE = os.path.join(COUNTER_IMAGES_DIR, 'counter_defects.json')
 
 # Create directory if it doesn't exist
 os.makedirs(COUNTER_IMAGES_DIR, exist_ok=True)
@@ -368,6 +369,35 @@ def save_counter_positions(counter_positions: Dict[int, Dict]):
     except Exception as e:
         logger.error(f"Error saving counter positions: {e}")
 
+def load_counter_defect_results() -> Dict[str, Dict]:
+    """Load stored defect detection results for counters"""
+    try:
+        if os.path.exists(COUNTER_DEFECTS_FILE):
+            with open(COUNTER_DEFECTS_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"Error loading counter defect results: {e}")
+    return {}
+
+def save_counter_defect_results(results: Dict[str, Dict]):
+    """Persist defect detection results"""
+    try:
+        with open(COUNTER_DEFECTS_FILE, 'w') as f:
+            json.dump(results, f, indent=2)
+    except Exception as e:
+        logger.error(f"Error saving counter defect results: {e}")
+
+def record_counter_defect_result(counter_number: int, image_path: str, defect_results: Dict):
+    """Store defect detection results for a counter"""
+    results = load_counter_defect_results()
+    results[str(counter_number)] = {
+        'counter_number': counter_number,
+        'image_path': image_path,
+        'timestamp': time.time(),
+        'defect_results': defect_results
+    }
+    save_counter_defect_results(results)
+
 def counter_image_exists(counter_number: int) -> bool:
     """
     Check if an image already exists for a counter number
@@ -443,12 +473,27 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         # Save the cropped image
         cv2.imwrite(filepath, cropped)
         logger.info(f"Saved counter {counter_number} image: {filename}")
-        
+
+        # Automatically analyze the saved counter image for defects
+        auto_analyze_counter_image(counter_number, filepath)
+
         return filepath
-        
     except Exception as e:
         logger.error(f"Error saving counter image: {e}", exc_info=True)
         return None
+
+def auto_analyze_counter_image(counter_number: int, image_path: str):
+    """Automatically analyze a saved counter image for defects and store the result"""
+    try:
+        image = cv2.imread(image_path)
+        if image is None:
+            logger.warning(f"Auto defect analysis skipped for Counter {counter_number} - could not read image")
+            return
+        defect_results = detect_color_defects(image)
+        record_counter_defect_result(counter_number, image_path, defect_results)
+        logger.info(f"Auto defect analysis completed for Counter {counter_number}")
+    except Exception as e:
+        logger.error(f"Error auto-analyzing counter {counter_number}: {e}", exc_info=True)
 
 def save_config(config):
     """Save configuration to config.json"""
@@ -1779,6 +1824,9 @@ def analyze_counter_defects(counter_number: int):
         # Analyze for color variations (defects)
         defect_results = detect_color_defects(image)
         
+        # Store the latest results for quick access
+        record_counter_defect_result(counter_number, image_file, defect_results)
+
         return jsonify({
             'counter_number': counter_number,
             'image_file': os.path.basename(image_file),
@@ -1984,6 +2032,13 @@ def delete_all_counter_images():
                 os.remove(COUNTER_POSITIONS_FILE)
             except Exception as e:
                 logger.warning(f"Failed to delete counter positions file: {e}")
+
+        # Delete stored defect results
+        if os.path.exists(COUNTER_DEFECTS_FILE):
+            try:
+                os.remove(COUNTER_DEFECTS_FILE)
+            except Exception as e:
+                logger.warning(f"Failed to delete counter defect results file: {e}")
         
         logger.info(f"Deleted all counter images ({deleted_count} images) and reset counter tracker")
         return jsonify({
@@ -1992,6 +2047,19 @@ def delete_all_counter_images():
         })
     except Exception as e:
         logger.error(f"Error deleting all counter images: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/counter-images/defects', methods=['GET'])
+def get_counter_defect_results():
+    """Return stored defect detection results for all counters"""
+    try:
+        results = load_counter_defect_results()
+        return jsonify({
+            'defects': list(results.values()),
+            'count': len(results)
+        })
+    except Exception as e:
+        logger.error(f"Error fetching counter defect results: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/counter-images/cleanup', methods=['POST'])
