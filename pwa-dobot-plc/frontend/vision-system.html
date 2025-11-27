@@ -1513,16 +1513,11 @@
                             <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <div style="color: var(--primary-cyan); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
-                                    <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECTS FOUND</div>
+                                    <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECT FOUND</div>
                                 </div>
-                                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 6px;">
-                                    Defects: ${data.defect_count} | Coverage: ${data.total_defect_area_percentage ? data.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${data.confidence ? data.confidence.toFixed(1) : '0.0'}%
+                                <div style="color: var(--text-secondary); font-size: 10px;">
+                                    Coverage: ${data.total_defect_area_percentage ? data.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${data.confidence ? data.confidence.toFixed(1) : '0.0'}%
                                 </div>
-                                ${data.defects && data.defects.length > 0 ? `
-                                    <div style="color: #fca5a5; font-size: 9px; margin-top: 6px;">
-                                        ${data.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
-                                    </div>
-                                ` : ''}
                             </div>
                         `;
                     }).join('');
@@ -1648,16 +1643,11 @@
                             <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <div style="color: var(--primary-cyan); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
-                                    <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECTS FOUND</div>
+                                    <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECT FOUND</div>
                                 </div>
-                                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 6px;">
-                                    Defects: ${result.defect_count} | Coverage: ${result.total_defect_area_percentage ? result.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${(result.confidence || 0).toFixed(1)}%
+                                <div style="color: var(--text-secondary); font-size: 10px;">
+                                    Coverage: ${result.total_defect_area_percentage ? result.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${(result.confidence || 0).toFixed(1)}%
                                 </div>
-                                ${result.defects && result.defects.length > 0 ? `
-                                    <div style="color: #fca5a5; font-size: 9px; margin-top: 6px;">
-                                        ${result.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
-                                    </div>
-                                ` : ''}
                             </div>
                         `;
                     }).join('');
