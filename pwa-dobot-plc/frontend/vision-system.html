@@ -1404,6 +1404,9 @@
             const resultsList = document.getElementById('defectResultsList');
             if (!resultsList) return;
             try {
+                addSerialLog('=== Loading Stored Defect Results ===', 'detection');
+                addSerialLog(`Thresholds: Min Confidence=${DEFECT_MIN_CONFIDENCE}%, Min Coverage=${DEFECT_MIN_COVERAGE}%`, 'info');
+                
                 // First, get the list of actual saved counter images
                 const imagesResponse = await fetch(`${API_BASE}/api/counter-images`);
                 const imagesData = await imagesResponse.json();
@@ -1412,8 +1415,11 @@
                     imagesData.images.forEach(img => savedCounterNumbers.add(img.counter_number));
                 }
                 
+                addSerialLog(`Saved counter images: [${[...savedCounterNumbers].sort((a,b) => a-b).join(', ')}] (${savedCounterNumbers.size} total)`, 'info');
+                
                 // If no saved images, don't show any defect results
                 if (savedCounterNumbers.size === 0) {
+                    addSerialLog('No saved images found - skipping defect display', 'warning');
                     resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No counter images to analyze</div>';
                     return;
                 }
@@ -1422,38 +1428,79 @@
                 const response = await fetch(`${API_BASE}/api/counter-images/defects`);
                 const data = await response.json();
                 if (data.error) {
+                    addSerialLog(`Defect API error: ${data.error}`, 'error');
                     resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px;">Error loading defect results: ${data.error}</div>`;
                     return;
                 }
                 const defects = data.defects || [];
+                addSerialLog(`Raw defect results from API: ${defects.length} entries`, 'info');
+                
                 if (defects.length === 0) {
+                    addSerialLog('No defect analysis data in storage', 'info');
                     resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No defect analysis results yet</div>';
                     return;
                 }
+                
+                // Log all raw defect data for debugging
+                addSerialLog('--- Raw Defect Data ---', 'detection');
+                defects.forEach(result => {
+                    const defectData = result.defect_results || {};
+                    const confidence = defectData.confidence || 0;
+                    const coverage = defectData.total_defect_area_percentage || 0;
+                    const defectsFound = defectData.defects_found || false;
+                    const hasImage = savedCounterNumbers.has(result.counter_number);
+                    
+                    addSerialLog(`  Counter ${result.counter_number}: defects_found=${defectsFound}, confidence=${confidence.toFixed(1)}%, coverage=${coverage.toFixed(1)}%, has_saved_image=${hasImage}`, 'info');
+                    
+                    if (defectData.defects && defectData.defects.length > 0) {
+                        defectData.defects.forEach((d, i) => {
+                            addSerialLog(`    Defect ${i+1}: area=${(d.area_percentage || 0).toFixed(1)}%, color_diff=${d.color_difference || 0}`, 'info');
+                        });
+                    }
+                });
                 
                 // Filter defects to only include:
                 // 1. Counters that have saved images
                 // 2. Defects with confidence >= DEFECT_MIN_CONFIDENCE
                 // 3. Defects with coverage >= DEFECT_MIN_COVERAGE
+                addSerialLog('--- Filtering Results ---', 'detection');
                 const validDefects = defects.filter(result => {
-                    // Must have a saved image
-                    if (!savedCounterNumbers.has(result.counter_number)) return false;
-                    
+                    const counterNum = result.counter_number;
                     const defectData = result.defect_results || {};
-                    if (!defectData.defects_found) return false;
+                    const confidence = defectData.confidence || 0;
+                    const coverage = defectData.total_defect_area_percentage || 0;
+                    
+                    // Must have a saved image
+                    if (!savedCounterNumbers.has(counterNum)) {
+                        addSerialLog(`  Counter ${counterNum}: FILTERED - no saved image`, 'warning');
+                        return false;
+                    }
+                    
+                    if (!defectData.defects_found) {
+                        addSerialLog(`  Counter ${counterNum}: SKIPPED - no defects detected by backend`, 'info');
+                        return false;
+                    }
                     
                     // Check confidence threshold
-                    const confidence = defectData.confidence || 0;
-                    if (confidence < DEFECT_MIN_CONFIDENCE) return false;
+                    if (confidence < DEFECT_MIN_CONFIDENCE) {
+                        addSerialLog(`  Counter ${counterNum}: FILTERED - confidence ${confidence.toFixed(1)}% < ${DEFECT_MIN_CONFIDENCE}% threshold`, 'warning');
+                        return false;
+                    }
                     
                     // Check coverage threshold
-                    const coverage = defectData.total_defect_area_percentage || 0;
-                    if (coverage < DEFECT_MIN_COVERAGE) return false;
+                    if (coverage < DEFECT_MIN_COVERAGE) {
+                        addSerialLog(`  Counter ${counterNum}: FILTERED - coverage ${coverage.toFixed(1)}% < ${DEFECT_MIN_COVERAGE}% threshold`, 'warning');
+                        return false;
+                    }
                     
+                    addSerialLog(`  Counter ${counterNum}: PASSED - showing defect (conf=${confidence.toFixed(1)}%, cov=${coverage.toFixed(1)}%)`, 'success');
                     return true;
                 });
                 
+                addSerialLog(`Final: ${validDefects.length} of ${defects.length} defects passed filters`, 'detection');
+                
                 if (validDefects.length === 0) {
+                    addSerialLog('No defects passed thresholds - all counters appear good', 'success');
                     resultsList.innerHTML = '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No significant defects found - all counters are good!</div>';
                     return;
                 }
@@ -1501,40 +1548,96 @@
             const resultsList = document.getElementById('defectResultsList');
             if (!resultsList) return;
             try {
+                addSerialLog('=== ANALYZE ALL COUNTERS FOR DEFECTS ===', 'detection');
+                addSerialLog(`Thresholds: Min Confidence=${DEFECT_MIN_CONFIDENCE}%, Min Coverage=${DEFECT_MIN_COVERAGE}%`, 'info');
+                
                 resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">Analyzing counters for defects...</div>';
                 const imagesResponse = await fetch(`${API_BASE}/api/counter-images`);
                 const imagesData = await imagesResponse.json();
                 if (imagesData.error || !imagesData.images || imagesData.images.length === 0) {
+                    addSerialLog('No counter images found to analyze', 'warning');
                     resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No counter images to analyze</div>';
                     return;
                 }
+                
+                addSerialLog(`Found ${imagesData.images.length} counter images to analyze`, 'info');
+                
                 const analysisResults = [];
                 for (const img of imagesData.images) {
                     try {
+                        addSerialLog(`Analyzing Counter ${img.counter_number}...`, 'detection');
                         const response = await fetch(`${API_BASE}/api/counter-images/${img.counter_number}/analyze-defects`, { method: 'POST' });
                         const result = await response.json();
                         result.counter_number = img.counter_number;
                         analysisResults.push(result);
+                        
+                        // Log detailed results
+                        const confidence = result.confidence || 0;
+                        const coverage = result.total_defect_area_percentage || 0;
+                        const defectCount = result.defect_count || 0;
+                        
+                        addSerialLog(`  Counter ${img.counter_number} result:`, 'info');
+                        addSerialLog(`    defects_found: ${result.defects_found}`, 'info');
+                        addSerialLog(`    defect_count: ${defectCount}`, 'info');
+                        addSerialLog(`    confidence: ${confidence.toFixed(1)}%`, 'info');
+                        addSerialLog(`    coverage: ${coverage.toFixed(1)}%`, 'info');
+                        
+                        if (result.defects && result.defects.length > 0) {
+                            result.defects.forEach((d, i) => {
+                                addSerialLog(`    Defect ${i+1}: area=${(d.area_percentage || 0).toFixed(1)}%, color_diff=${d.color_difference || 0}, center=(${d.center_x || 0},${d.center_y || 0})`, 'info');
+                            });
+                        }
+                        
+                        // Log raw API response for deep debugging
+                        addSerialLog(`    Raw API response keys: ${Object.keys(result).join(', ')}`, 'info');
+                        
                     } catch (error) {
                         console.error(`Error analyzing counter ${img.counter_number}:`, error);
+                        addSerialLog(`  Counter ${img.counter_number}: ERROR - ${error.message}`, 'error');
                         analysisResults.push({ counter_number: img.counter_number, error: error.message });
                     }
                 }
                 
                 // Filter to only show significant defects (above thresholds)
+                addSerialLog('--- Filtering Results ---', 'detection');
                 const significantDefects = analysisResults.filter(result => {
-                    if (result.error) return false;
-                    if (!result.defects_found) return false;
+                    const counterNum = result.counter_number;
+                    
+                    if (result.error) {
+                        addSerialLog(`  Counter ${counterNum}: FILTERED - analysis error`, 'error');
+                        return false;
+                    }
+                    
+                    if (!result.defects_found) {
+                        addSerialLog(`  Counter ${counterNum}: SKIPPED - no defects detected by backend`, 'info');
+                        return false;
+                    }
                     
                     const confidence = result.confidence || 0;
                     const coverage = result.total_defect_area_percentage || 0;
                     
-                    return confidence >= DEFECT_MIN_CONFIDENCE && coverage >= DEFECT_MIN_COVERAGE;
+                    if (confidence < DEFECT_MIN_CONFIDENCE) {
+                        addSerialLog(`  Counter ${counterNum}: FILTERED - confidence ${confidence.toFixed(1)}% < ${DEFECT_MIN_CONFIDENCE}% threshold`, 'warning');
+                        return false;
+                    }
+                    
+                    if (coverage < DEFECT_MIN_COVERAGE) {
+                        addSerialLog(`  Counter ${counterNum}: FILTERED - coverage ${coverage.toFixed(1)}% < ${DEFECT_MIN_COVERAGE}% threshold`, 'warning');
+                        return false;
+                    }
+                    
+                    addSerialLog(`  Counter ${counterNum}: PASSED - showing defect (conf=${confidence.toFixed(1)}%, cov=${coverage.toFixed(1)}%)`, 'success');
+                    return true;
                 });
+                
+                addSerialLog(`=== SUMMARY ===`, 'detection');
+                addSerialLog(`Total analyzed: ${analysisResults.length}`, 'info');
+                addSerialLog(`Passed filters: ${significantDefects.length}`, 'info');
+                addSerialLog(`Filtered out: ${analysisResults.length - significantDefects.length}`, 'info');
                 
                 if (significantDefects.length === 0) {
                     resultsList.innerHTML = '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No significant defects found - all counters are good!</div>';
-                    addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed, no significant defects (min ${DEFECT_MIN_CONFIDENCE}% confidence, ${DEFECT_MIN_COVERAGE}% coverage)`, 'info');
+                    addSerialLog(`No significant defects passed thresholds`, 'success');
                     return;
                 }
                 
@@ -1558,9 +1661,10 @@
                             </div>
                         `;
                     }).join('');
-                addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed, ${significantDefects.length} with significant defects found`, 'info');
+                addSerialLog(`${significantDefects.length} counters with significant defects displayed`, 'detection');
             } catch (error) {
                 console.error('Error analyzing counters for defects:', error);
+                addSerialLog(`Fatal error in defect analysis: ${error.message}`, 'error');
                 resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px;">Error: ${error.message}</div>`;
             }
         }
