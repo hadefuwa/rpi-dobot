@@ -422,7 +422,7 @@ def counter_image_exists(counter_number: int) -> bool:
 def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timestamp: float) -> str:
     """
     Crop and save a detected counter image with timestamp
-    Only saves if no image exists for this counter yet (to avoid duplicates)
+    Always saves a new image with timestamp, allowing multiple images per counter
     
     Args:
         frame: Original camera frame
@@ -431,20 +431,10 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         timestamp: Detection timestamp
     
     Returns:
-        Path to saved image file, or None if failed or already exists
+        Path to saved image file, or None if failed
     """
     try:
-        # Check if an image already exists for this counter
-        prefix = f"counter_{counter_number}_"
-        if os.path.exists(COUNTER_IMAGES_DIR):
-            for filename in os.listdir(COUNTER_IMAGES_DIR):
-                if filename.startswith(prefix) and filename.endswith('.jpg'):
-                    # Image already exists for this counter, skip saving
-                    logger.debug(f"Counter {counter_number} image already exists, skipping save")
-                    filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
-                    return filepath
-        
-        # No existing image, proceed with saving
+        # Always save a new image with timestamp (allows multiple images per counter)
         # Get bounding box coordinates
         x = obj.get('x', 0)
         y = obj.get('y', 0)
@@ -1531,19 +1521,10 @@ def vision_analyze():
                         'last_seen_timestamp': detection_timestamp
                     }
                     matched_counters[matched_counter_num] = updated_positions[matched_counter_num]
-                    # Only save image if it doesn't already exist (persist existing images)
-                    if not counter_image_exists(matched_counter_num):
-                        saved_path = save_counter_image(frame, obj, matched_counter_num, detection_timestamp)
-                        if saved_path:
-                            obj['saved_image_path'] = saved_path
-                    else:
-                        # Image already exists, just get the path for reference
-                        prefix = f"counter_{matched_counter_num}_"
-                        if os.path.exists(COUNTER_IMAGES_DIR):
-                            for filename in os.listdir(COUNTER_IMAGES_DIR):
-                                if filename.startswith(prefix) and filename.endswith('.jpg'):
-                                    obj['saved_image_path'] = os.path.join(COUNTER_IMAGES_DIR, filename)
-                                    break
+                    # Always save a new image with timestamp (allows multiple images per counter)
+                    saved_path = save_counter_image(frame, obj, matched_counter_num, detection_timestamp)
+                    if saved_path:
+                        obj['saved_image_path'] = saved_path
                 elif len(existing_counter_numbers) < 16:
                     # No match found and we have room for new counters
                     # Assign new number and save image
