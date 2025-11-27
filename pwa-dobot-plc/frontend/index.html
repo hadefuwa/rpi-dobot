@@ -3,15 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#0f051a">
     <meta name="description" content="Smart Factory Control System">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-512.png">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <title>Smart Factory</title>
     <style>
+        /* ========== CSS VARIABLES - NEXUS FLOW ========== */
+        :root {
+            --primary-cyan: #00ffff;
+            --primary-pink: #ff00ff;
+            --primary-purple: #7c3aed;
+            --primary-orange: #f97316;
+            --secondary-amber: #fbbf24;
+            --dark-bg: #1a0b2e;
+            --darker-bg: #0f051a;
+            --card-bg: rgba(26, 11, 46, 0.85);
+            --border-color: rgba(0, 255, 255, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        /* ========== RESET & BASE ========== */
         * {
             margin: 0;
             padding: 0;
@@ -19,52 +39,225 @@
         }
 
         body {
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            background-attachment: fixed;
+            font-family: var(--font-mono);
+            background: var(--darker-bg);
             min-height: 100vh;
-            padding: 0;
-            margin: 0;
-            color: #e2e8f0;
+            color: var(--text-primary);
             display: flex;
+            overflow-x: hidden;
+            position: relative;
+            line-height: 1.6;
         }
 
-        /* Sidebar Navigation */
+        /* ========== CYBERPUNK BACKGROUND ========== */
+        .cyber-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--darker-bg);
+            overflow: hidden;
+            z-index: -5;
+        }
+
+        .cyber-gradient {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 255, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 0, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 60% 20%, rgba(249, 115, 22, 0.15) 0%, transparent 50%);
+            animation: gradientRotate 30s linear infinite;
+            filter: blur(40px);
+        }
+
+        @keyframes gradientRotate {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        /* Matrix Rain Effect */
+        .matrix-rain {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            opacity: 0.15;
+        }
+
+        /* Grid Overlay */
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+        }
+
+        .grid-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -3;
+        }
+
+        /* Glowing Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            animation: orbFloat 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -4;
+        }
+
+        .orb1 {
+            width: 300px;
+            height: 300px;
+            background: var(--primary-cyan);
+            top: 10%;
+            left: -150px;
+        }
+
+        .orb2 {
+            width: 400px;
+            height: 400px;
+            background: var(--primary-pink);
+            bottom: 10%;
+            right: -200px;
+            animation-delay: 5s;
+        }
+
+        .orb3 {
+            width: 250px;
+            height: 250px;
+            background: var(--primary-purple);
+            top: 50%;
+            left: 50%;
+            animation-delay: 10s;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(100px, -50px) scale(1.1); }
+            66% { transform: translate(-50px, 100px) scale(0.9); }
+        }
+
+        /* Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .scanlines::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                transparent 0%,
+                rgba(0, 255, 255, 0.03) 50%,
+                transparent 100%
+            );
+            background-size: 100% 4px;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* ========== SIDEBAR ========== */
         .sidebar {
-            width: 260px;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(148, 163, 184, 0.1);
-            padding: 20px;
+            width: 280px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
             position: fixed;
             left: 0;
             top: 0;
             height: 100vh;
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
         }
 
         .sidebar-header {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .sidebar-header h2 {
-            font-size: 24px;
-            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-weight: 800;
-            margin-bottom: 5px;
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-cyan);
+            text-shadow: 0 0 20px var(--primary-cyan);
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-header h2::before {
+            content: '>';
+            margin-right: 0.5rem;
+            color: var(--primary-orange);
+        }
+
+        .sidebar-header h2::after {
+            content: '_';
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
         }
 
         .sidebar-header p {
             font-size: 12px;
-            color: #64748b;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         .sidebar-menu {
@@ -78,53 +271,231 @@
         .sidebar-menu-link {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            border-radius: 8px;
+            gap: 14px;
+            padding: 14px 18px;
             text-decoration: none;
-            color: #cbd5e1;
-            transition: all 0.3s;
-            font-size: 15px;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+            font-size: 14px;
             font-weight: 500;
+            letter-spacing: 1px;
+            border: 1px solid transparent;
+            clip-path: polygon(10px 0%, 100% 0%, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0% 100%, 0% 10px);
+            position: relative;
         }
 
         .sidebar-menu-link:hover {
-            background: rgba(96, 165, 250, 0.1);
-            color: #60a5fa;
-            transform: translateX(4px);
+            color: var(--primary-cyan);
+            border-color: var(--border-color);
+            background: rgba(0, 255, 255, 0.05);
+            text-shadow: 0 0 10px var(--primary-cyan);
         }
 
         .sidebar-menu-link.active {
-            background: rgba(96, 165, 250, 0.2);
-            color: #60a5fa;
-            border-left: 3px solid #60a5fa;
-            font-weight: 600;
+            background: rgba(0, 255, 255, 0.1);
+            color: var(--primary-cyan);
+            border-color: var(--primary-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
         }
 
         .sidebar-menu-icon {
             font-size: 20px;
             width: 24px;
             text-align: center;
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', sans-serif;
-            line-height: 1;
-            display: inline-block;
         }
 
+        /* ========== MAIN CONTENT ========== */
         .main-content {
             flex: 1;
-            margin-left: 260px;
-            padding: 20px;
+            margin-left: 280px;
+            padding: 32px;
             min-height: 100vh;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
+        /* ========== HEADER ========== */
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 50px 30px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            position: relative;
+            clip-path: polygon(30px 0%, 100% 0%, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0% 100%, 0% 30px);
+        }
+
+        .header h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .header-nexus {
+            background: linear-gradient(135deg, var(--primary-cyan), #00ccff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            animation: cyanPulse 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.6));
+        }
+
+        .header-flow {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            animation: purplePulse 3s ease-in-out infinite;
+            animation-delay: 1.5s;
+            filter: drop-shadow(0 0 15px rgba(255, 0, 255, 0.6));
+        }
+
+        @keyframes cyanPulse {
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 15px rgba(0, 255, 255, 0.6)); }
+            50% { filter: brightness(1.1) drop-shadow(0 0 25px rgba(0, 255, 255, 0.8)); }
+        }
+
+        @keyframes purplePulse {
+            0%, 100% { filter: brightness(1) drop-shadow(0 0 15px rgba(255, 0, 255, 0.6)); }
+            50% { filter: brightness(1.1) drop-shadow(0 0 25px rgba(255, 0, 255, 0.8)); }
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* ========== MENU GRID ========== */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 28px;
+            margin-top: 40px;
+        }
+
+        .menu-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            padding: 36px;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            clip-path: polygon(20px 0%, 100% 0%, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0% 100%, 0% 20px);
+        }
+
+        .menu-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary-cyan), var(--primary-pink));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(0, 255, 255, 0.2);
+            border-color: var(--primary-cyan);
+        }
+
+        .menu-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .menu-card-icon {
+            font-size: 56px;
+            margin-bottom: 24px;
+            display: block;
+            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
+        }
+
+        .menu-card h2 {
+            font-size: 1.3rem;
+            margin-bottom: 14px;
+            color: var(--primary-cyan);
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .menu-card p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .menu-card-arrow {
+            position: absolute;
+            top: 28px;
+            right: 28px;
+            font-size: 28px;
+            color: var(--primary-cyan);
+            opacity: 0.4;
+            transition: all 0.4s ease;
+        }
+
+        .menu-card:hover .menu-card-arrow {
+            opacity: 1;
+            transform: translateX(8px);
+            color: var(--primary-pink);
+        }
+
+        /* Card accent colors */
+        .menu-card.robot-arm { border-left: 3px solid var(--primary-purple); }
+        .menu-card.robot-arm:hover { box-shadow: 0 20px 50px rgba(124, 58, 237, 0.3); }
+        
+        .menu-card.smart-factory { border-left: 3px solid var(--accent-green); }
+        .menu-card.smart-factory:hover { box-shadow: 0 20px 50px rgba(16, 185, 129, 0.3); }
+        
+        .menu-card.vision-system { border-left: 3px solid var(--primary-pink); }
+        .menu-card.vision-system:hover { box-shadow: 0 20px 50px rgba(255, 0, 255, 0.3); }
+        
+        .menu-card.rfid { border-left: 3px solid var(--primary-orange); }
+        .menu-card.rfid:hover { box-shadow: 0 20px 50px rgba(249, 115, 22, 0.3); }
+
+        /* ========== SCROLLBAR ========== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--darker-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(var(--primary-cyan), var(--primary-pink));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(var(--primary-pink), var(--primary-cyan));
+        }
+
+        /* ========== RESPONSIVE ========== */
         @media (max-width: 768px) {
             .sidebar {
-                width: 70px;
+                width: 80px;
                 padding: 15px 10px;
             }
 
@@ -135,207 +506,73 @@
             }
 
             .main-content {
-                margin-left: 70px;
+                margin-left: 80px;
+                padding: 20px;
             }
 
             .sidebar-menu-link {
                 justify-content: center;
-                padding: 12px;
+                padding: 14px;
             }
-        }
 
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 40px 20px;
-        }
-
-        .header h1 {
-            font-size: 48px;
-            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-weight: 800;
-            margin-bottom: 10px;
-            text-shadow: 0 0 30px rgba(96, 165, 250, 0.3);
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        }
-        
-        .header h1::first-letter,
-        .sidebar-header h2::first-letter {
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', sans-serif;
-        }
-
-        .header p {
-            font-size: 18px;
-            color: #94a3b8;
-            margin-top: 10px;
-        }
-
-        .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-top: 40px;
-        }
-
-        .menu-card {
-            background: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            padding: 32px;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .menu-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.1), transparent);
-            transition: left 0.5s;
-        }
-
-        .menu-card:hover::before {
-            left: 100%;
-        }
-
-        .menu-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
-            border-color: rgba(96, 165, 250, 0.4);
-        }
-
-        .menu-card-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-            display: block;
-            filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.3));
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'EmojiOne Color', 'Android Emoji', sans-serif;
-            line-height: 1;
-        }
-
-        .menu-card h2 {
-            font-size: 24px;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-weight: 700;
-        }
-
-        .menu-card p {
-            color: #94a3b8;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .menu-card-arrow {
-            position: absolute;
-            top: 24px;
-            right: 24px;
-            font-size: 24px;
-            color: #60a5fa;
-            opacity: 0.5;
-            transition: all 0.3s;
-        }
-
-        .menu-card:hover .menu-card-arrow {
-            opacity: 1;
-            transform: translateX(5px);
-        }
-
-        /* Specific card colors */
-        .menu-card.robot-arm {
-            border-left: 4px solid #3b82f6;
-        }
-
-        .menu-card.robot-arm:hover {
-            border-left-color: #60a5fa;
-            box-shadow: 0 16px 48px rgba(59, 130, 246, 0.3);
-        }
-
-        .menu-card.smart-factory {
-            border-left: 4px solid #10b981;
-        }
-
-        .menu-card.smart-factory:hover {
-            border-left-color: #34d399;
-            box-shadow: 0 16px 48px rgba(16, 185, 129, 0.3);
-        }
-
-        .menu-card.vision-system {
-            border-left: 4px solid #8b5cf6;
-        }
-
-        .menu-card.vision-system:hover {
-            border-left-color: #a78bfa;
-            box-shadow: 0 16px 48px rgba(139, 92, 246, 0.3);
-        }
-
-        .menu-card.rfid {
-            border-left: 4px solid #f59e0b;
-        }
-
-        .menu-card.rfid:hover {
-            border-left-color: #fbbf24;
-            box-shadow: 0 16px 48px rgba(245, 158, 11, 0.3);
-        }
-
-        @media (max-width: 768px) {
             .header h1 {
-                font-size: 36px;
+                font-size: 1.8rem;
+                letter-spacing: 2px;
             }
 
             .menu-grid {
                 grid-template-columns: 1fr;
-                gap: 16px;
+                gap: 20px;
             }
 
             .menu-card {
-                padding: 24px;
+                padding: 28px;
+            }
+
+            /* Hide heavy animations on mobile */
+            .matrix-rain,
+            .scanlines::before {
+                display: none;
+            }
+
+            .orb {
+                filter: blur(100px);
+                opacity: 0.3;
             }
         }
 
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(96, 165, 250, 0.5);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(96, 165, 250, 0.7);
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .cyber-gradient,
+            .grid-lines,
+            .orb,
+            .scanlines::before {
+                animation: none !important;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Cyberpunk Background Layers -->
+    <div class="cyber-bg">
+        <div class="cyber-gradient"></div>
+        <div class="matrix-rain" id="matrixRain"></div>
+    </div>
+    <div class="grid-overlay">
+        <div class="grid-lines"></div>
+    </div>
+    <div class="particles" id="particlesContainer"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+    <div class="scanlines"></div>
+
     <!-- Sidebar Navigation -->
     <nav class="sidebar">
         <div class="sidebar-header">
-            <h2>&#127981; Smart Factory</h2>
+            <h2>Smart Factory</h2>
             <p>Control System</p>
-    </div>
+        </div>
         <ul class="sidebar-menu">
             <li class="sidebar-menu-item">
                 <a href="/" class="sidebar-menu-link active">
@@ -372,42 +609,137 @@
 
     <!-- Main Content -->
     <div class="main-content">
-    <div class="container">
-        <div class="header">
-            <h1>&#127981; Smart Factory</h1>
-            <p>Integrated Control System</p>
-        </div>
+        <div class="container">
+            <div class="header">
+                <h1>
+                    <span class="header-nexus">&#127981; Smart</span>
+                    <span class="header-flow">Factory</span>
+                </h1>
+                <p>Integrated Control System</p>
+            </div>
 
-        <div class="menu-grid">
-            <a href="/robot-arm.html" class="menu-card robot-arm">
-                <span class="menu-card-icon">&#129302;</span>
-                <h2>Robot Arm</h2>
-                <p>Control and monitor the Dobot robotic arm. Manage PLC communication, position control, and end effector operations.</p>
-                <span class="menu-card-arrow">→</span>
-            </a>
+            <div class="menu-grid">
+                <a href="/robot-arm.html" class="menu-card robot-arm">
+                    <span class="menu-card-icon">&#129302;</span>
+                    <h2>Robot Arm</h2>
+                    <p>Control and monitor the Dobot robotic arm. Manage PLC communication, position control, and end effector operations.</p>
+                    <span class="menu-card-arrow">&#8594;</span>
+                </a>
 
-            <a href="/smart-factory.html" class="menu-card smart-factory">
-                <span class="menu-card-icon">&#127981;</span>
-                <h2>Smart Factory</h2>
-                <p>Factory-wide monitoring and control. View production statistics, system status, and manage factory operations.</p>
-                <span class="menu-card-arrow">→</span>
-            </a>
+                <a href="/smart-factory.html" class="menu-card smart-factory">
+                    <span class="menu-card-icon">&#127981;</span>
+                    <h2>Smart Factory</h2>
+                    <p>Factory-wide monitoring and control. View production statistics, system status, and manage factory operations.</p>
+                    <span class="menu-card-arrow">&#8594;</span>
+                </a>
 
-            <a href="/vision-system.html" class="menu-card vision-system">
-                <span class="menu-card-icon">&#128065;</span>
-                <h2>Vision System</h2>
-                <p>Computer vision and image processing. Monitor camera feeds, analyze images, and manage vision-based quality control.</p>
-                <span class="menu-card-arrow">→</span>
-            </a>
+                <a href="/vision-system.html" class="menu-card vision-system">
+                    <span class="menu-card-icon">&#128065;</span>
+                    <h2>Vision System</h2>
+                    <p>Computer vision and image processing. Monitor camera feeds, analyze images, and manage vision-based quality control.</p>
+                    <span class="menu-card-arrow">&#8594;</span>
+                </a>
 
-            <a href="/rfid.html" class="menu-card rfid">
-                <span class="menu-card-icon">&#128225;</span>
-                <h2>RFID</h2>
-                <p>RFID tag management and tracking. Monitor RFID readers, track inventory, and manage product identification.</p>
-                <span class="menu-card-arrow">→</span>
-            </a>
+                <a href="/rfid.html" class="menu-card rfid">
+                    <span class="menu-card-icon">&#128225;</span>
+                    <h2>RFID</h2>
+                    <p>RFID tag management and tracking. Monitor RFID readers, track inventory, and manage product identification.</p>
+                    <span class="menu-card-arrow">&#8594;</span>
+                </a>
+            </div>
         </div>
     </div>
-    </div>
+
+    <script>
+        // Generate Matrix Rain Effect
+        function generateMatrixRain() {
+            const matrixRain = document.getElementById('matrixRain');
+            if (!matrixRain) return;
+            const characters = '01アイウエオカキクケコサシスセソタチツテト';
+            const columns = Math.floor(window.innerWidth / 20);
+            
+            for (let i = 0; i < columns; i++) {
+                const column = document.createElement('div');
+                column.style.cssText = `
+                    position: absolute;
+                    top: -100vh;
+                    left: ${i * 20}px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 14px;
+                    color: var(--primary-cyan);
+                    text-shadow: 0 0 5px var(--primary-cyan);
+                    animation: matrixFall ${Math.random() * 5 + 10}s linear infinite;
+                    animation-delay: ${Math.random() * 5}s;
+                    writing-mode: vertical-rl;
+                    text-orientation: upright;
+                `;
+                
+                let text = '';
+                const charCount = Math.floor(Math.random() * 20 + 10);
+                for (let j = 0; j < charCount; j++) {
+                    text += characters[Math.floor(Math.random() * characters.length)] + ' ';
+                }
+                column.textContent = text;
+                matrixRain.appendChild(column);
+            }
+        }
+
+        // Generate Floating Particles
+        function generateParticles() {
+            const particlesContainer = document.getElementById('particlesContainer');
+            if (!particlesContainer) return;
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.style.cssText = `
+                    position: absolute;
+                    width: 4px;
+                    height: 4px;
+                    background: ${i % 2 === 0 ? 'var(--primary-cyan)' : 'var(--primary-pink)'};
+                    border-radius: 50%;
+                    box-shadow: 0 0 10px ${i % 2 === 0 ? 'var(--primary-cyan)' : 'var(--primary-pink)'};
+                    left: ${Math.random() * 100}%;
+                    animation: float ${Math.random() * 10 + 20}s infinite;
+                    animation-delay: ${Math.random() * 20}s;
+                    opacity: 0;
+                `;
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Add CSS animation for matrix fall and float
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes matrixFall {
+                0% { transform: translateY(0); }
+                100% { transform: translateY(200vh); }
+            }
+            @keyframes float {
+                0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+                10% { opacity: 1; }
+                90% { opacity: 1; }
+                100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize effects
+        generateMatrixRain();
+        generateParticles();
+
+        // Regenerate matrix rain on window resize
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                const matrixRain = document.getElementById('matrixRain');
+                if (matrixRain) {
+                    matrixRain.innerHTML = '';
+                    generateMatrixRain();
+                }
+            }, 250);
+        });
+    </script>
 </body>
 </html>

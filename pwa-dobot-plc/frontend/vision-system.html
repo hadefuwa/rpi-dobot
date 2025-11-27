@@ -3,35 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a0015">
+    <meta name="theme-color" content="#0f051a">
     <meta name="description" content="Vision System Control">
     <title>Vision System - Smart Factory</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ========== CSS VARIABLES ========== */
+        /* ========== CSS VARIABLES - NEXUS FLOW ========== */
         :root {
-            --bg-deep: #0a0015;
-            --bg-dark: #12001f;
-            --bg-card: rgba(20, 0, 40, 0.85);
-            --bg-card-hover: rgba(30, 0, 60, 0.95);
-            --bg-panel: rgba(15, 0, 30, 0.9);
-            --border-color: #6b21a8;
-            --border-glow: #a855f7;
-            --accent-purple: #c084fc;
-            --accent-violet: #8b5cf6;
-            --accent-pink: #f472b6;
-            --accent-cyan: #22d3ee;
+            --primary-cyan: #00ffff;
+            --primary-pink: #ff00ff;
+            --primary-purple: #7c3aed;
+            --primary-orange: #f97316;
+            --dark-bg: #1a0b2e;
+            --darker-bg: #0f051a;
+            --card-bg: rgba(26, 11, 46, 0.85);
+            --bg-panel: rgba(15, 5, 26, 0.9);
+            --border-color: rgba(0, 255, 255, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
             --accent-green: #10b981;
             --accent-red: #ef4444;
             --accent-orange: #f59e0b;
-            --text-primary: #f5f3ff;
-            --text-secondary: #c4b5fd;
-            --text-muted: #7c3aed;
-            --shadow-purple: rgba(139, 92, 246, 0.4);
-            --shadow-pink: rgba(244, 114, 182, 0.3);
-            --font-display: 'Orbitron', monospace;
-            --font-body: 'Rajdhani', sans-serif;
-            --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
         }
 
         /* ========== RESET & BASE ========== */
@@ -42,90 +36,141 @@
         }
 
         body {
-            font-family: var(--font-body);
-            background: var(--bg-deep);
+            font-family: var(--font-mono);
+            background: var(--darker-bg);
             min-height: 100vh;
             color: var(--text-primary);
             display: flex;
             overflow-x: hidden;
             position: relative;
+            line-height: 1.6;
         }
 
-        /* ========== GALAXY BACKGROUND ========== */
-        .galaxy-bg {
+        /* ========== CYBERPUNK BACKGROUND ========== */
+        .cyber-bg {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -3;
+            background: var(--darker-bg);
+            overflow: hidden;
+            z-index: -5;
+        }
+
+        .cyber-gradient {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
             background: 
-                radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.3) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.25) 0%, transparent 50%),
-                radial-gradient(ellipse at 40% 70%, rgba(244, 114, 182, 0.2) 0%, transparent 40%),
-                radial-gradient(ellipse at 70% 30%, rgba(34, 211, 238, 0.15) 0%, transparent 40%),
-                linear-gradient(180deg, #0a0015 0%, #12001f 50%, #0a0015 100%);
-            animation: galaxyPulse 15s ease-in-out infinite alternate;
+                radial-gradient(circle at 20% 30%, rgba(0, 255, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 0, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(124, 58, 237, 0.15) 0%, transparent 50%);
+            animation: gradientRotate 30s linear infinite;
+            filter: blur(40px);
         }
 
-        @keyframes galaxyPulse {
-            0% { opacity: 0.8; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.02); }
-            100% { opacity: 0.9; transform: scale(1); }
+        @keyframes gradientRotate {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
         }
 
-        .stars {
+        .grid-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -2;
+        }
+
+        .grid-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-image: 
-                radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.9), transparent),
-                radial-gradient(2px 2px at 40px 70px, rgba(192, 132, 252, 0.8), transparent),
-                radial-gradient(1px 1px at 90px 40px, rgba(244, 114, 182, 0.9), transparent),
-                radial-gradient(2px 2px at 160px 80px, rgba(139, 92, 246, 0.8), transparent),
-                radial-gradient(1px 1px at 200px 120px, rgba(255, 255, 255, 0.7), transparent),
-                radial-gradient(2px 2px at 280px 60px, rgba(34, 211, 238, 0.7), transparent),
-                radial-gradient(1px 1px at 320px 140px, rgba(168, 85, 247, 0.8), transparent),
-                radial-gradient(2px 2px at 380px 90px, rgba(255, 255, 255, 0.6), transparent);
-            background-size: 500px 200px;
-            animation: starsFloat 60s linear infinite;
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
         }
 
-        @keyframes starsFloat {
-            from { transform: translateY(0) translateX(0); }
-            to { transform: translateY(-200px) translateX(-100px); }
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
         }
 
-        .nebula {
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            animation: orbFloat 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -4;
+        }
+
+        .orb1 {
+            width: 300px;
+            height: 300px;
+            background: var(--primary-pink);
+            top: 10%;
+            left: -150px;
+        }
+
+        .orb2 {
+            width: 400px;
+            height: 400px;
+            background: var(--primary-cyan);
+            bottom: 10%;
+            right: -200px;
+            animation-delay: 5s;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(100px, -50px) scale(1.1); }
+            66% { transform: translate(-50px, 100px) scale(0.9); }
+        }
+
+        .scanlines {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            pointer-events: none;
             z-index: -1;
-            opacity: 0.4;
-            background: 
-                radial-gradient(circle at 30% 50%, rgba(139, 92, 246, 0.3) 0%, transparent 25%),
-                radial-gradient(circle at 70% 30%, rgba(244, 114, 182, 0.2) 0%, transparent 20%),
-                radial-gradient(circle at 50% 80%, rgba(34, 211, 238, 0.15) 0%, transparent 30%);
-            animation: nebulaShift 20s ease-in-out infinite alternate;
         }
 
-        @keyframes nebulaShift {
-            0% { transform: scale(1) rotate(0deg); opacity: 0.3; }
-            50% { transform: scale(1.1) rotate(2deg); opacity: 0.5; }
-            100% { transform: scale(1) rotate(-1deg); opacity: 0.4; }
+        .scanlines::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(transparent 0%, rgba(0, 255, 255, 0.03) 50%, transparent 100%);
+            background-size: 100% 4px;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
         }
 
         /* ========== SIDEBAR ========== */
         .sidebar {
             width: 280px;
-            background: var(--bg-card);
+            background: var(--card-bg);
             backdrop-filter: blur(20px);
-            border-right: 2px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
             padding: 24px;
             position: fixed;
             left: 0;
@@ -133,41 +178,43 @@
             height: 100vh;
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 4px 0 30px var(--shadow-purple);
-        }
-
-        .sidebar::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink), var(--accent-cyan));
         }
 
         .sidebar-header {
             margin-bottom: 40px;
             padding-bottom: 24px;
-            border-bottom: 2px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .sidebar-header h2 {
-            font-family: var(--font-display);
-            font-size: 20px;
-            color: var(--text-primary);
+            font-size: 1.2rem;
             font-weight: 700;
+            color: var(--primary-cyan);
+            text-shadow: 0 0 20px var(--primary-cyan);
             margin-bottom: 8px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+        }
+
+        .sidebar-header h2::before {
+            content: '>';
+            margin-right: 0.5rem;
+            color: var(--primary-orange);
+        }
+
+        .sidebar-header h2::after {
+            content: '_';
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
         }
 
         .sidebar-header p {
-            font-size: 13px;
-            color: var(--text-muted);
+            font-size: 12px;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 3px;
-            font-weight: 500;
+            letter-spacing: 2px;
         }
 
         .sidebar-menu {
@@ -185,24 +232,26 @@
             padding: 14px 18px;
             text-decoration: none;
             color: var(--text-secondary);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 15px;
-            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
             letter-spacing: 1px;
-            border: 2px solid transparent;
+            border: 1px solid transparent;
+            clip-path: polygon(10px 0%, 100% 0%, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0% 100%, 0% 10px);
         }
 
         .sidebar-menu-link:hover {
-            color: var(--text-primary);
+            color: var(--primary-cyan);
             border-color: var(--border-color);
-            background: rgba(139, 92, 246, 0.1);
+            background: rgba(0, 255, 255, 0.05);
+            text-shadow: 0 0 10px var(--primary-cyan);
         }
 
         .sidebar-menu-link.active {
-            background: rgba(139, 92, 246, 0.2);
-            color: var(--accent-purple);
-            border-color: var(--accent-purple);
-            box-shadow: 0 0 20px var(--shadow-purple);
+            background: rgba(255, 0, 255, 0.1);
+            color: var(--primary-pink);
+            border-color: var(--primary-pink);
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
         }
 
         .sidebar-menu-icon {
@@ -226,53 +275,33 @@
 
         /* ========== HEADER ========== */
         .header {
-            background: var(--bg-card);
-            border: 2px solid var(--border-color);
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
             padding: 24px 32px;
             margin-bottom: 24px;
-            box-shadow: 0 0 30px var(--shadow-purple);
-            position: relative;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent-pink), var(--accent-purple), var(--accent-cyan));
+            clip-path: polygon(20px 0%, 100% 0%, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0% 100%, 0% 20px);
         }
 
         .header h1 {
-            font-family: var(--font-display);
-            font-size: 32px;
+            font-size: 2rem;
             font-weight: 700;
-            letter-spacing: 4px;
+            letter-spacing: 3px;
             text-transform: uppercase;
-            background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-purple) 100%);
+            background: linear-gradient(135deg, var(--primary-pink), var(--primary-cyan));
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 0, 255, 0.5);
         }
 
         /* ========== CONTENT ========== */
         .content {
-            background: var(--bg-card);
-            border: 2px solid var(--border-color);
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
             padding: 30px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
-            position: relative;
-        }
-
-        .content::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink));
+            clip-path: polygon(20px 0%, 100% 0%, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0% 100%, 0% 20px);
         }
 
         .camera-section {
@@ -291,19 +320,20 @@
         .camera-viewer {
             background: var(--bg-panel);
             padding: 24px;
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
+            clip-path: polygon(15px 0%, 100% 0%, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0% 100%, 0% 15px);
         }
 
         .camera-viewer h3 {
-            font-family: var(--font-display);
-            color: var(--accent-purple);
+            color: var(--primary-cyan);
             margin-bottom: 16px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             letter-spacing: 2px;
             display: flex;
             align-items: center;
             gap: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         .camera-status {
@@ -311,7 +341,7 @@
             align-items: center;
             gap: 10px;
             margin-bottom: 16px;
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-secondary);
         }
 
@@ -320,10 +350,12 @@
             height: 12px;
             background: var(--accent-red);
             animation: pulse 2s infinite;
+            box-shadow: 0 0 10px var(--accent-red);
         }
 
         .status-indicator.connected {
             background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
         }
 
         @keyframes pulse {
@@ -336,7 +368,7 @@
             max-width: 100%;
             height: auto;
             background: #000;
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
             min-height: 300px;
             object-fit: contain;
         }
@@ -351,9 +383,9 @@
         /* ========== BUTTONS ========== */
         .btn {
             padding: 12px 20px;
-            border: 2px solid transparent;
-            font-family: var(--font-body);
-            font-size: 14px;
+            border: 1px solid transparent;
+            font-family: var(--font-mono);
+            font-size: 12px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
@@ -362,21 +394,22 @@
             gap: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent-violet) 0%, var(--accent-purple) 100%);
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-cyan));
             color: white;
-            border-color: var(--accent-purple);
+            border-color: var(--primary-cyan);
         }
 
         .btn-primary:hover {
-            box-shadow: 0 6px 20px var(--shadow-purple);
+            box-shadow: 0 6px 20px rgba(0, 255, 255, 0.4);
             transform: translateY(-2px);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, var(--accent-red) 0%, #dc2626 100%);
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
             color: white;
             border-color: var(--accent-red);
         }
@@ -387,7 +420,7 @@
         }
 
         .btn-success {
-            background: linear-gradient(135deg, var(--accent-green) 0%, #059669 100%);
+            background: linear-gradient(135deg, var(--accent-green), #059669);
             color: white;
             border-color: var(--accent-green);
         }
@@ -407,45 +440,47 @@
         .panel {
             padding: 18px;
             background: var(--bg-panel);
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
             margin-top: 20px;
+            clip-path: polygon(10px 0%, 100% 0%, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0% 100%, 0% 10px);
         }
 
         .panel h4 {
-            font-family: var(--font-display);
-            color: var(--accent-purple);
-            font-size: 13px;
+            color: var(--primary-cyan);
+            font-size: 12px;
             margin-bottom: 14px;
             letter-spacing: 2px;
             text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         .info-panel {
             background: var(--bg-panel);
             padding: 24px;
             margin-top: 24px;
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
+            clip-path: polygon(15px 0%, 100% 0%, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0% 100%, 0% 15px);
         }
 
         .info-panel h3 {
-            font-family: var(--font-display);
-            color: var(--accent-purple);
+            color: var(--primary-cyan);
             margin-bottom: 16px;
             display: flex;
             align-items: center;
             gap: 12px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
 
         /* ========== SERIAL LOG ========== */
         #serialLog {
-            background: rgba(5, 0, 15, 0.95) !important;
-            border: 2px solid var(--border-color);
+            background: rgba(5, 2, 10, 0.95) !important;
+            border: 1px solid var(--border-color);
             padding: 16px;
             font-family: var(--font-mono);
-            font-size: 12px;
+            font-size: 11px;
             color: var(--accent-green);
             max-height: 400px;
             overflow-y: auto;
@@ -459,7 +494,7 @@
             -webkit-appearance: none;
             appearance: none;
             height: 6px;
-            background: rgba(107, 33, 168, 0.4);
+            background: rgba(0, 255, 255, 0.2);
             outline: none;
             cursor: pointer;
         }
@@ -469,33 +504,29 @@
             appearance: none;
             width: 18px;
             height: 18px;
-            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            background: linear-gradient(135deg, var(--primary-cyan), var(--primary-pink));
             cursor: pointer;
             transition: all 0.3s;
         }
 
         input[type="range"]::-webkit-slider-thumb:hover {
             transform: scale(1.2);
-            box-shadow: 0 0 15px var(--shadow-purple);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
         }
 
         /* ========== SCROLLBAR ========== */
         ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
         }
 
         ::-webkit-scrollbar-track {
-            background: var(--bg-dark);
+            background: var(--darker-bg);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, var(--accent-purple), var(--accent-violet));
-            border: 2px solid var(--bg-dark);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, var(--accent-pink), var(--accent-purple));
+            background: linear-gradient(var(--primary-cyan), var(--primary-pink));
+            border-radius: 4px;
         }
 
         /* ========== RESPONSIVE ========== */
@@ -520,19 +551,35 @@
                 justify-content: center;
                 padding: 14px;
             }
+
+            .scanlines::before {
+                display: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cyber-gradient, .grid-lines, .orb, .scanlines::before {
+                animation: none !important;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Galaxy Background Layers -->
-    <div class="galaxy-bg"></div>
-    <div class="stars"></div>
-    <div class="nebula"></div>
+    <!-- Cyberpunk Background Layers -->
+    <div class="cyber-bg">
+        <div class="cyber-gradient"></div>
+    </div>
+    <div class="grid-overlay">
+        <div class="grid-lines"></div>
+    </div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="scanlines"></div>
 
     <!-- Sidebar Navigation -->
     <nav class="sidebar">
         <div class="sidebar-header">
-            <h2>&#127981; Smart Factory</h2>
+            <h2>Smart Factory</h2>
             <p>Control System</p>
         </div>
         <ul class="sidebar-menu">
@@ -589,7 +636,7 @@
                             <span id="cameraStatusText">Disconnected</span>
                         </div>
                         <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;" onerror="handleStreamError(this)" onload="handleStreamLoad(this)">
-                        <div id="cameraPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-direction: column; gap: 10px; background: rgba(10, 0, 20, 0.8); border: 2px solid var(--border-color);">
+                        <div id="cameraPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-direction: column; gap: 10px; background: rgba(10, 0, 20, 0.8); border: 1px solid var(--border-color);">
                             <div style="font-size: 48px;">&#128247;</div>
                             <div>Camera not connected</div>
                         </div>
@@ -621,17 +668,17 @@
                             <h4>Image Adjustments</h4>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                                 <div>
-                                    <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 6px;">Brightness</label>
+                                    <label style="display: block; color: var(--text-secondary); font-size: 11px; margin-bottom: 6px;">Brightness</label>
                                     <input type="range" id="brightnessSlider" min="-100" max="100" value="0" style="width: 100%;" oninput="updateImageAdjustments()">
-                                    <span id="brightnessValue" style="color: var(--text-muted); font-size: 11px;">0</span>
+                                    <span id="brightnessValue" style="color: var(--text-muted); font-size: 10px;">0</span>
                                 </div>
                                 <div>
-                                    <label style="display: block; color: var(--text-secondary); font-size: 12px; margin-bottom: 6px;">Contrast</label>
+                                    <label style="display: block; color: var(--text-secondary); font-size: 11px; margin-bottom: 6px;">Contrast</label>
                                     <input type="range" id="contrastSlider" min="-100" max="100" value="0" style="width: 100%;" oninput="updateImageAdjustments()">
-                                    <span id="contrastValue" style="color: var(--text-muted); font-size: 11px;">0</span>
+                                    <span id="contrastValue" style="color: var(--text-muted); font-size: 10px;">0</span>
                                 </div>
                             </div>
-                            <button class="btn btn-primary" onclick="resetImageAdjustments()" style="margin-top: 12px; width: 100%; font-size: 12px; padding: 8px;">
+                            <button class="btn btn-primary" onclick="resetImageAdjustments()" style="margin-top: 12px; width: 100%; font-size: 11px; padding: 8px;">
                                 Reset Adjustments
                             </button>
                         </div>
@@ -645,7 +692,7 @@
                             <span id="analyzedStatusText">No analysis yet</span>
                         </div>
                         <img id="analyzedImage" class="camera-frame" src="" alt="Analyzed Image" style="display: none;">
-                        <div id="analyzedPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-direction: column; gap: 10px; background: rgba(10, 0, 20, 0.8); border: 2px solid var(--border-color);">
+                        <div id="analyzedPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-direction: column; gap: 10px; background: rgba(10, 0, 20, 0.8); border: 1px solid var(--border-color);">
                             <div style="font-size: 48px;">&#128269;</div>
                             <div>Analysis results will appear here</div>
                         </div>
@@ -658,12 +705,12 @@
                     <div id="objectDetectionStats" class="panel" style="display: block;">
                         <h4>Detection Results</h4>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-                            <span style="color: var(--text-secondary); font-size: 14px; font-weight: 600;">Objects Detected:</span>
+                            <span style="color: var(--text-secondary); font-size: 13px; font-weight: 600;">Objects Detected:</span>
                             <span id="currentObjectCount" style="color: var(--accent-green); font-weight: 700; font-size: 20px;">0</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 2px solid var(--border-color);">
-                            <span style="color: var(--text-secondary); font-size: 11px;">Last Updated:</span>
-                            <span id="lastDetectionTime" style="color: var(--text-muted); font-size: 11px;">Never</span>
+                        <div style="display: flex; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+                            <span style="color: var(--text-secondary); font-size: 10px;">Last Updated:</span>
+                            <span id="lastDetectionTime" style="color: var(--text-muted); font-size: 10px;">Never</span>
                         </div>
                     </div>
                     
@@ -671,7 +718,7 @@
                     <div id="counterTimeline" class="panel" style="display: block;">
                         <h4>Counter Detection Timeline</h4>
                         <div id="counterTimelineList" style="max-height: 200px; overflow-y: auto;">
-                            <div style="color: var(--text-muted); text-align: center; padding: 12px; font-size: 12px;">No counters detected yet</div>
+                            <div style="color: var(--text-muted); text-align: center; padding: 12px; font-size: 11px;">No counters detected yet</div>
                         </div>
                     </div>
                     
@@ -680,33 +727,33 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                             <h4 style="margin: 0;">Saved Counter Images</h4>
                             <div style="display: flex; gap: 8px;">
-                                <button class="btn btn-danger" onclick="deleteAllCounterImages()" style="font-size: 11px; padding: 6px 10px;">
+                                <button class="btn btn-danger" onclick="deleteAllCounterImages()" style="font-size: 10px; padding: 6px 10px;">
                                     &#128465; Delete All
                                 </button>
-                                <button class="btn btn-primary" onclick="refreshCounterImages()" style="font-size: 11px; padding: 6px 10px;">
+                                <button class="btn btn-primary" onclick="refreshCounterImages()" style="font-size: 10px; padding: 6px 10px;">
                                     &#128260; Refresh
                                 </button>
                             </div>
                         </div>
                         <div id="counterImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; max-height: 400px; overflow-y: auto;">
-                            <div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px; grid-column: 1 / -1;">Loading images...</div>
+                            <div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px; grid-column: 1 / -1;">Loading images...</div>
                         </div>
-                        <div id="counterImagesStatus" style="margin-top: 8px; color: var(--text-muted); font-size: 11px;"></div>
+                        <div id="counterImagesStatus" style="margin-top: 8px; color: var(--text-muted); font-size: 10px;"></div>
                     </div>
                     
                     <!-- Defect Detection Section -->
                     <div id="defectDetectionSection" class="panel" style="display: block;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                             <h4 style="margin: 0;">Defect Detection</h4>
-                            <button class="btn btn-success" onclick="analyzeAllCountersForDefects()" style="font-size: 11px; padding: 6px 10px;">
+                            <button class="btn btn-success" onclick="analyzeAllCountersForDefects()" style="font-size: 10px; padding: 6px 10px;">
                                 &#128269; Analyze All
                             </button>
                         </div>
-                        <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">
+                        <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 12px;">
                             Analyzes saved counter images to detect color changes on the counter surface
                         </div>
                         <div id="defectResultsList" style="max-height: 300px; overflow-y: auto;">
-                            <div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px;">No defect analysis performed yet. Click "Analyze All" to check all counters.</div>
+                            <div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No defect analysis performed yet. Click "Analyze All" to check all counters.</div>
                         </div>
                     </div>
 
@@ -721,7 +768,7 @@
                         <span>
                             <span id="serialMonitorToggleIcon">&#9654;</span> Serial Monitor Log
                         </span>
-                        <button class="btn btn-primary" onclick="clearSerialLog(event)" style="font-size: 11px; padding: 6px 10px; margin: 0;">
+                        <button class="btn btn-primary" onclick="clearSerialLog(event)" style="font-size: 10px; padding: 6px 10px; margin: 0;">
                             Clear Log
                         </button>
                     </h4>
@@ -731,12 +778,12 @@
                             <div style="color: var(--text-muted);">Waiting for camera events...</div>
                         </div>
                         <div style="margin-top: 10px; display: flex; gap: 12px;">
-                            <label style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; cursor: pointer;">
-                                <input type="checkbox" id="autoScrollLog" checked style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-purple);">
+                            <label style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; cursor: pointer;">
+                                <input type="checkbox" id="autoScrollLog" checked style="width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary-cyan);">
                                 <span>Auto-scroll</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; cursor: pointer;">
-                                <input type="checkbox" id="timestampLog" checked style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-purple);">
+                            <label style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 11px; cursor: pointer;">
+                                <input type="checkbox" id="timestampLog" checked style="width: 14px; height: 14px; cursor: pointer; accent-color: var(--primary-cyan);">
                                 <span>Show timestamps</span>
                             </label>
                         </div>
@@ -750,43 +797,43 @@
                         <span>How the Vision System Works</span>
                     </h3>
                     <div id="infoContent" style="display: none;">
-                        <div style="color: var(--text-secondary); line-height: 1.8; font-size: 14px;">
+                        <div style="color: var(--text-secondary); line-height: 1.8; font-size: 13px;">
                             <p style="margin-bottom: 16px;">
                                 Every second the camera grabs a snapshot, the YOLO microservice finds circular counters,
                                 the backend saves any new counters with a tight crop, and defect detection runs instantly.
                                 The timeline, saved image gallery, and defect list update themselves as soon as this happens.
                             </p>
 
-                            <h4 style="color: var(--accent-pink); margin-top: 24px; margin-bottom: 12px;">&#127909; Camera Snapshots</h4>
+                            <h4 style="color: var(--primary-pink); margin-top: 24px; margin-bottom: 12px;">&#127909; Camera Snapshots</h4>
                             <ul style="margin-left: 24px; margin-bottom: 16px;">
                                 <li>USB camera (index 0) captures a JPEG every second at 640×480</li>
                                 <li>The raw snapshot feeds the analyzed image and the saved counter crops</li>
                                 <li>The analyzed image you see is refreshed once per second (no stream required)</li>
                             </ul>
 
-                            <h4 style="color: var(--accent-pink); margin-top: 24px; margin-bottom: 12px;">&#128269; Counter Tracking Flow</h4>
+                            <h4 style="color: var(--primary-pink); margin-top: 24px; margin-bottom: 12px;">&#128269; Counter Tracking Flow</h4>
                             <ol style="margin-left: 24px; margin-bottom: 16px;">
                                 <li><strong>YOLO Detection:</strong> Snapshot goes to the vision microservice (15% confidence, 0.45 IOU)</li>
                                 <li><strong>Position Matching:</strong> Each detection is compared with the last seen position so counters keep their number</li>
-                                <li><strong>Saving:</strong> New numbers trigger a tight crop (5 px padding) stored in <code style="background: var(--bg-dark); padding: 2px 6px;">~/counter_images</code></li>
+                                <li><strong>Saving:</strong> New numbers trigger a tight crop (5 px padding) stored in <code style="background: var(--darker-bg); padding: 2px 6px; color: var(--primary-cyan);">~/counter_images</code></li>
                                 <li><strong>Auto Defect Detection:</strong> Each saved image is analyzed right away; results are stored for the defect list</li>
                                 <li><strong>UI Update:</strong> Timeline, gallery, and defect panel pull the latest info every few seconds</li>
                             </ol>
 
-                            <h4 style="color: var(--accent-pink); margin-top: 24px; margin-bottom: 12px;">&#9881;&#65039; Automatic Defect Detection</h4>
+                            <h4 style="color: var(--primary-pink); margin-top: 24px; margin-bottom: 12px;">&#9881;&#65039; Automatic Defect Detection</h4>
                             <ul style="margin-left: 24px; margin-bottom: 16px;">
                                 <li>When a counter image is saved, the backend isolates the circular surface and checks for color changes &gt; 110</li>
                                 <li>The stored defect results feed the "Defect Detection" card without needing to press "Analyze All"</li>
                                 <li>"Analyze All" simply re-runs checks if you want to double‑check the latest images</li>
                             </ul>
 
-                            <h4 style="color: var(--accent-pink); margin-top: 24px; margin-bottom: 12px;">&#128465;&#65039; Resetting</h4>
+                            <h4 style="color: var(--primary-pink); margin-top: 24px; margin-bottom: 12px;">&#128465;&#65039; Resetting</h4>
                             <ul style="margin-left: 24px; margin-bottom: 16px;">
                                 <li>The red "Delete All" button wipes saved images, defect data, and the detection timeline</li>
                                 <li>After deleting, the next detections start again at Counter 1</li>
                             </ul>
 
-                            <h4 style="color: var(--accent-pink); margin-top: 24px; margin-bottom: 12px;">&#128161; Tips for Best Results</h4>
+                            <h4 style="color: var(--primary-pink); margin-top: 24px; margin-bottom: 12px;">&#128161; Tips for Best Results</h4>
                             <ul style="margin-left: 24px; margin-bottom: 16px;">
                                 <li>Keep lighting even so color-based defect checks stay accurate</li>
                                 <li>Use a contrasting belt color (blue works best for white counters)</li>
@@ -794,11 +841,11 @@
                                 <li>If YOLO misses one, move it back into frame; the number will be reused automatically</li>
                             </ul>
 
-                            <h4 style="color: var(--accent-pink); margin-top: 24px; margin-bottom: 12px;">&#128295; Technical Notes</h4>
+                            <h4 style="color: var(--primary-pink); margin-top: 24px; margin-bottom: 12px;">&#128295; Technical Notes</h4>
                             <ul style="margin-left: 24px; margin-bottom: 16px;">
                                 <li>Backend: Flask + OpenCV + YOLO microservice (Ultralytics) managed by PM2</li>
-                                <li>Saved data lives in <code style="background: var(--bg-dark); padding: 2px 6px;">~/counter_images</code> (images + JSON logs)</li>
-                                <li>All API routes are documented in <code style="background: var(--bg-dark); padding: 2px 6px;">app.py</code> if you need custom tooling</li>
+                                <li>Saved data lives in <code style="background: var(--darker-bg); padding: 2px 6px; color: var(--primary-cyan);">~/counter_images</code> (images + JSON logs)</li>
+                                <li>All API routes are documented in <code style="background: var(--darker-bg); padding: 2px 6px; color: var(--primary-cyan);">app.py</code> if you need custom tooling</li>
                             </ul>
                         </div>
                     </div>
@@ -1239,12 +1286,12 @@
                 const response = await fetch(`${API_BASE}/api/counter-images`);
                 const data = await response.json();
                 if (data.error) {
-                    timelineList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 12px; font-size: 12px;">No counters detected yet</div>';
+                    timelineList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 12px; font-size: 11px;">No counters detected yet</div>';
                     return;
                 }
                 const images = data.images || [];
                 if (images.length === 0) {
-                    timelineList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 12px; font-size: 12px;">No counters detected yet</div>';
+                    timelineList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 12px; font-size: 11px;">No counters detected yet</div>';
                     return;
                 }
                 const counterMap = {};
@@ -1260,15 +1307,15 @@
                     const date = new Date(img.timestamp * 1000);
                     const formattedTime = date.toLocaleString();
                     return `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 2px solid var(--border-color);">
-                            <span style="color: var(--accent-purple); font-weight: 700; font-size: 13px;">Counter ${counterNum}</span>
-                            <span style="color: var(--text-muted); font-size: 11px;">${formattedTime}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+                            <span style="color: var(--primary-cyan); font-weight: 700; font-size: 12px;">Counter ${counterNum}</span>
+                            <span style="color: var(--text-muted); font-size: 10px;">${formattedTime}</span>
                         </div>
                     `;
                 }).join('');
             } catch (error) {
                 console.error('Error updating counter timeline:', error);
-                timelineList.innerHTML = '<div style="color: var(--accent-red); text-align: center; padding: 12px; font-size: 12px;">Error loading timeline</div>';
+                timelineList.innerHTML = '<div style="color: var(--accent-red); text-align: center; padding: 12px; font-size: 11px;">Error loading timeline</div>';
             }
         }
 
@@ -1290,7 +1337,7 @@
                 await updateCounterTimelineFromImages();
                 const defectResultsList = document.getElementById('defectResultsList');
                 if (defectResultsList) {
-                    defectResultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px;">No defect analysis performed yet. Click "Analyze All" to check all counters.</div>';
+                    defectResultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No defect analysis performed yet. Click "Analyze All" to check all counters.</div>';
                 }
             } catch (error) {
                 console.error('Error deleting counter images:', error);
@@ -1305,7 +1352,7 @@
             if (!imagesList) return;
             try {
                 if (counterImagesFirstLoad) {
-                    imagesList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px; grid-column: 1 / -1;">Loading images...</div>';
+                    imagesList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px; grid-column: 1 / -1;">Loading images...</div>';
                     if (statusDiv) statusDiv.textContent = '';
                 } else if (statusDiv) {
                     statusDiv.textContent = 'Refreshing...';
@@ -1314,14 +1361,14 @@
                 const data = await response.json();
                 if (data.error) {
                     if (counterImagesFirstLoad) {
-                        imagesList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 12px; grid-column: 1 / -1;">Error: ${data.error}</div>`;
+                        imagesList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px; grid-column: 1 / -1;">Error: ${data.error}</div>`;
                     }
                     if (statusDiv) statusDiv.textContent = `Error: ${data.error}`;
                     return;
                 }
                 const images = data.images || [];
                 if (images.length === 0) {
-                    imagesList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px; grid-column: 1 / -1;">No counter images saved yet</div>';
+                    imagesList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px; grid-column: 1 / -1;">No counter images saved yet</div>';
                     if (statusDiv) statusDiv.textContent = 'Waiting for new counter images...';
                     counterImagesFirstLoad = false;
                     loadStoredDefectResults();
@@ -1329,10 +1376,10 @@
                 }
                 imagesList.innerHTML = images.map(img => {
                     return `
-                        <div style="background: var(--bg-card); padding: 10px; border: 2px solid var(--border-color); cursor: pointer; transition: all 0.3s;" onclick="openImageModal('${img.url}')" onmouseover="this.style.borderColor='var(--accent-purple)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <div style="background: var(--card-bg); padding: 10px; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.3s; clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);" onclick="openImageModal('${img.url}')" onmouseover="this.style.borderColor='var(--primary-cyan)'" onmouseout="this.style.borderColor='var(--border-color)'">
                             <img src="${img.url}" alt="Counter ${img.counter_number}" style="width: 100%; height: 120px; object-fit: cover; margin-bottom: 8px;">
-                            <div style="color: var(--accent-purple); font-weight: 700; font-size: 11px; margin-bottom: 4px;">Counter ${img.counter_number}</div>
-                            <div style="color: var(--text-muted); font-size: 10px;">${img.formatted_time}</div>
+                            <div style="color: var(--primary-cyan); font-weight: 700; font-size: 10px; margin-bottom: 4px;">Counter ${img.counter_number}</div>
+                            <div style="color: var(--text-muted); font-size: 9px;">${img.formatted_time}</div>
                         </div>
                     `;
                 }).join('');
@@ -1343,7 +1390,7 @@
             } catch (error) {
                 console.error('Error loading counter images:', error);
                 if (counterImagesFirstLoad) {
-                    imagesList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 12px; grid-column: 1 / -1;">Error loading images: ${error.message}</div>`;
+                    imagesList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px; grid-column: 1 / -1;">Error loading images: ${error.message}</div>`;
                 }
                 if (statusDiv) statusDiv.textContent = `Error loading images: ${error.message}`;
             }
@@ -1356,12 +1403,12 @@
                 const response = await fetch(`${API_BASE}/api/counter-images/defects`);
                 const data = await response.json();
                 if (data.error) {
-                    resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 12px;">Error loading defect results: ${data.error}</div>`;
+                    resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px;">Error loading defect results: ${data.error}</div>`;
                     return;
                 }
                 const defects = data.defects || [];
                 if (defects.length === 0) {
-                    resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px;">No defect analysis results yet</div>';
+                    resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No defect analysis results yet</div>';
                     return;
                 }
                 resultsList.innerHTML = defects
@@ -1371,25 +1418,25 @@
                         const hasDefects = data.defects_found;
                         if (!hasDefects) return '';
                         return `
-                            <div style="background: var(--bg-card); padding: 12px; margin-bottom: 10px; border-left: 4px solid var(--accent-red); border: 2px solid var(--border-color);">
+                            <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <div style="color: var(--accent-purple); font-weight: 700; font-size: 12px;">Counter ${result.counter_number}</div>
-                                    <div style="color: var(--accent-red); font-weight: 700; font-size: 11px;">DEFECTS FOUND</div>
+                                    <div style="color: var(--primary-cyan); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
+                                    <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECTS FOUND</div>
                                 </div>
-                                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 6px;">
+                                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 6px;">
                                     Defects: ${data.defect_count} | Coverage: ${data.total_defect_area_percentage ? data.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${data.confidence ? data.confidence.toFixed(1) : '0.0'}%
                                 </div>
                                 ${data.defects && data.defects.length > 0 ? `
-                                    <div style="color: #fca5a5; font-size: 10px; margin-top: 6px;">
+                                    <div style="color: #fca5a5; font-size: 9px; margin-top: 6px;">
                                         ${data.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
                                     </div>
                                 ` : ''}
                             </div>
                         `;
-                    }).join('') || '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 12px;">✓ No defects found - all counters are good!</div>';
+                    }).join('') || '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No defects found - all counters are good!</div>';
             } catch (error) {
                 console.error('Error loading stored defect results:', error);
-                resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 12px;">Error loading defect results: ${error.message}</div>`;
+                resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px;">Error loading defect results: ${error.message}</div>`;
             }
         }
 
@@ -1399,7 +1446,7 @@
             modal.onclick = () => document.body.removeChild(modal);
             const img = document.createElement('img');
             img.src = imageUrl;
-            img.style.cssText = 'max-width: 90%; max-height: 90%; object-fit: contain; border: 4px solid var(--border-color);';
+            img.style.cssText = 'max-width: 90%; max-height: 90%; object-fit: contain; border: 2px solid var(--border-color);';
             img.onclick = (e) => e.stopPropagation();
             modal.appendChild(img);
             document.body.appendChild(modal);
@@ -1409,11 +1456,11 @@
             const resultsList = document.getElementById('defectResultsList');
             if (!resultsList) return;
             try {
-                resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px;">Analyzing counters for defects...</div>';
+                resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">Analyzing counters for defects...</div>';
                 const imagesResponse = await fetch(`${API_BASE}/api/counter-images`);
                 const imagesData = await imagesResponse.json();
                 if (imagesData.error || !imagesData.images || imagesData.images.length === 0) {
-                    resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 12px;">No counter images to analyze</div>';
+                    resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No counter images to analyze</div>';
                     return;
                 }
                 const analysisResults = [];
@@ -1429,29 +1476,29 @@
                 }
                 const countersWithDefects = analysisResults.filter(result => result.defects_found === true);
                 if (countersWithDefects.length === 0) {
-                    resultsList.innerHTML = '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 12px;">✓ No defects found - all counters are good!</div>';
+                    resultsList.innerHTML = '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No defects found - all counters are good!</div>';
                     return;
                 }
                 resultsList.innerHTML = countersWithDefects.map(result => {
                     if (result.error) {
                         return `
-                            <div style="background: var(--bg-card); padding: 12px; margin-bottom: 10px; border-left: 4px solid var(--accent-red); border: 2px solid var(--border-color);">
-                                <div style="color: var(--accent-red); font-weight: 700; font-size: 12px;">Counter ${result.counter_number}</div>
-                                <div style="color: var(--text-muted); font-size: 11px;">Error: ${result.error}</div>
+                            <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
+                                <div style="color: var(--accent-red); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
+                                <div style="color: var(--text-muted); font-size: 10px;">Error: ${result.error}</div>
                             </div>
                         `;
                     }
                     return `
-                        <div style="background: var(--bg-card); padding: 12px; margin-bottom: 10px; border-left: 4px solid var(--accent-red); border: 2px solid var(--border-color);">
+                        <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <div style="color: var(--accent-purple); font-weight: 700; font-size: 12px;">Counter ${result.counter_number}</div>
-                                <div style="color: var(--accent-red); font-weight: 700; font-size: 11px;">DEFECTS FOUND</div>
+                                <div style="color: var(--primary-cyan); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
+                                <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECTS FOUND</div>
                             </div>
-                            <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 6px;">
+                            <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 6px;">
                                 Defects: ${result.defect_count} | Coverage: ${result.total_defect_area_percentage ? result.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${result.confidence.toFixed(1)}%
                             </div>
                             ${result.defects && result.defects.length > 0 ? `
-                                <div style="color: #fca5a5; font-size: 10px; margin-top: 6px;">
+                                <div style="color: #fca5a5; font-size: 9px; margin-top: 6px;">
                                     ${result.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
                                 </div>
                             ` : ''}
@@ -1461,7 +1508,7 @@
                 addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed, ${countersWithDefects.length} with defects found`, 'info');
             } catch (error) {
                 console.error('Error analyzing counters for defects:', error);
-                resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 12px;">Error: ${error.message}</div>`;
+                resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px;">Error: ${error.message}</div>`;
             }
         }
 
@@ -1556,18 +1603,18 @@
             if (!logDiv) return;
             const timestamp = document.getElementById('timestampLog')?.checked ?? true;
             const colors = {
-                'info': '#c084fc',
+                'info': '#00ffff',
                 'warning': '#f59e0b',
                 'error': '#ef4444',
                 'success': '#10b981',
                 'camera': '#22d3ee',
-                'detection': '#f472b6',
+                'detection': '#ff00ff',
                 'plc': '#f97316'
             };
             let html = '';
             serialLogEntries.forEach(entry => {
                 const timeStr = timestamp ? `[${entry.timestamp.toLocaleTimeString()}.${String(entry.timestamp.getMilliseconds()).padStart(3, '0')}] ` : '';
-                const color = colors[entry.type] || '#c4b5fd';
+                const color = colors[entry.type] || '#a1a1aa';
                 html += `<div style="color: ${color};">${timeStr}${entry.message}</div>`;
             });
             logDiv.innerHTML = html || '<div style="color: var(--text-muted);">No log entries</div>';
