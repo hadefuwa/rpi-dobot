@@ -1397,7 +1397,7 @@
         }
 
         // Minimum thresholds for displaying defects (filter out false positives)
-        const DEFECT_MIN_CONFIDENCE = 50;  // Minimum 50% confidence
+        const DEFECT_MIN_CONFIDENCE = 30;  // Minimum 30% confidence
         const DEFECT_MIN_COVERAGE = 5;     // Minimum 5% coverage
         
         async function loadStoredDefectResults() {
@@ -1758,6 +1758,12 @@
         function updateSerialLogDisplay() {
             const logDiv = document.getElementById('serialLog');
             if (!logDiv) return;
+            
+            // Store scroll position BEFORE updating content
+            const autoScrollEnabled = document.getElementById('autoScrollLog')?.checked ?? true;
+            const previousScrollTop = logDiv.scrollTop;
+            const previousScrollHeight = logDiv.scrollHeight;
+            
             const timestamp = document.getElementById('timestampLog')?.checked ?? true;
             const colors = {
                 'info': '#00ffff',
@@ -1775,9 +1781,24 @@
                 html += `<div style="color: ${color};">${timeStr}${entry.message}</div>`;
             });
             logDiv.innerHTML = html || '<div style="color: var(--text-muted);">No log entries</div>';
-            if (document.getElementById('autoScrollLog')?.checked) {
+            
+            // Restore scroll position AFTER content update
+            if (autoScrollEnabled) {
+                // Auto-scroll: always go to bottom
                 setTimeout(() => {
                     logDiv.scrollTop = logDiv.scrollHeight;
+                }, 10);
+            } else {
+                // Manual scroll: preserve exact scroll position (don't move user)
+                // Calculate the ratio of scroll position to maintain relative position
+                const scrollRatio = previousScrollHeight > 0 ? previousScrollTop / previousScrollHeight : 0;
+                setTimeout(() => {
+                    // Restore to same relative position, but clamp to valid range
+                    const newScrollTop = Math.min(
+                        logDiv.scrollHeight * scrollRatio,
+                        logDiv.scrollHeight - logDiv.clientHeight
+                    );
+                    logDiv.scrollTop = Math.max(0, newScrollTop);
                 }, 10);
             }
         }
@@ -1791,3 +1812,4 @@
     </script>
 </body>
 </html>
+
