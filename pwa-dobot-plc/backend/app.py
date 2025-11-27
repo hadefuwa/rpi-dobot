@@ -35,6 +35,9 @@ COUNTER_IMAGES_DIR = os.path.expanduser('~/counter_images')
 COUNTER_POSITIONS_FILE = os.path.join(COUNTER_IMAGES_DIR, 'counter_positions.json')
 COUNTER_DEFECTS_FILE = os.path.join(COUNTER_IMAGES_DIR, 'counter_defects.json')
 
+# Track last save time for each counter (to enforce 15-second interval)
+counter_last_save_time = {}  # counter_number -> timestamp
+
 # Create directory if it doesn't exist
 os.makedirs(COUNTER_IMAGES_DIR, exist_ok=True)
 
@@ -422,7 +425,8 @@ def counter_image_exists(counter_number: int) -> bool:
 def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timestamp: float) -> str:
     """
     Crop and save a detected counter image with timestamp
-    Always saves a new image with timestamp, allowing multiple images per counter
+    Only saves if 15 seconds have passed since last save for this counter
+    Deletes the previous image for this counter before saving the new one
     
     Args:
         frame: Original camera frame
@@ -431,10 +435,35 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         timestamp: Detection timestamp
     
     Returns:
-        Path to saved image file, or None if failed
+        Path to saved image file, or None if failed or too soon since last save
     """
     try:
-        # Always save a new image with timestamp (allows multiple images per counter)
+        # Check if 15 seconds have passed since last save for this counter
+        SAVE_INTERVAL_SECONDS = 15
+        last_save_time = counter_last_save_time.get(counter_number, 0)
+        time_since_last_save = timestamp - last_save_time
+        
+        if time_since_last_save < SAVE_INTERVAL_SECONDS:
+            # Too soon, skip saving
+            logger.debug(f"Counter {counter_number}: Only {time_since_last_save:.1f}s since last save, skipping (need {SAVE_INTERVAL_SECONDS}s)")
+            return None
+        
+        # Delete previous image(s) for this counter
+        prefix = f"counter_{counter_number}_"
+        if os.path.exists(COUNTER_IMAGES_DIR):
+            deleted_count = 0
+            for filename in os.listdir(COUNTER_IMAGES_DIR):
+                if filename.startswith(prefix) and filename.endswith('.jpg'):
+                    filepath = os.path.join(COUNTER_IMAGES_DIR, filename)
+                    try:
+                        os.remove(filepath)
+                        deleted_count += 1
+                        logger.debug(f"Deleted previous counter {counter_number} image: {filename}")
+                    except Exception as e:
+                        logger.warning(f"Error deleting previous image {filename}: {e}")
+            if deleted_count > 0:
+                logger.info(f"Deleted {deleted_count} previous image(s) for counter {counter_number}")
+        
         # Get bounding box coordinates
         x = obj.get('x', 0)
         y = obj.get('y', 0)
@@ -462,7 +491,10 @@ def save_counter_image(frame: np.ndarray, obj: Dict, counter_number: int, timest
         
         # Save the cropped image
         cv2.imwrite(filepath, cropped)
-        logger.info(f"Saved counter {counter_number} image: {filename}")
+        logger.info(f"Saved counter {counter_number} image: {filename} (after {time_since_last_save:.1f}s)")
+
+        # Update last save time
+        counter_last_save_time[counter_number] = timestamp
 
         # Automatically analyze the saved counter image for defects
         auto_analyze_counter_image(counter_number, filepath)
