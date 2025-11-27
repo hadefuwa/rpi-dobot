@@ -1396,10 +1396,29 @@
             }
         }
 
+        // Minimum thresholds for displaying defects (filter out false positives)
+        const DEFECT_MIN_CONFIDENCE = 50;  // Minimum 50% confidence
+        const DEFECT_MIN_COVERAGE = 5;     // Minimum 5% coverage
+        
         async function loadStoredDefectResults() {
             const resultsList = document.getElementById('defectResultsList');
             if (!resultsList) return;
             try {
+                // First, get the list of actual saved counter images
+                const imagesResponse = await fetch(`${API_BASE}/api/counter-images`);
+                const imagesData = await imagesResponse.json();
+                const savedCounterNumbers = new Set();
+                if (imagesData.images && imagesData.images.length > 0) {
+                    imagesData.images.forEach(img => savedCounterNumbers.add(img.counter_number));
+                }
+                
+                // If no saved images, don't show any defect results
+                if (savedCounterNumbers.size === 0) {
+                    resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No counter images to analyze</div>';
+                    return;
+                }
+                
+                // Now get the defect results
                 const response = await fetch(`${API_BASE}/api/counter-images/defects`);
                 const data = await response.json();
                 if (data.error) {
@@ -1411,12 +1430,38 @@
                     resultsList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px; font-size: 11px;">No defect analysis results yet</div>';
                     return;
                 }
-                resultsList.innerHTML = defects
+                
+                // Filter defects to only include:
+                // 1. Counters that have saved images
+                // 2. Defects with confidence >= DEFECT_MIN_CONFIDENCE
+                // 3. Defects with coverage >= DEFECT_MIN_COVERAGE
+                const validDefects = defects.filter(result => {
+                    // Must have a saved image
+                    if (!savedCounterNumbers.has(result.counter_number)) return false;
+                    
+                    const defectData = result.defect_results || {};
+                    if (!defectData.defects_found) return false;
+                    
+                    // Check confidence threshold
+                    const confidence = defectData.confidence || 0;
+                    if (confidence < DEFECT_MIN_CONFIDENCE) return false;
+                    
+                    // Check coverage threshold
+                    const coverage = defectData.total_defect_area_percentage || 0;
+                    if (coverage < DEFECT_MIN_COVERAGE) return false;
+                    
+                    return true;
+                });
+                
+                if (validDefects.length === 0) {
+                    resultsList.innerHTML = '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No significant defects found - all counters are good!</div>';
+                    return;
+                }
+                
+                resultsList.innerHTML = validDefects
                     .sort((a, b) => a.counter_number - b.counter_number)
                     .map(result => {
                         const data = result.defect_results || {};
-                        const hasDefects = data.defects_found;
-                        if (!hasDefects) return '';
                         return `
                             <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -1433,7 +1478,7 @@
                                 ` : ''}
                             </div>
                         `;
-                    }).join('') || '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No defects found - all counters are good!</div>';
+                    }).join('');
             } catch (error) {
                 console.error('Error loading stored defect results:', error);
                 resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px;">Error loading defect results: ${error.message}</div>`;
@@ -1468,44 +1513,52 @@
                     try {
                         const response = await fetch(`${API_BASE}/api/counter-images/${img.counter_number}/analyze-defects`, { method: 'POST' });
                         const result = await response.json();
+                        result.counter_number = img.counter_number;
                         analysisResults.push(result);
                     } catch (error) {
                         console.error(`Error analyzing counter ${img.counter_number}:`, error);
                         analysisResults.push({ counter_number: img.counter_number, error: error.message });
                     }
                 }
-                const countersWithDefects = analysisResults.filter(result => result.defects_found === true);
-                if (countersWithDefects.length === 0) {
-                    resultsList.innerHTML = '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No defects found - all counters are good!</div>';
+                
+                // Filter to only show significant defects (above thresholds)
+                const significantDefects = analysisResults.filter(result => {
+                    if (result.error) return false;
+                    if (!result.defects_found) return false;
+                    
+                    const confidence = result.confidence || 0;
+                    const coverage = result.total_defect_area_percentage || 0;
+                    
+                    return confidence >= DEFECT_MIN_CONFIDENCE && coverage >= DEFECT_MIN_COVERAGE;
+                });
+                
+                if (significantDefects.length === 0) {
+                    resultsList.innerHTML = '<div style="color: var(--accent-green); text-align: center; padding: 24px; font-size: 11px;">✓ No significant defects found - all counters are good!</div>';
+                    addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed, no significant defects (min ${DEFECT_MIN_CONFIDENCE}% confidence, ${DEFECT_MIN_COVERAGE}% coverage)`, 'info');
                     return;
                 }
-                resultsList.innerHTML = countersWithDefects.map(result => {
-                    if (result.error) {
+                
+                resultsList.innerHTML = significantDefects
+                    .sort((a, b) => a.counter_number - b.counter_number)
+                    .map(result => {
                         return `
                             <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
-                                <div style="color: var(--accent-red); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
-                                <div style="color: var(--text-muted); font-size: 10px;">Error: ${result.error}</div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="color: var(--primary-cyan); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
+                                    <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECTS FOUND</div>
+                                </div>
+                                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 6px;">
+                                    Defects: ${result.defect_count} | Coverage: ${result.total_defect_area_percentage ? result.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${(result.confidence || 0).toFixed(1)}%
+                                </div>
+                                ${result.defects && result.defects.length > 0 ? `
+                                    <div style="color: #fca5a5; font-size: 9px; margin-top: 6px;">
+                                        ${result.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
+                                    </div>
+                                ` : ''}
                             </div>
                         `;
-                    }
-                    return `
-                        <div style="background: var(--card-bg); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-red); border: 1px solid var(--border-color); clip-path: polygon(8px 0%, 100% 0%, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0% 100%, 0% 8px);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <div style="color: var(--primary-cyan); font-weight: 700; font-size: 11px;">Counter ${result.counter_number}</div>
-                                <div style="color: var(--accent-red); font-weight: 700; font-size: 10px;">DEFECTS FOUND</div>
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 6px;">
-                                Defects: ${result.defect_count} | Coverage: ${result.total_defect_area_percentage ? result.total_defect_area_percentage.toFixed(1) : '0'}% | Confidence: ${result.confidence.toFixed(1)}%
-                            </div>
-                            ${result.defects && result.defects.length > 0 ? `
-                                <div style="color: #fca5a5; font-size: 9px; margin-top: 6px;">
-                                    ${result.defects.map((d, i) => `Defect ${i+1}: ${d.area_percentage ? d.area_percentage.toFixed(1) : '0'}% of counter (${d.color_difference ? d.color_difference.toFixed(0) : '0'} color diff)`).join(', ')}
-                                </div>
-                            ` : ''}
-                        </div>
-                    `;
-                }).join('');
-                addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed, ${countersWithDefects.length} with defects found`, 'info');
+                    }).join('');
+                addSerialLog(`Defect analysis complete: ${analysisResults.length} counters analyzed, ${significantDefects.length} with significant defects found`, 'info');
             } catch (error) {
                 console.error('Error analyzing counters for defects:', error);
                 resultsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: 24px; font-size: 11px;">Error: ${error.message}</div>`;
