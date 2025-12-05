@@ -635,7 +635,7 @@
                             <span class="status-indicator" id="cameraStatusIndicator"></span>
                             <span id="cameraStatusText">Disconnected</span>
                         </div>
-                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;" onerror="handleStreamError(this)" onload="handleStreamLoad(this)">
+                        <img id="cameraFrame" class="camera-frame" src="" alt="Camera Feed" style="display: none;">
                         <div id="cameraPlaceholder" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-direction: column; gap: 10px; background: rgba(10, 0, 20, 0.8); border: 1px solid var(--border-color);">
                             <div style="font-size: 48px;">&#128247;</div>
                             <div>Camera not connected</div>
@@ -913,6 +913,17 @@
         let counterImagesFirstLoad = true;
 
         window.addEventListener('load', () => {
+            // Set up image event handlers
+            const cameraFrame = document.getElementById('cameraFrame');
+            if (cameraFrame) {
+                cameraFrame.addEventListener('error', function() {
+                    handleStreamError(this);
+                });
+                cameraFrame.addEventListener('load', function() {
+                    handleStreamLoad(this);
+                });
+            }
+            
             startStreamImmediately();
             loadDetectionParams();
             loadDb123Config();
@@ -1921,12 +1932,22 @@
             if (!statusDiv) return;
             
             try {
-                const response = await fetch(`${API_BASE}/api/config`);
-                const config = await response.json();
+                const configResponse = await fetch(`${API_BASE}/api/config`);
+                const config = await configResponse.json();
                 const db123Config = config.plc?.db123 || {};
                 const enabled = db123Config.enabled || false;
                 const dbNumber = db123Config.db_number || 123;
-                const plcConnected = config.plc ? (plc_client && plc_client.is_connected ? true : false) : false;
+                
+                // Get PLC connection status from API
+                let plcConnected = false;
+                try {
+                    const plcStatusResponse = await fetch(`${API_BASE}/api/plc/status`);
+                    const plcStatus = await plcStatusResponse.json();
+                    plcConnected = plcStatus.connected || false;
+                } catch (e) {
+                    // If PLC status endpoint fails, assume disconnected
+                    plcConnected = false;
+                }
                 
                 if (enabled) {
                     statusDiv.innerHTML = `
