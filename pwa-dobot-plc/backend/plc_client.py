@@ -304,41 +304,60 @@ class PLCClient:
             return False
 
     def read_control_bits(self) -> Dict[str, bool]:
-        """Read all control bits from M0.0 - M0.7 in one operation"""
+        """Read all control bits from M0.0 - M0.7 in one operation with retry logic"""
         if not snap7_available or self.client is None:
             return {
                 'start': False, 'stop': False, 'home': False, 'estop': False,
                 'suction': False, 'ready': False, 'busy': False, 'error': False
             }
-        try:
-            if not self.is_connected():
+        
+        max_retries = 3
+        retry_delay = 0.2  # 200ms delay between retries
+        
+        for attempt in range(max_retries):
+            try:
+                if not self.is_connected():
+                    return {
+                        'start': False, 'stop': False, 'home': False, 'estop': False,
+                        'suction': False, 'ready': False, 'busy': False, 'error': False
+                    }
+
+                # Read entire byte M0 at once (contains all 8 bits)
+                data = self.client.mb_read(0, 1)
+                byte_value = data[0]
+
+                # Extract individual bits from the byte
                 return {
-                    'start': False, 'stop': False, 'home': False, 'estop': False,
-                    'suction': False, 'ready': False, 'busy': False, 'error': False
+                    'start': bool((byte_value >> 0) & 1),
+                    'stop': bool((byte_value >> 1) & 1),
+                    'home': bool((byte_value >> 2) & 1),
+                    'estop': bool((byte_value >> 3) & 1),
+                    'suction': bool((byte_value >> 4) & 1),
+                    'ready': bool((byte_value >> 5) & 1),
+                    'busy': bool((byte_value >> 6) & 1),
+                    'error': bool((byte_value >> 7) & 1)
                 }
-
-            # Read entire byte M0 at once (contains all 8 bits)
-            data = self.client.mb_read(0, 1)
-            byte_value = data[0]
-
-            # Extract individual bits from the byte
-            return {
-                'start': bool((byte_value >> 0) & 1),
-                'stop': bool((byte_value >> 1) & 1),
-                'home': bool((byte_value >> 2) & 1),
-                'estop': bool((byte_value >> 3) & 1),
-                'suction': bool((byte_value >> 4) & 1),
-                'ready': bool((byte_value >> 5) & 1),
-                'busy': bool((byte_value >> 6) & 1),
-                'error': bool((byte_value >> 7) & 1)
-            }
-        except Exception as e:
-            self.last_error = f"Error reading control bits: {str(e)}"
-            logger.error(self.last_error)
-            return {
-                'start': False, 'stop': False, 'home': False, 'estop': False,
-                'suction': False, 'ready': False, 'busy': False, 'error': False
-            }
+            except Exception as e:
+                error_str = str(e)
+                if 'Job pending' in error_str and attempt < max_retries - 1:
+                    logger.debug(f"Job pending reading control bits, retrying ({attempt + 1}/{max_retries})...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    self.last_error = f"Error reading control bits: {error_str}"
+                    if attempt == max_retries - 1:
+                        logger.error(self.last_error)
+                    else:
+                        logger.debug(self.last_error)
+                    return {
+                        'start': False, 'stop': False, 'home': False, 'estop': False,
+                        'suction': False, 'ready': False, 'busy': False, 'error': False
+                    }
+        
+        return {
+            'start': False, 'stop': False, 'home': False, 'estop': False,
+            'suction': False, 'ready': False, 'busy': False, 'error': False
+        }
 
     def write_control_bit(self, bit_name: str, value: bool) -> bool:
         """Write a single control bit"""
@@ -462,7 +481,7 @@ class PLCClient:
             }
 
     def write_vision_tags(self, tags: Dict[str, Any], db_number: int = 123) -> bool:
-        """Write vision system tags to DB123
+        """Write vision system tags to DB123 with retry logic for "Job pending" errors
         
         Args:
             tags: Dictionary with keys: start, connected, busy, object_detected, 
@@ -471,38 +490,88 @@ class PLCClient:
         """
         if not snap7_available or self.client is None:
             return False
-        try:
-            if not self.is_connected():
-                return False
+        
+        max_retries = 3
+        retry_delay = 0.2  # 200ms delay between retries
+        
+        for attempt in range(max_retries):
+            try:
+                if not self.is_connected():
+                    return False
 
-            # Read current byte 40 to preserve other bits
-            current_byte = bytearray(self.client.db_read(db_number, 40, 1))
-            
-            # Set individual bits
-            if 'start' in tags:
-                set_bool(current_byte, 0, 0, bool(tags['start']))
-            if 'connected' in tags:
-                set_bool(current_byte, 0, 1, bool(tags['connected']))
-            if 'busy' in tags:
-                set_bool(current_byte, 0, 2, bool(tags['busy']))
-            if 'object_detected' in tags:
-                set_bool(current_byte, 0, 3, bool(tags['object_detected']))
-            if 'object_ok' in tags:
-                set_bool(current_byte, 0, 4, bool(tags['object_ok']))
-            if 'defect_detected' in tags:
-                set_bool(current_byte, 0, 5, bool(tags['defect_detected']))
-            
-            # Write byte 40 with all bool flags
-            self.client.db_write(db_number, 40, current_byte)
-            
-            # Write INT values
-            if 'object_number' in tags:
-                self.write_db_int(db_number, 42, int(tags['object_number']))
-            if 'defect_number' in tags:
-                self.write_db_int(db_number, 44, int(tags['defect_number']))
-            
-            return True
-        except Exception as e:
-            self.last_error = f"Error writing vision tags to DB{db_number}: {str(e)}"
-            logger.error(self.last_error)
-            return False
+                # Read current byte 40 to preserve other bits (with retry)
+                try:
+                    current_byte = bytearray(self.client.db_read(db_number, 40, 1))
+                except Exception as read_error:
+                    error_str = str(read_error)
+                    if 'Job pending' in error_str and attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        continue
+                    raise
+                
+                # Set individual bits
+                if 'start' in tags:
+                    set_bool(current_byte, 0, 0, bool(tags['start']))
+                if 'connected' in tags:
+                    set_bool(current_byte, 0, 1, bool(tags['connected']))
+                if 'busy' in tags:
+                    set_bool(current_byte, 0, 2, bool(tags['busy']))
+                if 'object_detected' in tags:
+                    set_bool(current_byte, 0, 3, bool(tags['object_detected']))
+                if 'object_ok' in tags:
+                    set_bool(current_byte, 0, 4, bool(tags['object_ok']))
+                if 'defect_detected' in tags:
+                    set_bool(current_byte, 0, 5, bool(tags['defect_detected']))
+                
+                # Write byte 40 with all bool flags (with retry)
+                try:
+                    self.client.db_write(db_number, 40, current_byte)
+                    time.sleep(0.1)  # Small delay between writes
+                except Exception as write_error:
+                    error_str = str(write_error)
+                    if 'Job pending' in error_str and attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        continue
+                    raise
+                
+                # Write INT values with delays
+                if 'object_number' in tags:
+                    try:
+                        self.write_db_int(db_number, 42, int(tags['object_number']))
+                        time.sleep(0.1)  # Delay between writes
+                    except Exception as int_error:
+                        error_str = str(int_error)
+                        if 'Job pending' in error_str and attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            continue
+                        # Log but don't fail on INT write errors
+                        logger.debug(f"Error writing object_number: {int_error}")
+                
+                if 'defect_number' in tags:
+                    try:
+                        self.write_db_int(db_number, 44, int(tags['defect_number']))
+                    except Exception as int_error:
+                        error_str = str(int_error)
+                        if 'Job pending' in error_str and attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            continue
+                        # Log but don't fail on INT write errors
+                        logger.debug(f"Error writing defect_number: {int_error}")
+                
+                return True
+                
+            except Exception as e:
+                error_str = str(e)
+                if 'Job pending' in error_str and attempt < max_retries - 1:
+                    logger.debug(f"Job pending, retrying ({attempt + 1}/{max_retries})...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    self.last_error = f"Error writing vision tags to DB{db_number}: {error_str}"
+                    if attempt == max_retries - 1:
+                        logger.error(self.last_error)
+                    else:
+                        logger.debug(self.last_error)
+                    return False
+        
+        return False

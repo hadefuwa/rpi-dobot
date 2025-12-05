@@ -563,6 +563,8 @@ def write_vision_to_plc(object_count: int, defect_count: int, object_ok: bool, d
             'defect_number': defect_number
         }
         
+        # Add small delay before writing to avoid "Job pending" if polling just ran
+        time.sleep(0.1)
         success = plc_client.write_vision_tags(tags, db_number)
         if success:
             logger.debug(f"Vision tags written to DB{db_number}: {tags}")
