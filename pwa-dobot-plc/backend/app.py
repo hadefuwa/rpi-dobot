@@ -2243,11 +2243,16 @@ def serve_pwa(path):
 if __name__ == '__main__':
     init_clients()
 
-    # Don't auto-connect to PLC on startup - let it connect when needed
-    # This prevents snap7 crashes from killing the app if PLC is offline
+    # Auto-connect to PLC on startup (with retry logic)
     if plc_client:
         plc_ip = plc_client.ip if hasattr(plc_client, 'ip') else 'unknown'
-        logger.info(f"PLC client initialized for {plc_ip} - will connect when needed")
+        logger.info(f"🔌 Attempting to connect to PLC at {plc_ip}...")
+        plc_connected = plc_client.connect()
+        if plc_connected:
+            logger.info(f"✅ PLC connected successfully to {plc_ip}")
+        else:
+            logger.warning(f"⚠️ PLC connection failed: {plc_client.last_error}")
+            logger.info("💡 PLC will retry connection automatically, or use /api/plc/connect endpoint")
     else:
         logger.info("PLC client not initialized - PLC features disabled")
 

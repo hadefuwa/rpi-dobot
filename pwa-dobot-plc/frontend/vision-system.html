@@ -800,6 +800,11 @@
                         <div style="margin-top: 16px; padding: 12px; background: rgba(0, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 4px;">
                             <div style="color: var(--primary-cyan); font-size: 10px; font-weight: 700; margin-bottom: 6px;">Status:</div>
                             <div id="db123Status" style="color: var(--text-secondary); font-size: 10px;">Loading...</div>
+                            <div style="margin-top: 12px;">
+                                <button class="btn btn-primary" onclick="connectToPLC()" style="font-size: 10px; padding: 6px 12px; width: 100%;">
+                                    🔌 Connect to PLC
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1970,6 +1975,31 @@
 
         // Update status every 5 seconds
         setInterval(updateDb123Status, 5000);
+
+        // PLC Connection Functions
+        async function connectToPLC() {
+            try {
+                addSerialLog('Attempting to connect to PLC...', 'plc');
+                const response = await fetch(`${API_BASE}/api/plc/connect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                
+                if (result.success && result.connected) {
+                    addSerialLog('✓ PLC connected successfully', 'success');
+                    updateDb123Status();
+                    alert('PLC connected successfully!');
+                } else {
+                    addSerialLog(`✗ PLC connection failed: ${result.error || 'Unknown error'}`, 'error');
+                    alert(`PLC connection failed: ${result.error || 'Unknown error'}\n\nCheck:\n- PLC is powered on\n- Network connectivity (ping 192.168.7.2)\n- PLC PUT/GET communication is enabled in TIA Portal`);
+                }
+            } catch (error) {
+                console.error('Error connecting to PLC:', error);
+                addSerialLog(`PLC connection error: ${error.message}`, 'error');
+                alert(`Error connecting to PLC: ${error.message}`);
+            }
+        }
     </script>
 </body>
 </html>
