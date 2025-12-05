@@ -14,7 +14,7 @@ snap7_available = False
 snap7 = None
 try:
     import snap7
-    from snap7.util import get_bool, get_real, get_int, set_bool, set_real
+    from snap7.util import get_bool, get_real, get_int, set_bool, set_real, set_int
     snap7_available = True
 except Exception as e:
     logger.warning(f"snap7 library not available or failed to import: {e}")
@@ -368,3 +368,141 @@ class PLCClient:
             'slot': self.slot,
             'last_error': self.last_error
         }
+
+    # DB123 Vision System Tags Methods
+    
+    def read_db_int(self, db_number: int, offset: int) -> Optional[int]:
+        """Read INT (16-bit signed integer) value from data block"""
+        if not snap7_available or self.client is None:
+            return None
+        try:
+            if not self.is_connected():
+                return None
+
+            data = self.client.db_read(db_number, offset, 2)
+            return get_int(data, 0)
+        except Exception as e:
+            self.last_error = f"Error reading DB{db_number}.DBW{offset}: {str(e)}"
+            logger.error(self.last_error)
+            return None
+
+    def write_db_int(self, db_number: int, offset: int, value: int) -> bool:
+        """Write INT (16-bit signed integer) value to data block"""
+        if not snap7_available or self.client is None:
+            return False
+        try:
+            if not self.is_connected():
+                return False
+
+            data = bytearray(2)
+            # snap7 uses set_int to write a 16-bit signed integer
+            set_int(data, 0, value)
+            self.client.db_write(db_number, offset, data)
+            return True
+        except Exception as e:
+            self.last_error = f"Error writing DB{db_number}.DBW{offset}: {str(e)}"
+            logger.error(self.last_error)
+            return False
+
+    def read_vision_tags(self, db_number: int = 123) -> Dict[str, Any]:
+        """Read all vision system tags from DB123"""
+        if not snap7_available or self.client is None:
+            return {
+                'start': False,
+                'connected': False,
+                'busy': False,
+                'object_detected': False,
+                'object_ok': False,
+                'defect_detected': False,
+                'object_number': 0,
+                'defect_number': 0
+            }
+        try:
+            if not self.is_connected():
+                return {
+                    'start': False,
+                    'connected': False,
+                    'busy': False,
+                    'object_detected': False,
+                    'object_ok': False,
+                    'defect_detected': False,
+                    'object_number': 0,
+                    'defect_number': 0
+                }
+
+            # Read byte 40 (contains all bool flags)
+            bool_data = self.client.db_read(db_number, 40, 1)
+            
+            # Read INT values at offsets 42 and 44
+            object_number = self.read_db_int(db_number, 42)
+            defect_number = self.read_db_int(db_number, 44)
+            
+            return {
+                'start': get_bool(bool_data, 0, 0),
+                'connected': get_bool(bool_data, 0, 1),
+                'busy': get_bool(bool_data, 0, 2),
+                'object_detected': get_bool(bool_data, 0, 3),
+                'object_ok': get_bool(bool_data, 0, 4),
+                'defect_detected': get_bool(bool_data, 0, 5),
+                'object_number': object_number if object_number is not None else 0,
+                'defect_number': defect_number if defect_number is not None else 0
+            }
+        except Exception as e:
+            self.last_error = f"Error reading vision tags from DB{db_number}: {str(e)}"
+            logger.error(self.last_error)
+            return {
+                'start': False,
+                'connected': False,
+                'busy': False,
+                'object_detected': False,
+                'object_ok': False,
+                'defect_detected': False,
+                'object_number': 0,
+                'defect_number': 0
+            }
+
+    def write_vision_tags(self, tags: Dict[str, Any], db_number: int = 123) -> bool:
+        """Write vision system tags to DB123
+        
+        Args:
+            tags: Dictionary with keys: start, connected, busy, object_detected, 
+                  object_ok, defect_detected, object_number, defect_number
+            db_number: Data block number (default 123)
+        """
+        if not snap7_available or self.client is None:
+            return False
+        try:
+            if not self.is_connected():
+                return False
+
+            # Read current byte 40 to preserve other bits
+            current_byte = bytearray(self.client.db_read(db_number, 40, 1))
+            
+            # Set individual bits
+            if 'start' in tags:
+                set_bool(current_byte, 0, 0, bool(tags['start']))
+            if 'connected' in tags:
+                set_bool(current_byte, 0, 1, bool(tags['connected']))
+            if 'busy' in tags:
+                set_bool(current_byte, 0, 2, bool(tags['busy']))
+            if 'object_detected' in tags:
+                set_bool(current_byte, 0, 3, bool(tags['object_detected']))
+            if 'object_ok' in tags:
+                set_bool(current_byte, 0, 4, bool(tags['object_ok']))
+            if 'defect_detected' in tags:
+                set_bool(current_byte, 0, 5, bool(tags['defect_detected']))
+            
+            # Write byte 40 with all bool flags
+            self.client.db_write(db_number, 40, current_byte)
+            
+            # Write INT values
+            if 'object_number' in tags:
+                self.write_db_int(db_number, 42, int(tags['object_number']))
+            if 'defect_number' in tags:
+                self.write_db_int(db_number, 44, int(tags['defect_number']))
+            
+            return True
+        except Exception as e:
+            self.last_error = f"Error writing vision tags to DB{db_number}: {str(e)}"
+            logger.error(self.last_error)
+            return False

@@ -252,7 +252,7 @@ def load_config():
                 "use_usb": True
             },
             "plc": {
-                "ip": "192.168.1.150",
+                "ip": "192.168.7.2",
                 "rack": 0,
                 "slot": 1,
                 "db_number": 1,
@@ -522,6 +522,54 @@ def save_config(config):
     config_path = os.path.join(os.path.dirname(__file__), 'config.json')
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
+
+def write_vision_to_plc(object_count: int, defect_count: int, object_ok: bool, defect_detected: bool, busy: bool = False):
+    """Write vision detection results to PLC DB123 tags
+    
+    Args:
+        object_count: Number of objects detected
+        defect_count: Number of defects found
+        object_ok: Whether objects are OK (no defects)
+        defect_detected: Whether any defects were detected
+        busy: Whether vision system is currently processing (default: False)
+    """
+    if plc_client is None:
+        return False
+    
+    try:
+        config = load_config()
+        db123_config = config.get('plc', {}).get('db123', {})
+        
+        # Check if DB123 communication is enabled
+        if not db123_config.get('enabled', False):
+            return False
+        
+        db_number = db123_config.get('db_number', 123)
+        
+        # Determine tag values
+        connected = plc_client.is_connected()
+        object_detected = object_count > 0
+        object_number = object_count
+        defect_number = defect_count
+        
+        # Write all tags to DB123
+        tags = {
+            'connected': connected,
+            'busy': busy,
+            'object_detected': object_detected,
+            'object_ok': object_ok,
+            'defect_detected': defect_detected,
+            'object_number': object_number,
+            'defect_number': defect_number
+        }
+        
+        success = plc_client.write_vision_tags(tags, db_number)
+        if success:
+            logger.debug(f"Vision tags written to DB{db_number}: {tags}")
+        return success
+    except Exception as e:
+        logger.error(f"Error writing vision tags to PLC: {e}")
+        return False
 
 def init_clients():
     """Initialize PLC and Dobot clients from config"""
@@ -1060,7 +1108,7 @@ def get_config():
 
 @app.route('/api/config', methods=['POST'])
 def update_config():
-    """Update configuration (for vision config)"""
+    """Update configuration (for vision config and DB123)"""
     try:
         new_config = request.json
         current_config = load_config()
@@ -1069,10 +1117,15 @@ def update_config():
         if 'vision' in new_config:
             current_config.setdefault('vision', {})
             current_config['vision'].update(new_config['vision'])
-            save_config(current_config)
-            return jsonify({'success': True, 'message': 'Configuration saved'})
         
-        return jsonify({'error': 'No vision config provided'}), 400
+        # Update DB123 config if provided
+        if 'plc' in new_config and 'db123' in new_config['plc']:
+            current_config.setdefault('plc', {})
+            current_config['plc'].setdefault('db123', {})
+            current_config['plc']['db123'].update(new_config['plc']['db123'])
+        
+        save_config(current_config)
+        return jsonify({'success': True, 'message': 'Configuration saved'})
     except Exception as e:
         logger.error(f"Error saving config: {e}")
         return jsonify({'error': str(e)}), 500
@@ -1683,6 +1736,9 @@ def vision_detect():
 
         detected_objects = []
 
+        # Set busy flag at start of detection
+        write_vision_to_plc(0, 0, True, False, busy=True)
+        
         # Run object detection if enabled
         if object_detection_enabled:
             # If using YOLO, call vision service instead of direct YOLO
@@ -1731,6 +1787,10 @@ def vision_detect():
             logger.info(f"Detection completed: {len(detected_objects)} objects found using {object_method} method")
 
         # Run defect detection if enabled (currently disabled)
+        defect_count = 0
+        defect_detected = False
+        object_ok = True
+        
         if defect_detection_enabled:
             results['defects_found'] = False
             results['defect_count'] = 0
@@ -1738,11 +1798,50 @@ def vision_detect():
             results['confidence'] = 0.0
             results['defect_method'] = defect_method
             results['note'] = 'Defect detection is currently disabled'
+        else:
+            # Check stored defect results to get defect count
+            try:
+                if os.path.exists(COUNTER_DEFECTS_FILE):
+                    with open(COUNTER_DEFECTS_FILE, 'r') as f:
+                        defect_data = json.load(f)
+                        # Count defects with significant issues
+                        defect_count = sum(1 for item in defect_data.values() 
+                                         if item.get('defect_results', {}).get('defects_found', False))
+                        defect_detected = defect_count > 0
+                        object_ok = not defect_detected
+            except Exception as e:
+                logger.debug(f"Error reading defect data: {e}")
+
+        # Write vision results to PLC DB123 (busy=False since detection is complete)
+        object_count = results.get('object_count', 0)
+        write_vision_to_plc(object_count, defect_count, object_ok, defect_detected, busy=False)
 
         return jsonify(results)
 
     except Exception as e:
         logger.error(f"Error in vision detection: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plc/db123/read', methods=['GET'])
+def read_db123_tags():
+    """Read current vision tags from PLC DB123"""
+    if plc_client is None:
+        return jsonify({'error': 'PLC client not initialized'}), 503
+    
+    try:
+        config = load_config()
+        db123_config = config.get('plc', {}).get('db123', {})
+        db_number = db123_config.get('db_number', 123)
+        
+        tags = plc_client.read_vision_tags(db_number)
+        return jsonify({
+            'success': True,
+            'db_number': db_number,
+            'tags': tags,
+            'plc_connected': plc_client.is_connected()
+        })
+    except Exception as e:
+        logger.error(f"Error reading DB123 tags: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/counter-images', methods=['GET'])

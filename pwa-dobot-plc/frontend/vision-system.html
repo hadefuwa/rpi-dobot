@@ -757,6 +757,52 @@
                         </div>
                     </div>
 
+                    <!-- PLC DB123 Configuration Section -->
+                    <div id="plcDb123ConfigSection" class="panel" style="display: block;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <h4 style="margin: 0;">PLC DB123 Communication Settings</h4>
+                            <button class="btn btn-primary" onclick="saveDb123Config()" style="font-size: 10px; padding: 6px 10px;">
+                                &#128190; Save Settings
+                            </button>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 16px;">
+                            Configure how vision detection results are written to Siemens PLC DB123 tags
+                        </div>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 12px; cursor: pointer;">
+                                <input type="checkbox" id="db123Enabled" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary-cyan);">
+                                <span>Enable DB123 Communication</span>
+                            </label>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                            <div>
+                                <label style="display: block; color: var(--text-secondary); font-size: 11px; margin-bottom: 6px;">DB Number</label>
+                                <input type="number" id="db123Number" value="123" min="1" max="65535" style="width: 100%; padding: 8px; background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-primary); font-family: var(--font-mono); font-size: 12px;">
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                            <h5 style="color: var(--primary-cyan); font-size: 11px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Tag Addresses (Read-Only Reference)</h5>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10px; color: var(--text-secondary);">
+                                <div>Start: DB123.DBX40.0</div>
+                                <div>Connected: DB123.DBX40.1</div>
+                                <div>Busy: DB123.DBX40.2</div>
+                                <div>Object_Detected: DB123.DBX40.3</div>
+                                <div>Object_OK: DB123.DBX40.4</div>
+                                <div>Defect_Detected: DB123.DBX40.5</div>
+                                <div>Object_Number: DB123.DBW42</div>
+                                <div>Defect_Number: DB123.DBW44</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 16px; padding: 12px; background: rgba(0, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 4px;">
+                            <div style="color: var(--primary-cyan); font-size: 10px; font-weight: 700; margin-bottom: 6px;">Status:</div>
+                            <div id="db123Status" style="color: var(--text-secondary); font-size: 10px;">Loading...</div>
+                        </div>
+                    </div>
+
                     <!-- Hidden inputs for method -->
                     <input type="hidden" id="objectDetectionMethod" value="yolo">
                     <input type="hidden" id="continuousObjectDetection" value="true">
@@ -869,6 +915,7 @@
         window.addEventListener('load', () => {
             startStreamImmediately();
             loadDetectionParams();
+            loadDb123Config();
             topLevelObjectDetectionEnabled = true;
             objectDetectionEnabled = true;
             topLevelDefectDetectionEnabled = true;
@@ -1799,6 +1846,109 @@
             updateSerialLogDisplay();
             addSerialLog('Serial monitor cleared', 'info');
         }
+
+        // DB123 Configuration Functions
+        async function loadDb123Config() {
+            try {
+                const response = await fetch(`${API_BASE}/api/config`);
+                const config = await response.json();
+                const db123Config = config.plc?.db123 || {};
+                
+                const enabledCheckbox = document.getElementById('db123Enabled');
+                const dbNumberInput = document.getElementById('db123Number');
+                const statusDiv = document.getElementById('db123Status');
+                
+                if (enabledCheckbox) {
+                    enabledCheckbox.checked = db123Config.enabled || false;
+                }
+                if (dbNumberInput) {
+                    dbNumberInput.value = db123Config.db_number || 123;
+                }
+                
+                updateDb123Status();
+            } catch (error) {
+                console.error('Error loading DB123 config:', error);
+                addSerialLog(`Error loading DB123 config: ${error.message}`, 'error');
+            }
+        }
+
+        async function saveDb123Config() {
+            try {
+                const enabledCheckbox = document.getElementById('db123Enabled');
+                const dbNumberInput = document.getElementById('db123Number');
+                
+                const enabled = enabledCheckbox ? enabledCheckbox.checked : false;
+                const dbNumber = dbNumberInput ? parseInt(dbNumberInput.value) : 123;
+                
+                if (isNaN(dbNumber) || dbNumber < 1 || dbNumber > 65535) {
+                    alert('DB Number must be between 1 and 65535');
+                    return;
+                }
+                
+                addSerialLog('Saving DB123 configuration...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plc: {
+                            db123: {
+                                enabled: enabled,
+                                db_number: dbNumber
+                            }
+                        }
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    addSerialLog('DB123 configuration saved successfully', 'success');
+                    updateDb123Status();
+                    alert('DB123 configuration saved successfully!');
+                } else {
+                    addSerialLog(`Error saving DB123 config: ${result.error || 'Unknown error'}`, 'error');
+                    alert(`Error: ${result.error || 'Failed to save configuration'}`);
+                }
+            } catch (error) {
+                console.error('Error saving DB123 config:', error);
+                addSerialLog(`Error saving DB123 config: ${error.message}`, 'error');
+                alert(`Error saving configuration: ${error.message}`);
+            }
+        }
+
+        async function updateDb123Status() {
+            const statusDiv = document.getElementById('db123Status');
+            if (!statusDiv) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/config`);
+                const config = await response.json();
+                const db123Config = config.plc?.db123 || {};
+                const enabled = db123Config.enabled || false;
+                const dbNumber = db123Config.db_number || 123;
+                const plcConnected = config.plc ? (plc_client && plc_client.is_connected ? true : false) : false;
+                
+                if (enabled) {
+                    statusDiv.innerHTML = `
+                        <div style="color: var(--accent-green);">✓ DB123 Communication: ENABLED</div>
+                        <div style="color: var(--text-secondary); margin-top: 4px;">DB Number: ${dbNumber}</div>
+                        <div style="color: ${plcConnected ? 'var(--accent-green)' : 'var(--accent-red)'}; margin-top: 4px;">
+                            PLC Connection: ${plcConnected ? 'Connected' : 'Disconnected'}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div style="color: var(--text-muted);">DB123 Communication: DISABLED</div>
+                        <div style="color: var(--text-secondary); margin-top: 4px; font-size: 9px;">Enable the checkbox above to start writing to PLC</div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div style="color: var(--accent-red);">Error loading status: ${error.message}</div>`;
+            }
+        }
+
+        // Update status every 5 seconds
+        setInterval(updateDb123Status, 5000);
     </script>
 </body>
 </html>

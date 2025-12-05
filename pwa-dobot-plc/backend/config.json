@@ -10,11 +10,47 @@
     "use_usb": true
   },
   "plc": {
-    "ip": "192.168.1.150",
+    "ip": "192.168.7.2",
     "rack": 0,
     "slot": 1,
     "db_number": 1,
-    "poll_interval": 2.0
+    "poll_interval": 2.0,
+    "db123": {
+      "enabled": true,
+      "db_number": 123,
+      "tags": {
+        "start": {
+          "byte": 40,
+          "bit": 0
+        },
+        "connected": {
+          "byte": 40,
+          "bit": 1
+        },
+        "busy": {
+          "byte": 40,
+          "bit": 2
+        },
+        "object_detected": {
+          "byte": 40,
+          "bit": 3
+        },
+        "object_ok": {
+          "byte": 40,
+          "bit": 4
+        },
+        "defect_detected": {
+          "byte": 40,
+          "bit": 5
+        },
+        "object_number": {
+          "byte": 42
+        },
+        "defect_number": {
+          "byte": 44
+        }
+      }
+    }
   },
   "vision": {
     "fault_bit_enabled": false,

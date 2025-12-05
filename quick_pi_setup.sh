@@ -66,3 +66,5 @@ echo ""
 echo "🌐 Access the app at: http://$(hostname -I | awk '{print $1}'):8080"
 echo ""
 
+
+
