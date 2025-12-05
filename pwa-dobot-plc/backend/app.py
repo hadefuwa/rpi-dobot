@@ -255,7 +255,7 @@ def load_config():
                 "ip": "192.168.7.2",
                 "rack": 0,
                 "slot": 1,
-                "db_number": 1,
+                "db_number": 123,
                 "poll_interval": 2.0
             },
             "server": {"port": 8080}
@@ -653,7 +653,10 @@ def get_all_data():
             # Only read if already connected - don't try to connect
             if plc_status.get('connected', False):
                 try:
-                    target_pose = plc_client.read_target_pose()
+                    # Read from configured DB number
+                    config = load_config()
+                    db_number = config.get('plc', {}).get('db_number', 123)
+                    target_pose = plc_client.read_target_pose(db_number)
                     time.sleep(0.15)  # 150ms delay to avoid job pending with S7-1200
                     control_bits = plc_client.read_control_bits()
                 except Exception as e:
@@ -741,7 +744,9 @@ def set_plc_pose():
         # Don't try to connect - only write if already connected
         if plc_client and hasattr(plc_client, 'client') and plc_client.client is not None:
             if plc_client.is_connected():
-                success = plc_client.write_current_pose(data)
+                config = load_config()
+                db_number = config.get('plc', {}).get('db_number', 123)
+                success = plc_client.write_current_pose(data, db_number)
                 return jsonify({'success': success})
         return jsonify({'success': False, 'error': 'PLC not available'})
     except Exception as e:
@@ -1287,8 +1292,11 @@ def poll_loop():
                     # Don't try to connect - just check if already connected
                     if plc_client.is_connected():
                         try:
+                            # Read from configured DB number
+                            config = load_config()
+                            db_number = config.get('plc', {}).get('db_number', 123)
                             control_bits = plc_client.read_control_bits()
-                            target_pose = plc_client.read_target_pose()
+                            target_pose = plc_client.read_target_pose(db_number)
                         except Exception as e:
                             logger.debug(f"PLC read error in polling: {e}")
                 except Exception as e:

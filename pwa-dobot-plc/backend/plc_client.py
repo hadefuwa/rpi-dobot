@@ -243,7 +243,7 @@ class PLCClient:
 
     # High-level methods for Dobot robot control
 
-    def read_target_pose(self, db_number: int = 1) -> Dict[str, float]:
+    def read_target_pose(self, db_number: int = 123) -> Dict[str, float]:
         """Read target X, Y, Z position from PLC (offset 0, 4, 8) in one operation"""
         if not snap7_available or self.client is None:
             return {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -263,7 +263,7 @@ class PLCClient:
             logger.error(self.last_error)
             return {'x': 0.0, 'y': 0.0, 'z': 0.0}
 
-    def read_current_pose(self, db_number: int = 1) -> Dict[str, float]:
+    def read_current_pose(self, db_number: int = 123) -> Dict[str, float]:
         """Read current X, Y, Z position from PLC (offset 12, 16, 20) in one operation"""
         if not snap7_available or self.client is None:
             return {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -283,7 +283,7 @@ class PLCClient:
             logger.error(self.last_error)
             return {'x': 0.0, 'y': 0.0, 'z': 0.0}
 
-    def write_current_pose(self, pose: Dict[str, float], db_number: int = 1) -> bool:
+    def write_current_pose(self, pose: Dict[str, float], db_number: int = 123) -> bool:
         """Write current X, Y, Z position to PLC (offset 12, 16, 20) in one operation"""
         if not snap7_available or self.client is None:
             return False

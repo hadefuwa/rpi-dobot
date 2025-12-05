@@ -13,7 +13,7 @@
     "ip": "192.168.7.2",
     "rack": 0,
     "slot": 1,
-    "db_number": 1,
+    "db_number": 123,
     "poll_interval": 2.0,
     "db123": {
       "enabled": true,
