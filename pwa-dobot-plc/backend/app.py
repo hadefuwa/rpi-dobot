@@ -726,7 +726,9 @@ def get_plc_pose():
     try:
         if plc_client and hasattr(plc_client, 'client') and plc_client.client is not None:
             if plc_client.is_connected():
-                pose = plc_client.read_target_pose()
+                config = load_config()
+                db_number = config.get('plc', {}).get('db_number', 123)
+                pose = plc_client.read_target_pose(db_number)
                 return jsonify(pose)
         return jsonify({'x': 0.0, 'y': 0.0, 'z': 0.0})
     except Exception as e:
