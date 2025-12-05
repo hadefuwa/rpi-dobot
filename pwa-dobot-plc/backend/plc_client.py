@@ -575,3 +575,157 @@ class PLCClient:
                     return False
         
         return False
+
+    # ==================================================
+    # High-level Vision System Methods
+    # ==================================================
+    
+    def write_vision_detection_results(self, object_count: int, defect_count: int, 
+                                       object_ok: bool, defect_detected: bool, 
+                                       busy: bool = False, db_number: int = 123) -> bool:
+        """Write vision detection results to PLC DB123 tags
+        
+        This is a high-level method that combines all vision system data into one call.
+        
+        Args:
+            object_count: Number of objects detected
+            defect_count: Number of defects found
+            object_ok: Whether objects are OK (no defects)
+            defect_detected: Whether any defects were detected
+            busy: Whether vision system is currently processing
+            db_number: Data block number (default 123)
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.is_connected():
+            return False
+        
+        # Determine tag values
+        connected = self.is_connected()
+        object_detected = object_count > 0
+        object_number = object_count
+        defect_number = defect_count
+        
+        # Prepare tags dictionary
+        tags = {
+            'connected': connected,
+            'busy': busy,
+            'object_detected': object_detected,
+            'object_ok': object_ok,
+            'defect_detected': defect_detected,
+            'object_number': object_number,
+            'defect_number': defect_number
+        }
+        
+        # Add small delay before writing to avoid "Job pending" if polling just ran
+        time.sleep(0.1)
+        
+        # Write using the unified write_vision_tags method
+        success = self.write_vision_tags(tags, db_number)
+        if success:
+            logger.debug(f"Vision detection results written to DB{db_number}: {tags}")
+        return success
+    
+    def write_vision_fault_bit(self, defects_found: bool, byte_offset: int = 1, bit_offset: int = 0) -> Dict[str, Any]:
+        """Write vision fault status to PLC memory bit
+        
+        Args:
+            defects_found: True if defects found, False if no defects
+            byte_offset: M memory byte offset (default 1)
+            bit_offset: M memory bit offset (default 0)
+        
+        Returns:
+            Dictionary with write status and details
+        """
+        if not self.is_connected():
+            return {'written': False, 'reason': 'plc_not_connected'}
+        
+        try:
+            success = self.write_m_bit(byte_offset, bit_offset, defects_found)
+            if success:
+                logger.info(f"Vision fault bit M{byte_offset}.{bit_offset} set to {defects_found}")
+                return {'written': True, 'address': f'M{byte_offset}.{bit_offset}', 'value': defects_found}
+            else:
+                logger.debug(f"Failed to write vision fault bit M{byte_offset}.{bit_offset}")
+                return {'written': False, 'reason': 'write_failed', 'address': f'M{byte_offset}.{bit_offset}'}
+        except Exception as e:
+            logger.debug(f"Error writing vision fault bit: {e}")
+            return {'written': False, 'reason': 'write_error', 'error': str(e)}
+
+    # ==================================================
+    # High-level Vision System Methods
+    # ==================================================
+    
+    def write_vision_detection_results(self, object_count: int, defect_count: int, 
+                                       object_ok: bool, defect_detected: bool, 
+                                       busy: bool = False, db_number: int = 123) -> bool:
+        """Write vision detection results to PLC DB123 tags
+        
+        This is a high-level method that combines all vision system data into one call.
+        
+        Args:
+            object_count: Number of objects detected
+            defect_count: Number of defects found
+            object_ok: Whether objects are OK (no defects)
+            defect_detected: Whether any defects were detected
+            busy: Whether vision system is currently processing
+            db_number: Data block number (default 123)
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.is_connected():
+            return False
+        
+        # Determine tag values
+        connected = self.is_connected()
+        object_detected = object_count > 0
+        object_number = object_count
+        defect_number = defect_count
+        
+        # Prepare tags dictionary
+        tags = {
+            'connected': connected,
+            'busy': busy,
+            'object_detected': object_detected,
+            'object_ok': object_ok,
+            'defect_detected': defect_detected,
+            'object_number': object_number,
+            'defect_number': defect_number
+        }
+        
+        # Add small delay before writing to avoid "Job pending" if polling just ran
+        time.sleep(0.1)
+        
+        # Write using the unified write_vision_tags method
+        success = self.write_vision_tags(tags, db_number)
+        if success:
+            logger.debug(f"Vision detection results written to DB{db_number}: {tags}")
+        return success
+    
+    def write_vision_fault_bit(self, defects_found: bool, byte_offset: int = 1, bit_offset: int = 0) -> Dict[str, Any]:
+        """Write vision fault status to PLC memory bit
+        
+        Args:
+            defects_found: True if defects found, False if no defects
+            byte_offset: M memory byte offset (default 1)
+            bit_offset: M memory bit offset (default 0)
+        
+        Returns:
+            Dictionary with write status and details
+        """
+        if not self.is_connected():
+            return {'written': False, 'reason': 'plc_not_connected'}
+        
+        try:
+            success = self.write_m_bit(byte_offset, bit_offset, defects_found)
+            if success:
+                logger.info(f"Vision fault bit M{byte_offset}.{bit_offset} set to {defects_found}")
+                return {'written': True, 'address': f'M{byte_offset}.{bit_offset}', 'value': defects_found}
+            else:
+                logger.debug(f"Failed to write vision fault bit M{byte_offset}.{bit_offset}")
+                return {'written': False, 'reason': 'write_failed', 'address': f'M{byte_offset}.{bit_offset}'}
+        except Exception as e:
+            logger.debug(f"Error writing vision fault bit: {e}")
+            return {'written': False, 'reason': 'write_error', 'error': str(e)}

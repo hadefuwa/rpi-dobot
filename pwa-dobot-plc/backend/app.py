@@ -526,6 +526,9 @@ def save_config(config):
 def write_vision_to_plc(object_count: int, defect_count: int, object_ok: bool, defect_detected: bool, busy: bool = False):
     """Write vision detection results to PLC DB123 tags
     
+    This is a wrapper function that uses the unified PLC client methods.
+    All S7 communication is handled in plc_client.py.
+    
     Args:
         object_count: Number of objects detected
         defect_count: Number of defects found
@@ -546,29 +549,15 @@ def write_vision_to_plc(object_count: int, defect_count: int, object_ok: bool, d
         
         db_number = db123_config.get('db_number', 123)
         
-        # Determine tag values
-        connected = plc_client.is_connected()
-        object_detected = object_count > 0
-        object_number = object_count
-        defect_number = defect_count
-        
-        # Write all tags to DB123
-        tags = {
-            'connected': connected,
-            'busy': busy,
-            'object_detected': object_detected,
-            'object_ok': object_ok,
-            'defect_detected': defect_detected,
-            'object_number': object_number,
-            'defect_number': defect_number
-        }
-        
-        # Add small delay before writing to avoid "Job pending" if polling just ran
-        time.sleep(0.1)
-        success = plc_client.write_vision_tags(tags, db_number)
-        if success:
-            logger.debug(f"Vision tags written to DB{db_number}: {tags}")
-        return success
+        # Use unified PLC client method for all S7 communication
+        return plc_client.write_vision_detection_results(
+            object_count=object_count,
+            defect_count=defect_count,
+            object_ok=object_ok,
+            defect_detected=defect_detected,
+            busy=busy,
+            db_number=db_number
+        )
     except Exception as e:
         logger.error(f"Error writing vision tags to PLC: {e}")
         return False
@@ -1342,7 +1331,14 @@ def poll_loop():
 # ==================================================
 
 def write_plc_fault_bit(defects_found: bool):
-    """Write vision fault status to PLC memory bit - gracefully handles PLC offline"""
+    """Write vision fault status to PLC memory bit
+    
+    This is a wrapper function that uses the unified PLC client methods.
+    All S7 communication is handled in plc_client.py.
+    """
+    if plc_client is None:
+        return {'written': False, 'reason': 'plc_not_available'}
+    
     try:
         config = load_config()
         vision_config = config.get('vision', {})
@@ -1351,29 +1347,11 @@ def write_plc_fault_bit(defects_found: bool):
         if not vision_config.get('fault_bit_enabled', False):
             return {'written': False, 'reason': 'disabled'}
         
-        # Get bit address
         byte_offset = vision_config.get('fault_bit_byte', 1)
         bit_offset = vision_config.get('fault_bit_bit', 0)
         
-        # Don't try to connect - only write if already connected and snap7 is available
-        if not (plc_client and hasattr(plc_client, 'client') and plc_client.client is not None):
-            return {'written': False, 'reason': 'plc_not_available'}
-        
-        # Write fault bit (True = defects found, False = no defects)
-        try:
-            if plc_client.is_connected():
-                success = plc_client.write_m_bit(byte_offset, bit_offset, defects_found)
-                if success:
-                    logger.info(f"Vision fault bit M{byte_offset}.{bit_offset} set to {defects_found}")
-                    return {'written': True, 'address': f'M{byte_offset}.{bit_offset}', 'value': defects_found}
-                else:
-                    logger.debug(f"Failed to write vision fault bit M{byte_offset}.{bit_offset}")
-                    return {'written': False, 'reason': 'write_failed', 'address': f'M{byte_offset}.{bit_offset}'}
-            else:
-                return {'written': False, 'reason': 'plc_not_connected'}
-        except Exception as e:
-            logger.debug(f"Error writing vision fault bit: {e}")
-            return {'written': False, 'reason': 'write_error', 'error': str(e)}
+        # Use unified PLC client method for all S7 communication
+        return plc_client.write_vision_fault_bit(defects_found, byte_offset, bit_offset)
     except Exception as e:
         logger.debug(f"Error in write_plc_fault_bit: {e}")
         return {'written': False, 'reason': str(e)}
